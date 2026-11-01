@@ -129,6 +129,32 @@ class WorldlineService(
         return buildString {
             appendLine("【作品】${book.titleZh ?: book.title}")
             appendLine("【分叉点】第 $forkChapter 章第 $forkParagraph 段")
+            val raw = contentStore.readRaw(book.storageDir, forkChapter)
+            val zh = contentStore.readZh(book.storageDir, forkChapter)
+            if (raw != null) {
+                val before = TranslationValidators.splitParagraphs(raw)
+                    .take((forkParagraph + 1).coerceAtMost(
+                        TranslationValidators.splitParagraphs(raw).size,
+                    ))
+                    .takeLast(3)
+                    .joinToString("\n")
+                if (before.isNotBlank()) {
+                    appendLine("【分叉点前原文】")
+                    appendLine(before.take(1500))
+                }
+            }
+            if (zh != null) {
+                val before = TranslationValidators.splitParagraphs(zh)
+                    .take((forkParagraph + 1).coerceAtMost(
+                        TranslationValidators.splitParagraphs(zh).size,
+                    ))
+                    .takeLast(3)
+                    .joinToString("\n")
+                if (before.isNotBlank()) {
+                    appendLine("【分叉点前译文】")
+                    appendLine(before.take(1500))
+                }
+            }
             if (memory?.glossary?.isNotEmpty() == true) {
                 appendLine("【锁定译名】")
                 memory.glossary.take(40).forEach { appendLine("${it.source}=${it.target}") }

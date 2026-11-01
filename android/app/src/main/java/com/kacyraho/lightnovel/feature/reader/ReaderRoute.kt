@@ -420,11 +420,11 @@ private fun ReaderContent(
                         AndroidView(
                             factory = { context ->
                                 ReaderPageView(context).also {
-                                    it.onEntityClick = onSelectEntity
+                                    it.onEntityClick = if (state.queryMode) onSelectEntity else null
                                 }
                             },
                             update = { view ->
-                                view.onEntityClick = onSelectEntity
+                                view.onEntityClick = if (state.queryMode) onSelectEntity else null
                                 view.bind(layout.layout, page.slice)
                             },
                             modifier = Modifier

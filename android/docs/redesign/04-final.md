@@ -233,7 +233,7 @@ Column
 
 ## 8. 实施补充（2026-10-31）
 
-- 当前构建：`0.8.0-alpha.12`（versionCode 21）。
+- 当前构建：`0.8.0-alpha.13`（versionCode 22）。
 - 任务中心已按书分组，支持状态筛选（全部/失败/未译全/进行中）；失败/未译全可带 `retry=true` 进入阅读器自动重试。
 - 从标签/作者进入发现搜索时，搜索页提供返回箭头；仍保留当前栈 push 语义，完整多 Tab 栈恢复未做。
 - 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`；当前 119 tests / 0 failures / 1 skipped。

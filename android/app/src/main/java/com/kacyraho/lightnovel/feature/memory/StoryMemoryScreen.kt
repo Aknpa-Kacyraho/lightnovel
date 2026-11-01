@@ -60,6 +60,7 @@ fun StoryMemoryRoute(
             repository = container.libraryRepository,
             storyStore = container.storyMemoryStore,
             storyService = container.storyMemoryService,
+            knowledgeExtractionService = container.knowledgeExtractionService,
             legacyGlossaryStore = container.glossaryStore,
             bookId = bookId,
         )
@@ -86,6 +87,7 @@ fun StoryMemoryRoute(
         onDeleteLesson = viewModel::deleteLesson,
         onImportLegacy = viewModel::importLegacyGlossary,
         onScanCharacters = viewModel::scanCharacters,
+        onRebuildKnowledge = viewModel::rebuildKnowledge,
         onScanNames = viewModel::scanNames,
         onApplySuggestions = viewModel::applySuggestions,
         onRegenerateSummary = viewModel::regenerateSummary,
@@ -108,6 +110,7 @@ fun StoryMemoryScreen(
     onDeleteLesson: (String) -> Unit,
     onImportLegacy: () -> Unit,
     onScanCharacters: () -> Unit,
+    onRebuildKnowledge: () -> Unit,
     onScanNames: () -> Unit,
     onApplySuggestions: () -> Unit,
     onRegenerateSummary: (Int) -> Unit,
@@ -177,6 +180,7 @@ fun StoryMemoryScreen(
                         onSaveGlossary = onSaveGlossary,
                         onDeleteGlossary = onDeleteGlossary,
                         onImportLegacy = onImportLegacy,
+                        onRebuildKnowledge = onRebuildKnowledge,
                     )
                     TAB_CHARACTERS -> CharactersTab(
                         state = state,
@@ -208,6 +212,7 @@ private fun TermsTab(
     onSaveGlossary: (String, String, List<String>) -> Unit,
     onDeleteGlossary: (String) -> Unit,
     onImportLegacy: () -> Unit,
+    onRebuildKnowledge: () -> Unit,
 ) {
     var source by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
@@ -221,6 +226,9 @@ private fun TermsTab(
         OutlinedButton(onClick = onImportLegacy, enabled = !state.busy) {
             Text("从旧全局术语表导入（${state.legacyGlossaryCount} 条）")
         }
+    }
+    OutlinedButton(onClick = onRebuildKnowledge, enabled = !state.busy) {
+        Text("重建已译章节资料（会花 token）")
     }
     state.memory.glossary.forEach { entry ->
         Row(

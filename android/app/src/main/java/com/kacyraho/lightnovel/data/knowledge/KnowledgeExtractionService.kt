@@ -90,6 +90,28 @@ class KnowledgeExtractionService(
         )
     }
 
+    suspend fun extractAll(
+        book: BookEntity,
+        chapters: List<com.kacyraho.lightnovel.data.local.ChapterEntity>,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<Int> {
+        val eligible = chapters.sortedBy { it.idx }.filter {
+            contentStore.readZh(book.storageDir, it.idx) != null
+        }
+        var done = 0
+        var failed = 0
+        eligible.forEachIndexed { index, chapter ->
+            val result = extractChapter(book, chapter.idx)
+            if (result.isSuccess) done++ else failed++
+            onProgress(index + 1, eligible.size)
+        }
+        return if (done == 0 && failed > 0) {
+            Result.failure(IllegalStateException("没有章节抽取成功"))
+        } else {
+            Result.success(done)
+        }
+    }
+
     private fun merge(
         book: BookEntity,
         chapter: Int,

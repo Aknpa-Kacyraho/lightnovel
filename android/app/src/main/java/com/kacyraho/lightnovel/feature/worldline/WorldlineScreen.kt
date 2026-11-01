@@ -305,6 +305,16 @@ private fun BranchDetail(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    if (branch.divergences.isNotEmpty()) {
+        Text("偏离点", style = MaterialTheme.typography.titleSmall)
+        branch.divergences.forEach { divergence ->
+            Text(
+                "· ${divergence.summary}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
     branch.chapters.forEach { chapter ->
         ChapterBlock(chapter)
     }

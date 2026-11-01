@@ -6,6 +6,7 @@ import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.glossary.GlossaryStore
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeExtractionService
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.story.CharacterCard
 import com.kacyraho.lightnovel.data.story.NameSuggestion
@@ -35,6 +36,7 @@ class StoryMemoryViewModel(
     private val repository: LibraryRepository,
     private val storyStore: StoryMemoryStore,
     private val storyService: StoryMemoryService,
+    private val knowledgeExtractionService: KnowledgeExtractionService? = null,
     private val legacyGlossaryStore: GlossaryStore? = null,
     private val bookId: String,
 ) : ViewModel() {
@@ -149,6 +151,34 @@ class StoryMemoryViewModel(
             message = "已导入 ${legacy.entries.size} 条旧术语（仅本书）",
             error = null,
         )
+    }
+
+    fun rebuildKnowledge() {
+        val book = _state.value.book ?: return
+        val service = knowledgeExtractionService ?: return
+        if (_state.value.busy) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                busy = true,
+                message = "正在重建已译章节资料…",
+                error = null,
+            )
+            service.extractAll(book, _state.value.chapters) { done, total ->
+                _state.value = _state.value.copy(
+                    message = "资料重建 $done/$total",
+                )
+            }.onSuccess { count ->
+                _state.value = _state.value.copy(
+                    busy = false,
+                    message = "资料重建完成：$count 章",
+                )
+            }.onFailure {
+                _state.value = _state.value.copy(
+                    busy = false,
+                    error = it.message ?: "资料重建失败",
+                )
+            }
+        }
     }
 
     fun scanCharacters() {

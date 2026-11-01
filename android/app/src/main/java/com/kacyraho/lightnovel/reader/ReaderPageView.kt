@@ -6,10 +6,16 @@ import android.text.Spanned
 import android.text.StaticLayout
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import kotlin.math.abs
 
 class ReaderPageView(context: Context) : View(context) {
     private var pageLayout: StaticLayout? = null
     private var page: PageSlice? = null
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var downX = 0f
+    private var downY = 0f
+    private var moved = false
 
     var onEntityClick: ((String) -> Unit)? = null
 
@@ -30,21 +36,43 @@ class ReaderPageView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked != MotionEvent.ACTION_UP) {
-            return super.onTouchEvent(event)
+        if (onEntityClick == null) return super.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                moved = false
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
+                    moved = true
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    return false
+                }
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!moved) handleTap(event)
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> return true
         }
-        val layout = pageLayout ?: return super.onTouchEvent(event)
-        val slice = page ?: return super.onTouchEvent(event)
-        val spanned = layout.text as? Spanned ?: return super.onTouchEvent(event)
+        return super.onTouchEvent(event)
+    }
+
+    private fun handleTap(event: MotionEvent) {
+        val layout = pageLayout ?: return
+        val slice = page ?: return
+        val spanned = layout.text as? Spanned ?: return
         val y = (event.y + slice.top).toInt().coerceIn(0, layout.height)
         val line = layout.getLineForVertical(y)
         val x = event.x.coerceIn(0f, width.toFloat())
         val offset = layout.getOffsetForHorizontal(line, x)
         val span = spanned.getSpans(offset, offset, EntityClickSpan::class.java)
-            .firstOrNull() ?: return super.onTouchEvent(event)
+            .firstOrNull() ?: return
         performClick()
         onEntityClick?.invoke(span.entityId)
-        return true
     }
 
     override fun performClick(): Boolean {
