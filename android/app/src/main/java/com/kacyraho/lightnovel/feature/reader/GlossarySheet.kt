@@ -55,9 +55,9 @@ fun GlossaryCorrectionSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("术语表", style = MaterialTheme.typography.titleMedium, color = theme.text)
+            Text("本书术语表", style = MaterialTheme.typography.titleMedium, color = theme.text)
             Text(
-                "保存后本章会标记为过期；重译时命中词强制使用这里的目标译名。",
+                "只作用于本书；保存后本章会标记为过期；重译时命中词强制使用这里的目标译名。",
                 style = MaterialTheme.typography.bodySmall,
                 color = theme.secondary,
             )
