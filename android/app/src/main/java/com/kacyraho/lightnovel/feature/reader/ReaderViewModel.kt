@@ -6,8 +6,19 @@ import androidx.lifecycle.viewModelScope
 import com.kacyraho.lightnovel.core.model.ReaderAnchor
 import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.SettingsStore
+import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
+import com.kacyraho.lightnovel.data.knowledge.DisplayAnchor
+import com.kacyraho.lightnovel.data.knowledge.EntityCard
+import com.kacyraho.lightnovel.data.knowledge.FactAnchor
+import com.kacyraho.lightnovel.data.knowledge.FactAnchorMapper
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeExtractionService
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeFile
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeQueryService
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeStatus
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
+import com.kacyraho.lightnovel.data.knowledge.QueryEntry
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.ChapterFetcher
@@ -69,6 +80,11 @@ data class ReaderUiState(
     val hasTranslation: Boolean = false,
     val glossaryEntries: List<GlossaryEntry> = emptyList(),
     val glossaryImpact: GlossaryImpact? = null,
+    val queryEntries: List<QueryEntry> = emptyList(),
+    val knowledgeStatus: KnowledgeStatus? = null,
+    val entityCard: EntityCard? = null,
+    val queryMode: Boolean = false,
+    val queryNames: Map<String, String> = emptyMap(),
     val paragraphs: List<ReaderParagraph> = emptyList(),
 )
 
@@ -87,6 +103,9 @@ class ReaderViewModel(
     private val chapterCache: ReaderChapterCache,
     private val storyMemoryStore: StoryMemoryStore? = null,
     private val storyMemoryService: StoryMemoryService? = null,
+    private val knowledgeStore: KnowledgeStore? = null,
+    private val knowledgeExtractionService: KnowledgeExtractionService? = null,
+    private val knowledgeQueryService: KnowledgeQueryService? = null,
     private val versionStore: TranslationVersionStore? = null,
     private val onlineBookService: ChapterFetcher? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
@@ -114,6 +133,9 @@ class ReaderViewModel(
     private var currentTranslationConfig: TranslationConfig? = null
     private var currentGlossaryRevision: String = ""
     private var currentStoryMemory: StoryMemory? = null
+    private var currentKnowledge: KnowledgeFile? = null
+    private var currentReadAnchor: FactAnchor? = null
+    private var translatedThroughCache: Int = 0
     private var currentSettings: AppSettings? = null
 
     private val taskKey: String = "$bookId/$chapterIndex"
@@ -228,7 +250,8 @@ class ReaderViewModel(
     ) {
         val chapter = readerChapter ?: return
         val key = "${viewport.widthPx}x${viewport.heightPx}:$fontSizeSp:$lineHeight:" +
-            "${paint.typeface}:${paint.color}:${chapter.text.hashCode()}"
+            "${paint.typeface}:${paint.color}:${chapter.text.hashCode()}:" +
+            _state.value.queryNames.hashCode()
         if (key == lastKey) return
         lastKey = key
         paginationJob?.cancel()
@@ -239,6 +262,7 @@ class ReaderViewModel(
                     viewport = viewport,
                     paint = paint,
                     style = MonoStyle(fontSizeSp, lineHeight),
+                    highlights = _state.value.queryNames,
                 )
             }
             val target = anchorToRestore?.let { anchor ->
@@ -281,6 +305,7 @@ class ReaderViewModel(
                         running = true,
                         message = "翻译完成，正在更新故事记忆…",
                     )
+                    runCatching { knowledgeExtractionService?.extractChapter(book, chapterIndex) }
                     runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
                     _translationState.value = ReaderTranslationState(
                         message = summary("翻译完成", outcome.sidecar),
@@ -295,6 +320,7 @@ class ReaderViewModel(
                         running = true,
                         message = "翻译完成，正在更新故事记忆…",
                     )
+                    runCatching { knowledgeExtractionService?.extractChapter(book, chapterIndex) }
                     runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
                     _translationState.value = ReaderTranslationState(
                         message = summary(
@@ -499,6 +525,7 @@ class ReaderViewModel(
         val layout = _state.value.layout ?: return
         if (pageIndex !in layout.pages.indices) return
         _state.value = _state.value.copy(pageIndex = pageIndex)
+        bookEntity?.let { refreshKnowledgeStatus(it) }
         val anchor = layout.pages[pageIndex].startAnchor
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
@@ -545,6 +572,7 @@ class ReaderViewModel(
                 bookEntity = book
                 chapterList = chapters
                 refreshStoryMemory(book)
+                refreshKnowledge(book)
                 val raw = contentStore.readRaw(book.storageDir, chapterIndex)
                 val zh = contentStore.readZh(book.storageDir, chapterIndex)
                 rawText = raw
@@ -598,6 +626,7 @@ class ReaderViewModel(
                         )
                     },
                     glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
+                    knowledgeStatus = _state.value.knowledgeStatus,
                     paragraphs = buildParagraphs(raw, zh),
                 )
                 prefetchAdjacent(book, chapters, _state.value.displayMode)
@@ -624,6 +653,144 @@ class ReaderViewModel(
         currentTranslationConfig = config
         currentConfigHash = config.cacheKey()
         currentLegacyConfigHash = config.legacyCacheKey()
+    }
+
+    private fun refreshKnowledge(book: BookEntity) {
+        val knowledge = knowledgeStore?.load(book.storageDir, book.id, book.title) ?: return
+        currentKnowledge = knowledge
+        translatedThroughCache = translatedThrough(book)
+        refreshKnowledgeStatus(book, knowledge)
+    }
+
+    private fun refreshKnowledgeStatus(book: BookEntity, knowledge: KnowledgeFile? = currentKnowledge) {
+        val service = knowledgeQueryService ?: return
+        val current = knowledge ?: return
+        val degraded = currentTranslationConfig?.mode == TranslationMode.SAKURA
+        val paragraph = currentParagraphIndex()
+        val read = FactAnchorMapper.readAnchor(chapterIndex, paragraph, degraded)
+        val display = DisplayAnchor(
+            chapter = chapterIndex,
+            paragraph = paragraph,
+            charOffset = 0,
+            quoteHash = "",
+        )
+        val translated = translatedThroughCache
+        currentReadAnchor = read
+        _state.value = _state.value.copy(
+            knowledgeStatus = service.status(
+                knowledge = current,
+                readAnchor = read,
+                displayAnchor = display,
+                translatedThrough = translated,
+                locationDegraded = degraded,
+            ),
+            queryNames = if (_state.value.queryMode) {
+                service.visibleNames(current, read)
+            } else {
+                emptyMap()
+            },
+        )
+    }
+
+    private fun translatedThrough(book: BookEntity): Int {
+        var value = 0
+        chapterList.forEach { chapter ->
+            if (chapter.idx <= chapterIndex &&
+                contentStore.readZh(book.storageDir, chapter.idx) != null
+            ) {
+                value = maxOf(value, chapter.idx)
+            }
+        }
+        return value
+    }
+
+    private fun currentParagraphIndex(): Int {
+        val state = _state.value
+        if (state.readerMode == "scroll") return state.scrollParagraph
+        return state.layout?.pages?.getOrNull(state.pageIndex)
+            ?.startAnchor?.paragraphId
+            ?: state.scrollParagraph
+    }
+
+    fun openQuery() {
+        refreshQueryEntries()
+    }
+
+    fun toggleQueryMode() {
+        val enabled = !_state.value.queryMode
+        val names = if (enabled) {
+            val knowledge = currentKnowledge
+            val anchor = currentReadAnchor
+            if (knowledge != null && anchor != null) {
+                knowledgeQueryService?.visibleNames(knowledge, anchor).orEmpty()
+            } else {
+                emptyMap()
+            }
+        } else {
+            emptyMap()
+        }
+        _state.value = _state.value.copy(
+            queryMode = enabled,
+            queryNames = names,
+            revision = _state.value.revision + 1,
+        )
+    }
+
+    fun selectEntity(entityId: String) {
+        val knowledge = currentKnowledge ?: return
+        val anchor = currentReadAnchor ?: return
+        val status = _state.value.knowledgeStatus ?: return
+        _state.value = _state.value.copy(
+            entityCard = knowledgeQueryService?.entityCard(
+                knowledge = knowledge,
+                entityId = entityId,
+                readAnchor = anchor,
+                status = status,
+            ),
+        )
+    }
+
+    fun closeEntity() {
+        _state.value = _state.value.copy(entityCard = null)
+    }
+
+    fun extractCurrentChapter() {
+        val book = bookEntity ?: return
+        val service = knowledgeExtractionService ?: return
+        if (_translationState.value.running) return
+        viewModelScope.launch {
+            _translationState.value = ReaderTranslationState(
+                running = true,
+                message = "正在更新本章资料…",
+            )
+            val result = service.extractChapter(book, chapterIndex)
+            result.onSuccess {
+                currentKnowledge = it
+                refreshKnowledgeStatus(book, it)
+                refreshQueryEntries()
+                _translationState.value = ReaderTranslationState(message = "本章资料已更新")
+            }.onFailure {
+                _translationState.value = ReaderTranslationState(
+                    error = "资料更新失败：${it.message}",
+                )
+            }
+        }
+    }
+
+    private fun refreshQueryEntries() {
+        val knowledge = currentKnowledge ?: return
+        val anchor = currentReadAnchor ?: return
+        val service = knowledgeQueryService ?: return
+        val paragraphs = _state.value.paragraphs
+        val index = currentParagraphIndex()
+        val texts = ((index - 1)..(index + 1)).mapNotNull { i ->
+            paragraphs.getOrNull(i)?.let { paragraph ->
+                listOfNotNull(paragraph.source, paragraph.translated).joinToString("\n")
+            }
+        }
+        _state.value = _state.value.copy(
+            queryEntries = service.queryEntries(knowledge, anchor, texts),
+        )
     }
 
     private fun buildChapter(
@@ -767,6 +934,7 @@ class ReaderViewModel(
         if (paragraphId == _state.value.scrollParagraph) return
         val safe = paragraphId.coerceAtLeast(0)
         _state.value = _state.value.copy(scrollParagraph = safe, pageIndex = 0)
+        bookEntity?.let { refreshKnowledgeStatus(it) }
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(500)

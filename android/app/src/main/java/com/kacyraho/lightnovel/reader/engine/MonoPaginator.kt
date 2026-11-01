@@ -1,7 +1,11 @@
 package com.kacyraho.lightnovel.reader.engine
 
+import android.text.SpannableString
+import android.text.Spanned
 import android.text.TextPaint
 import com.kacyraho.lightnovel.core.model.ReaderAnchor
+import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
+import com.kacyraho.lightnovel.reader.EntityClickSpan
 import com.kacyraho.lightnovel.reader.StaticLayoutPaginator
 
 data class MonoStyle(
@@ -15,9 +19,29 @@ class MonoPaginator {
         viewport: Viewport,
         paint: TextPaint,
         style: MonoStyle,
+        highlights: Map<String, String> = emptyMap(),
     ): ReaderLayout {
+        val text = if (highlights.isEmpty()) {
+            chapter.text
+        } else {
+            val spans = EntityHighlighter.find(chapter.text, highlights)
+            if (spans.isEmpty()) {
+                chapter.text
+            } else {
+                SpannableString(chapter.text).apply {
+                    spans.forEach { match ->
+                        setSpan(
+                            EntityClickSpan(match.entityId),
+                            match.start,
+                            match.end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                        )
+                    }
+                }
+            }
+        }
         val layout = StaticLayoutPaginator.build(
-            text = chapter.text,
+            text = text,
             widthPx = viewport.widthPx,
             paint = paint,
             lineSpacingMultiplier = style.lineHeight,

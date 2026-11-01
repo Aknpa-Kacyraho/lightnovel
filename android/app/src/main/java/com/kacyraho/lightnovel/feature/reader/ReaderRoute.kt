@@ -37,7 +37,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -50,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
+import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
 import com.kacyraho.lightnovel.reader.ReaderPageView
 import com.kacyraho.lightnovel.reader.engine.ReaderTheme
 import com.kacyraho.lightnovel.reader.engine.Viewport
@@ -74,6 +80,9 @@ fun ReaderRoute(
             chapterCache = container.readerChapterCache,
             storyMemoryStore = container.storyMemoryStore,
             storyMemoryService = container.storyMemoryService,
+            knowledgeStore = container.knowledgeStore,
+            knowledgeExtractionService = container.knowledgeExtractionService,
+            knowledgeQueryService = container.knowledgeQueryService,
             versionStore = container.versionStore,
             onlineBookService = container.directLibraryService,
             taskRegistry = container.translationTaskRegistry,
@@ -105,6 +114,11 @@ fun ReaderRoute(
         onTranslate = viewModel::translateChapter,
         onPolish = viewModel::polishChapter,
         onOpenMemory = onOpenMemory,
+        onOpenQuery = viewModel::openQuery,
+        onSelectEntity = viewModel::selectEntity,
+        onCloseEntity = viewModel::closeEntity,
+        onUpdateKnowledge = viewModel::extractCurrentChapter,
+        onToggleQueryMode = viewModel::toggleQueryMode,
         onCancelTranslation = viewModel::cancelTranslation,
         onThemeChange = viewModel::setTheme,
         onDisplayModeChange = viewModel::setDisplayMode,
@@ -130,6 +144,11 @@ private fun ReaderContent(
     onTranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenQuery: () -> Unit,
+    onSelectEntity: (String) -> Unit,
+    onCloseEntity: () -> Unit,
+    onUpdateKnowledge: () -> Unit,
+    onToggleQueryMode: () -> Unit,
     onCancelTranslation: () -> Unit,
     onThemeChange: (String) -> Unit,
     onDisplayModeChange: (String) -> Unit,
@@ -145,6 +164,7 @@ private fun ReaderContent(
     val tts = remember(context) { ReaderTtsController(context) }
     var showChapterInfo by remember { mutableStateOf(false) }
     var showGlossary by remember { mutableStateOf(false) }
+    var showQuery by remember { mutableStateOf(false) }
     var showParagraph by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     val currentParagraphId = if (state.readerMode == "scroll") {
@@ -220,6 +240,12 @@ private fun ReaderContent(
             onRetranslate = onTranslate,
             onPolish = onPolish,
             onOpenMemory = onOpenMemory,
+            onOpenQuery = {
+                onOpenQuery()
+                showQuery = true
+            },
+            queryMode = state.queryMode,
+            onToggleQueryMode = onToggleQueryMode,
             onShowInfo = { showChapterInfo = true },
             onShowGlossary = { showGlossary = true },
             onShowParagraph = { showParagraph = currentParagraph != null },
@@ -316,6 +342,7 @@ private fun ReaderContent(
                 state = state,
                 readerTheme = readerTheme,
                 onParagraphChanged = onScrollParagraphChanged,
+                onSelectEntity = onSelectEntity,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -391,8 +418,15 @@ private fun ReaderContent(
                     ) { index ->
                         val page = layout.pages.getOrNull(index) ?: layout.pages.first()
                         AndroidView(
-                            factory = { context -> ReaderPageView(context) },
-                            update = { view -> view.bind(layout.layout, page.slice) },
+                            factory = { context ->
+                                ReaderPageView(context).also {
+                                    it.onEntityClick = onSelectEntity
+                                }
+                            },
+                            update = { view ->
+                                view.onEntityClick = onSelectEntity
+                                view.bind(layout.layout, page.slice)
+                            },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = state.marginDp.dp)
@@ -459,6 +493,32 @@ private fun ReaderContent(
             )
         }
 
+        if (showQuery) {
+            QuerySheet(
+                entries = state.queryEntries,
+                status = state.knowledgeStatus,
+                theme = readerTheme,
+                onDismiss = { showQuery = false },
+                onSelect = { entityId ->
+                    showQuery = false
+                    onSelectEntity(entityId)
+                },
+                onUpdate = onUpdateKnowledge,
+            )
+        }
+
+        state.entityCard?.let { card ->
+            EntityCardSheet(
+                card = card,
+                theme = readerTheme,
+                onDismiss = onCloseEntity,
+                onOpenChapter = { chapter ->
+                    onCloseEntity()
+                    onOpenChapter(chapter)
+                },
+            )
+        }
+
         if (!immersive) {
             ReaderBottomBar(
                 pageLabel = pageLabel,
@@ -494,6 +554,7 @@ private fun ScrollReader(
     state: ReaderUiState,
     readerTheme: ReaderTheme,
     onParagraphChanged: (Int) -> Unit,
+    onSelectEntity: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val blocks = state.chapterBlocks.ifEmpty { listOf(state.chapterText) }
@@ -513,16 +574,51 @@ private fun ScrollReader(
         contentPadding = PaddingValues(horizontal = state.marginDp.dp, vertical = 12.dp),
     ) {
         itemsIndexed(blocks) { _, block ->
-            Text(
-                text = block,
+            val names = state.queryNames
+            val textStyle = TextStyle(
                 color = readerTheme.text,
                 fontSize = state.fontSizeSp.sp,
                 fontFamily = readerFontFamily(state.fontFamily),
                 lineHeight = (state.fontSizeSp * state.lineHeight).sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp),
             )
+            if (names.isEmpty()) {
+                Text(
+                    text = block,
+                    style = textStyle,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp),
+                )
+            } else {
+                val annotated = buildAnnotatedString {
+                    append(block)
+                    EntityHighlighter.find(block, names).forEach { match ->
+                        addStringAnnotation(
+                            tag = "entity",
+                            annotation = match.entityId,
+                            start = match.start,
+                            end = match.end,
+                        )
+                        addStyle(
+                            SpanStyle(textDecoration = TextDecoration.Underline),
+                            match.start,
+                            match.end,
+                        )
+                    }
+                }
+                ClickableText(
+                    text = annotated,
+                    style = textStyle,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp),
+                    onClick = { offset ->
+                        annotated.getStringAnnotations("entity", offset, offset)
+                            .firstOrNull()
+                            ?.let { onSelectEntity(it.item) }
+                    },
+                )
+            }
         }
     }
 }

@@ -37,6 +37,7 @@ import com.kacyraho.lightnovel.feature.chapters.ChapterListRoute
 import com.kacyraho.lightnovel.feature.discover.DiscoverRoute
 import com.kacyraho.lightnovel.feature.library.LibraryRoute
 import com.kacyraho.lightnovel.feature.memory.StoryMemoryRoute
+import com.kacyraho.lightnovel.feature.worldline.WorldlineRoute
 import com.kacyraho.lightnovel.feature.reader.ReaderRoute
 import com.kacyraho.lightnovel.feature.settings.SettingsRoute
 import com.kacyraho.lightnovel.feature.tasks.TaskCenterRoute
@@ -274,6 +275,7 @@ private fun NavGraphBuilder.bookRoutes(
                 onDiscoverSearch("discover?q=${Uri.encode(tag)}&mode=tag")
             },
             onOpenMemory = { nav.navigate("memory/$bookId") },
+            onOpenWorldlines = { nav.navigate("worldlines/$bookId") },
         )
     }
     composable(
@@ -282,6 +284,17 @@ private fun NavGraphBuilder.bookRoutes(
     ) { entry ->
         val bookId = entry.arguments?.getString("bookId") ?: return@composable
         StoryMemoryRoute(
+            container = container,
+            bookId = bookId,
+            onBack = { nav.popBackStack() },
+        )
+    }
+    composable(
+        route = "worldlines/{bookId}",
+        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
+    ) { entry ->
+        val bookId = entry.arguments?.getString("bookId") ?: return@composable
+        WorldlineRoute(
             container = container,
             bookId = bookId,
             onBack = { nav.popBackStack() },

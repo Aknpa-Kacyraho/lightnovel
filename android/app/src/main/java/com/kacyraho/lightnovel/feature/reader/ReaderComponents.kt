@@ -224,6 +224,9 @@ fun ReaderTopBar(
     onRetranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenQuery: () -> Unit,
+    queryMode: Boolean,
+    onToggleQueryMode: () -> Unit,
     onShowInfo: () -> Unit,
     onShowGlossary: () -> Unit,
     onShowParagraph: () -> Unit,
@@ -273,6 +276,9 @@ fun ReaderTopBar(
             onRetranslate = onRetranslate,
             onPolish = onPolish,
             onOpenMemory = onOpenMemory,
+            onOpenQuery = onOpenQuery,
+            queryMode = queryMode,
+            onToggleQueryMode = onToggleQueryMode,
             onShowInfo = onShowInfo,
             onShowGlossary = onShowGlossary,
             onShowParagraph = onShowParagraph,
@@ -369,6 +375,9 @@ private fun TranslationMenu(
     onRetranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenQuery: () -> Unit,
+    queryMode: Boolean,
+    onToggleQueryMode: () -> Unit,
     onShowInfo: () -> Unit,
     onShowGlossary: () -> Unit,
     onShowParagraph: () -> Unit,
@@ -411,6 +420,20 @@ private fun TranslationMenu(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text("本页词条") },
+                onClick = {
+                    expanded = false
+                    onOpenQuery()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(if (queryMode) "查询模式：开" else "查询模式：关") },
+                onClick = {
+                    expanded = false
+                    onToggleQueryMode()
+                },
+            )
             DropdownMenuItem(
                 text = { Text("本章信息") },
                 onClick = {

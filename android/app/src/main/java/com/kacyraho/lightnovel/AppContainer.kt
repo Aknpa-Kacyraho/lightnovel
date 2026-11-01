@@ -13,6 +13,11 @@ import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.core.storage.FileContentStore
 import com.kacyraho.lightnovel.core.storage.SafStager
 import com.kacyraho.lightnovel.data.glossary.GlossaryStore
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeExtractionService
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeQueryService
+import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
+import com.kacyraho.lightnovel.data.worldline.WorldlineService
+import com.kacyraho.lightnovel.data.worldline.WorldlineStore
 import com.kacyraho.lightnovel.data.story.StoryMemoryService
 import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
@@ -106,6 +111,29 @@ class AppContainer(
     val storyMemoryService: StoryMemoryService = StoryMemoryService(
         contentStore = contentStore,
         storyStore = storyMemoryStore,
+        settingsStore = settingsStore,
+        apiKeyStore = apiKeyStore,
+    )
+
+    val knowledgeStore: KnowledgeStore = KnowledgeStore(contentStore)
+
+    val knowledgeExtractionService: KnowledgeExtractionService = KnowledgeExtractionService(
+        contentStore = contentStore,
+        knowledgeStore = knowledgeStore,
+        settingsStore = settingsStore,
+        apiKeyStore = apiKeyStore,
+        storyMemoryStore = storyMemoryStore,
+    )
+
+    val knowledgeQueryService: KnowledgeQueryService = KnowledgeQueryService(knowledgeStore)
+
+    val worldlineStore: WorldlineStore = WorldlineStore(contentStore)
+
+    val worldlineService: WorldlineService = WorldlineService(
+        contentStore = contentStore,
+        knowledgeStore = knowledgeStore,
+        storyMemoryStore = storyMemoryStore,
+        worldlineStore = worldlineStore,
         settingsStore = settingsStore,
         apiKeyStore = apiKeyStore,
     )
