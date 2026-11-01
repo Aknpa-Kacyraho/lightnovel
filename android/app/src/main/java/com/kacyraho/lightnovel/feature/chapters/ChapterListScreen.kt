@@ -88,6 +88,7 @@ fun ChapterListRoute(
     onOpenChapter: (Int) -> Unit,
     onSearchAuthor: (String) -> Unit,
     onSearchTag: (String) -> Unit,
+    onOpenMemory: (() -> Unit)? = null,
 ) {
     val viewModel: ChapterListViewModel = viewModel(key = "chapters-$bookId") {
         ChapterListViewModel(
@@ -127,6 +128,7 @@ fun ChapterListRoute(
         },
         onSearchAuthor = onSearchAuthor,
         onSearchTag = onSearchTag,
+        onOpenMemory = onOpenMemory,
         onCatalogQueryChange = viewModel::setCatalogQuery,
         onToggleCatalogSort = viewModel::toggleCatalogSort,
         onCatalogStatusChange = viewModel::setCatalogStatus,
@@ -163,6 +165,7 @@ fun ChapterListScreen(
     onToggleCatalogSort: () -> Unit,
     onCatalogStatusChange: (String) -> Unit,
     onOpenSource: () -> Unit,
+    onOpenMemory: (() -> Unit)?,
     onRefresh: () -> Unit,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { onRefresh() }
@@ -244,6 +247,15 @@ fun ChapterListScreen(
                                     onExport()
                                 },
                             )
+                            if (onOpenMemory != null) {
+                                DropdownMenuItem(
+                                    text = { Text("本书设定 / 故事记忆") },
+                                    onClick = {
+                                        menuOpen = false
+                                        onOpenMemory()
+                                    },
+                                )
+                            }
                         }
                     }
                 },

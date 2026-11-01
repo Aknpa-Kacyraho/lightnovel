@@ -103,6 +103,46 @@ class ChapterTranslatorTest {
         assertEquals(3, fake.calls)
     }
 
+    @Test
+    fun usesPreviousTranslatedChunkAsContext() = runTest {
+        val fake = CapturingClient()
+        val translator = ChapterTranslator(fake, store())
+        val source = "こんにちは\n\nさようなら"
+
+        val outcome = translator.translate(
+            storageDir = "b4",
+            chapterIndex = 1,
+            sourceText = source,
+            config = TranslationConfig(maxChars = 6),
+        )
+
+        assertTrue(outcome is TranslationOutcome.Complete)
+        assertEquals(2, fake.prompts.size)
+        val second = fake.prompts[1]
+        assertTrue(second.contains("第一段中文译文"))
+        assertTrue(!second.contains("こんにちは"))
+    }
+
+    private class CapturingClient : TranslationClient {
+        val prompts = mutableListOf<String>()
+
+        override suspend fun complete(
+            messages: List<ChatMessage>,
+            model: String,
+            maxTokens: Int,
+            temperature: Double,
+        ): ChatResult {
+            val user = messages.last().content
+            prompts += user
+            val reply = if (prompts.size == 1) {
+                "1. 你好，这是第一段中文译文。"
+            } else {
+                "1. 再见，这是第二段中文译文。"
+            }
+            return ChatResult(reply, 10, 20, model, "stop")
+        }
+    }
+
     private class FixedClient(
         private val reply: String,
     ) : TranslationClient {

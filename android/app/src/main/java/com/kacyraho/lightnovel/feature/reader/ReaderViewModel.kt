@@ -4,14 +4,17 @@ import android.text.TextPaint
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kacyraho.lightnovel.core.model.ReaderAnchor
+import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
-import com.kacyraho.lightnovel.data.glossary.GlossaryStore
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.ChapterFetcher
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
+import com.kacyraho.lightnovel.data.story.StoryMemory
+import com.kacyraho.lightnovel.data.story.StoryMemoryService
+import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.Hashes
 import com.kacyraho.lightnovel.data.translation.TranslationConfig
 import com.kacyraho.lightnovel.data.translation.toTranslationConfig
@@ -82,7 +85,8 @@ class ReaderViewModel(
     private val translationService: TranslationService,
     private val settingsStore: SettingsStore,
     private val chapterCache: ReaderChapterCache,
-    private val glossaryStore: GlossaryStore? = null,
+    private val storyMemoryStore: StoryMemoryStore? = null,
+    private val storyMemoryService: StoryMemoryService? = null,
     private val versionStore: TranslationVersionStore? = null,
     private val onlineBookService: ChapterFetcher? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
@@ -109,6 +113,8 @@ class ReaderViewModel(
     private var currentLegacyConfigHash: String? = null
     private var currentTranslationConfig: TranslationConfig? = null
     private var currentGlossaryRevision: String = ""
+    private var currentStoryMemory: StoryMemory? = null
+    private var currentSettings: AppSettings? = null
 
     private val taskKey: String = "$bookId/$chapterIndex"
 
@@ -123,15 +129,7 @@ class ReaderViewModel(
         }
         viewModelScope.launch {
             val settings = settingsStore.settings.first()
-            val glossary = glossaryStore?.load()
-            currentGlossaryRevision = glossary?.revision.orEmpty()
-            val translationConfig = settings.toTranslationConfig(
-                glossary = glossary?.entries.orEmpty(),
-                glossaryRevision = currentGlossaryRevision,
-            )
-            currentTranslationConfig = translationConfig
-            currentConfigHash = translationConfig.cacheKey()
-            currentLegacyConfigHash = translationConfig.legacyCacheKey()
+            currentSettings = settings
             _state.value = _state.value.copy(
                 fontSizeSp = settings.readerFontSizeSp,
                 lineHeight = settings.readerLineHeight,
@@ -280,6 +278,11 @@ class ReaderViewModel(
             when (outcome) {
                 is TranslationOutcome.Complete -> {
                     _translationState.value = ReaderTranslationState(
+                        running = true,
+                        message = "翻译完成，正在更新故事记忆…",
+                    )
+                    runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
+                    _translationState.value = ReaderTranslationState(
                         message = summary("翻译完成", outcome.sidecar),
                     )
                     chapterCache.clearBook(bookId)
@@ -288,6 +291,11 @@ class ReaderViewModel(
                 }
 
                 is TranslationOutcome.Partial -> {
+                    _translationState.value = ReaderTranslationState(
+                        running = true,
+                        message = "翻译完成，正在更新故事记忆…",
+                    )
+                    runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
                     _translationState.value = ReaderTranslationState(
                         message = summary(
                             "部分完成：${outcome.sidecar.incompleteParagraphs.size} 段保留原文",
@@ -390,33 +398,85 @@ class ReaderViewModel(
     }
 
     fun saveGlossary(entry: GlossaryEntry) {
-        val store = glossaryStore ?: return
-        val current = _state.value.glossaryEntries
-        val updated = current.filterNot { it.id == entry.id || it.source == entry.source } + entry
-        val saved = store.save(updated)
-        currentGlossaryRevision = saved.revision
-        currentTranslationConfig = currentTranslationConfig?.copy(
-            glossary = saved.entries,
-            glossaryRevision = currentGlossaryRevision,
-        )
-        currentConfigHash = currentTranslationConfig?.cacheKey()
-        currentLegacyConfigHash = currentTranslationConfig?.legacyCacheKey()
-        _state.value = _state.value.copy(glossaryEntries = saved.entries)
+        val book = bookEntity ?: return
+        val store = storyMemoryStore ?: return
+        val memory = currentStoryMemory
+            ?: StoryMemory(workId = book.id, title = book.title)
+        val updated = memory.glossary
+            .filterNot { it.id == entry.id || it.source == entry.source } + entry
+        val saved = store.save(book.storageDir, memory.copy(glossary = updated))
+        applyMemory(book, saved)
+        _state.value = _state.value.copy(glossaryEntries = saved.glossary)
         load()
     }
 
     fun deleteGlossary(id: String) {
-        val store = glossaryStore ?: return
-        val saved = store.save(_state.value.glossaryEntries.filterNot { it.id == id })
-        currentGlossaryRevision = saved.revision
-        currentTranslationConfig = currentTranslationConfig?.copy(
-            glossary = saved.entries,
-            glossaryRevision = currentGlossaryRevision,
+        val book = bookEntity ?: return
+        val store = storyMemoryStore ?: return
+        val memory = currentStoryMemory
+            ?: StoryMemory(workId = book.id, title = book.title)
+        val saved = store.save(
+            book.storageDir,
+            memory.copy(glossary = memory.glossary.filterNot { it.id == id }),
         )
-        currentConfigHash = currentTranslationConfig?.cacheKey()
-        currentLegacyConfigHash = currentTranslationConfig?.legacyCacheKey()
-        _state.value = _state.value.copy(glossaryEntries = saved.entries)
+        applyMemory(book, saved)
+        _state.value = _state.value.copy(glossaryEntries = saved.glossary)
         load()
+    }
+
+    private fun applyMemory(book: BookEntity, memory: StoryMemory) {
+        currentStoryMemory = memory
+        currentGlossaryRevision = memory.revision
+        val settings = currentSettings ?: return
+        val previousTail = if (chapterIndex > 1) {
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+        } else {
+            ""
+        }
+        val config = settings.toTranslationConfig(memory, previousTail)
+        currentTranslationConfig = config
+        currentConfigHash = config.cacheKey()
+        currentLegacyConfigHash = config.legacyCacheKey()
+    }
+
+    fun polishChapter() {
+        if (_translationState.value.running) return
+        if (taskRegistry?.isRunning(bookId, chapterIndex) == true) return
+        val book = bookEntity ?: return
+        _translationState.value = ReaderTranslationState(
+            running = true,
+            message = "正在润色本章",
+        )
+        _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
+        val job = viewModelScope.launch {
+            val outcome = translationService.polishChapter(book, chapterIndex)
+            when (outcome) {
+                is TranslationOutcome.Complete -> {
+                    _translationState.value = ReaderTranslationState(
+                        message = summary("润色完成", outcome.sidecar),
+                    )
+                    chapterCache.clearBook(bookId)
+                    load()
+                }
+                is TranslationOutcome.Partial -> {
+                    _translationState.value = ReaderTranslationState(
+                        message = summary("润色完成，但本章仍不完整", outcome.sidecar),
+                        partial = true,
+                    )
+                    chapterCache.clearBook(bookId)
+                    load()
+                }
+                is TranslationOutcome.Failed -> {
+                    _translationState.value = ReaderTranslationState(error = outcome.reason)
+                    load()
+                }
+            }
+        }
+        translationJob = job
+        if (taskRegistry?.register(bookId, chapterIndex, job) == false) {
+            translationJob = null
+            _translationState.value = ReaderTranslationState(message = "已有翻译任务在运行")
+        }
     }
 
     fun cancelTranslation() {
@@ -484,6 +544,7 @@ class ReaderViewModel(
                 anchorToRestore = restore ?: anchorToRestore
                 bookEntity = book
                 chapterList = chapters
+                refreshStoryMemory(book)
                 val raw = contentStore.readRaw(book.storageDir, chapterIndex)
                 val zh = contentStore.readZh(book.storageDir, chapterIndex)
                 rawText = raw
@@ -536,7 +597,7 @@ class ReaderViewModel(
                             changedParagraphs = changedParagraphs,
                         )
                     },
-                    glossaryEntries = glossaryStore?.load()?.entries.orEmpty(),
+                    glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
                     paragraphs = buildParagraphs(raw, zh),
                 )
                 prefetchAdjacent(book, chapters, _state.value.displayMode)
@@ -547,6 +608,22 @@ class ReaderViewModel(
                 )
             }
         }
+    }
+
+    private fun refreshStoryMemory(book: BookEntity) {
+        val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
+        currentStoryMemory = memory
+        currentGlossaryRevision = memory?.revision.orEmpty()
+        val settings = currentSettings ?: return
+        val previousTail = if (chapterIndex > 1) {
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+        } else {
+            ""
+        }
+        val config = settings.toTranslationConfig(memory, previousTail)
+        currentTranslationConfig = config
+        currentConfigHash = config.cacheKey()
+        currentLegacyConfigHash = config.legacyCacheKey()
     }
 
     private fun buildChapter(
@@ -595,15 +672,20 @@ class ReaderViewModel(
                 add(StaleReason.SOURCE)
                 if (displayMode == "raw") add(StaleReason.ORIGINAL_REFRESH)
             }
-            val glossaryChanged = sidecar.glossaryRevision.orEmpty() != currentGlossaryRevision
+            val sidecarRevision = sidecar.storyRevision ?: sidecar.glossaryRevision
+            val glossaryChanged = currentGlossaryRevision.isNotBlank() &&
+                sidecarRevision != currentGlossaryRevision
             if (glossaryChanged) {
                 add(StaleReason.GLOSSARY)
             } else {
                 val configHash = currentConfigHash
                 val legacyConfigHash = currentLegacyConfigHash
+                val legacyPrompt = sidecar.promptVersion == "android-a2-v2" &&
+                    sidecar.modelId == currentTranslationConfig?.model
                 if (configHash != null &&
                     sidecar.translationConfigHash != configHash &&
-                    sidecar.translationConfigHash != legacyConfigHash
+                    sidecar.translationConfigHash != legacyConfigHash &&
+                    !legacyPrompt
                 ) {
                     add(StaleReason.MODEL_PROMPT)
                 }

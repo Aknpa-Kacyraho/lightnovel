@@ -13,6 +13,8 @@ import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.core.storage.FileContentStore
 import com.kacyraho.lightnovel.core.storage.SafStager
 import com.kacyraho.lightnovel.data.glossary.GlossaryStore
+import com.kacyraho.lightnovel.data.story.StoryMemoryService
+import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationService
@@ -99,6 +101,15 @@ class AppContainer(
 
     val glossaryStore: GlossaryStore = GlossaryStore(dataRoot)
 
+    val storyMemoryStore: StoryMemoryStore = StoryMemoryStore(contentStore)
+
+    val storyMemoryService: StoryMemoryService = StoryMemoryService(
+        contentStore = contentStore,
+        storyStore = storyMemoryStore,
+        settingsStore = settingsStore,
+        apiKeyStore = apiKeyStore,
+    )
+
     val versionStore: TranslationVersionStore = TranslationVersionStore(contentStore)
 
     val metadataTranslationService: MetadataTranslationService = MetadataTranslationService(
@@ -115,7 +126,7 @@ class AppContainer(
         dao = database.libraryDao(),
         settingsStore = settingsStore,
         apiKeyStore = apiKeyStore,
-        glossaryStore = glossaryStore,
+        storyMemoryStore = storyMemoryStore,
         versionStore = versionStore,
     )
 

@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.ui.theme
+package com.kacyraho.lightnovel.ui.theme
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

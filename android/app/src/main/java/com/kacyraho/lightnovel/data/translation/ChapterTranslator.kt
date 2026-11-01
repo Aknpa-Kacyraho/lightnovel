@@ -5,6 +5,9 @@ import com.kacyraho.lightnovel.core.storage.ChapterCost
 import com.kacyraho.lightnovel.core.storage.ChapterSidecar
 import com.kacyraho.lightnovel.core.storage.ChapterTokens
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
+import com.kacyraho.lightnovel.data.story.ChapterSummary
+import com.kacyraho.lightnovel.data.story.CharacterCard
+import com.kacyraho.lightnovel.data.story.StoryStyle
 import java.time.Instant
 import kotlinx.coroutines.delay
 
@@ -13,27 +16,35 @@ data class TranslationConfig(
     val maxChars: Int = 3_000,
     val maxTokens: Int = 8_192,
     val temperature: Double = 0.2,
-    val promptVersion: String = "android-a2-v2",
+    val promptVersion: String = "android-a2-v3",
     val mode: TranslationMode = TranslationMode.BATCH,
     val provider: String = "deepseek",
     val priceInCnyPerMillion: Double = 2.0,
     val priceOutCnyPerMillion: Double = 8.0,
     val glossary: List<GlossaryEntry> = emptyList(),
     val glossaryRevision: String = "",
+    val workId: String = "",
+    val workTitle: String = "",
+    val characters: List<CharacterCard> = emptyList(),
+    val summaries: Map<Int, ChapterSummary> = emptyMap(),
+    val style: StoryStyle = StoryStyle(),
+    val lessons: List<String> = emptyList(),
+    val storyRevision: String = "",
+    val previousChapterTail: String = "",
 ) {
     fun cacheKey(): String = Hashes.sha256(
         listOf(
             model,
             promptVersion,
             mode.wire,
-            glossaryRevision,
+            storyRevision.ifBlank { glossaryRevision },
         ).joinToString("|"),
     )
 
     fun legacyCacheKey(): String = Hashes.sha256(
         listOf(
             model,
-            promptVersion,
+            "android-a2-v2",
             3_000,
             8_192,
             0.2,
@@ -152,12 +163,15 @@ class ChapterTranslator(
         for (chunk in chunks) {
             val missing = chunk.filter { it.index !in translated }
             if (missing.isEmpty()) {
-                context = chunk.lastOrNull()?.text?.takeLast(400)
+                context = chunk.lastOrNull()
+                    ?.let { translated[it.index] }
+                    ?.takeLast(400)
                 continue
             }
 
             val result = translateChunk(missing, sourceByIndex, config, context)
-            context = missing.lastOrNull()?.text?.takeLast(400)
+            context = result.translated[missing.last().index]?.takeLast(400)
+                ?: missing.last().text.takeLast(400)
             translated.putAll(result.translated)
             tokensIn += result.tokensIn
             tokensOut += result.tokensOut
@@ -322,7 +336,7 @@ class ChapterTranslator(
                     messages = TranslationPrompts.batchMessages(
                         listOf(indexed),
                         null,
-                        config.glossary,
+                        config.promptContext(),
                     ),
                     model = config.model,
                     maxTokens = config.maxTokens,
@@ -367,7 +381,7 @@ class ChapterTranslator(
                     messages = TranslationPrompts.sakuraMessages(
                         block,
                         context,
-                        config.glossary,
+                        config.promptContext(),
                     ),
                     model = config.model,
                     maxTokens = config.maxTokens,
@@ -411,7 +425,7 @@ class ChapterTranslator(
                     messages = TranslationPrompts.batchMessages(
                         chunk,
                         context,
-                        config.glossary,
+                        config.promptContext(),
                     ),
                     model = config.model,
                     maxTokens = config.maxTokens,
@@ -496,7 +510,9 @@ class ChapterTranslator(
             cost = ChapterCost(amount = cost, currency = "CNY", estimated = true),
             incompleteParagraphs = incomplete,
             incompleteReason = if (incomplete.isEmpty()) null else "provider_incomplete",
-            glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
+            glossaryRevision = config.storyRevision.takeIf { it.isNotBlank() }
+                ?: config.glossaryRevision.takeIf { it.isNotBlank() },
+            storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
         )
     }
 
@@ -515,3 +531,15 @@ class ChapterTranslator(
         val error: String? = null,
     )
 }
+
+internal fun TranslationConfig.promptContext(): StoryPromptContext = StoryPromptContext(
+    workId = workId,
+    title = workTitle,
+    glossary = glossary,
+    characters = characters,
+    summaries = summaries,
+    style = style,
+    lessons = lessons,
+    previousChapterTail = previousChapterTail,
+)
+

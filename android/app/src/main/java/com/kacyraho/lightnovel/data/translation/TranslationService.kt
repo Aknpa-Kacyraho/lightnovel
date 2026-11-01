@@ -6,9 +6,9 @@ import com.kacyraho.lightnovel.core.storage.ChapterCost
 import com.kacyraho.lightnovel.core.storage.ChapterSidecar
 import com.kacyraho.lightnovel.core.storage.ChapterTokens
 import com.kacyraho.lightnovel.core.storage.ContentStore
-import com.kacyraho.lightnovel.data.glossary.GlossaryStore
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
+import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -19,7 +19,7 @@ class TranslationService(
     private val dao: LibraryDao,
     private val settingsStore: SettingsStore,
     private val apiKeyStore: ApiKeyStore,
-    private val glossaryStore: GlossaryStore? = null,
+    private val storyMemoryStore: StoryMemoryStore? = null,
     private val versionStore: TranslationVersionStore? = null,
     private val translationStore: TranslationStore = FileTranslationStore(contentStore),
     private val clientFactory: (String, String) -> TranslationClient = { baseUrl, key ->
@@ -41,11 +41,13 @@ class TranslationService(
         if (key.isBlank() && settings.translationRequiresKey()) {
             return TranslationOutcome.Failed("未配置翻译 API Key", false)
         }
-        val glossary = glossaryStore?.load()
-        val config = settings.toTranslationConfig(
-            glossary = glossary?.entries.orEmpty(),
-            glossaryRevision = glossary?.revision.orEmpty(),
-        )
+        val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
+        val previousTail = if (chapterIndex > 1) {
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+        } else {
+            ""
+        }
+        val config = settings.toTranslationConfig(memory, previousTail)
         dao.updateChapterTranslation(
             bookId = book.id,
             idx = chapterIndex,
@@ -131,11 +133,13 @@ class TranslationService(
         if (key.isBlank() && settings.translationRequiresKey()) {
             return TranslationOutcome.Failed("未配置翻译 API Key", false)
         }
-        val glossary = glossaryStore?.load()
-        val config = settings.toTranslationConfig(
-            glossary = glossary?.entries.orEmpty(),
-            glossaryRevision = glossary?.revision.orEmpty(),
-        )
+        val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
+        val previousTail = if (chapterIndex > 1) {
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+        } else {
+            ""
+        }
+        val config = settings.toTranslationConfig(memory, previousTail)
         val client = clientFactory(settings.deepSeekBaseUrl, key)
         val translator = ChapterTranslator(client, translationStore)
         val result = translator.translateOne(source, config)
@@ -166,6 +170,103 @@ class TranslationService(
             glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
         )
         return commit(book, chapterIndex, TranslationOutcome.Complete(newText, sidecar))
+    }
+
+    suspend fun polishChapter(
+        book: BookEntity,
+        chapterIndex: Int,
+    ): TranslationOutcome {
+        val raw = contentStore.readRaw(book.storageDir, chapterIndex)
+            ?: return TranslationOutcome.Failed("这一章没有原文文件", false)
+        val zh = contentStore.readZh(book.storageDir, chapterIndex)
+            ?: return TranslationOutcome.Failed("这一章还没有译文，先翻译再润色", false)
+        val settings = settingsStore.settings.first()
+        val key = apiKeyStore.load(settings.translationKeyScope())?.trim().orEmpty()
+        if (key.isBlank() && settings.translationRequiresKey()) {
+            return TranslationOutcome.Failed("未配置翻译 API Key", false)
+        }
+        val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
+        val config = settings.toTranslationConfig(memory)
+        val client = clientFactory(settings.deepSeekBaseUrl, key)
+        val result = try {
+            client.complete(
+                messages = TranslationPrompts.polishMessages(raw, zh, config.promptContext()),
+                model = config.model,
+                maxTokens = config.maxTokens,
+                temperature = 0.2,
+            )
+        } catch (error: TranslationException) {
+            return TranslationOutcome.Failed("润色失败：${error.message}", error.retryable)
+        }
+        val cleaned = TranslationPrompts.cleanBlock(result.content)
+        val issue = validatePolish(raw, zh, cleaned, config)
+        if (issue != null) {
+            return TranslationOutcome.Failed("润色未通过：$issue", true)
+        }
+        val oldSidecar = contentStore.readSidecar(book.storageDir, chapterIndex)
+            ?: return TranslationOutcome.Failed("缺少章节翻译信息，无法安全写回", false)
+        versionStore?.save(book.storageDir, chapterIndex, zh, oldSidecar)
+        val tokens = ChapterTokens(
+            input = oldSidecar.tokens.input + result.tokensIn,
+            output = oldSidecar.tokens.output + result.tokensOut,
+        )
+        val cost = tokens.input / 1_000_000.0 * config.priceInCnyPerMillion +
+            tokens.output / 1_000_000.0 * config.priceOutCnyPerMillion
+        val sidecar = oldSidecar.copy(
+            contentSha256 = Hashes.sha256(cleaned),
+            translationConfigHash = config.cacheKey(),
+            modelProvider = config.provider,
+            modelId = config.model,
+            promptVersion = config.promptVersion,
+            translatedAt = java.time.Instant.now().toString(),
+            tokens = tokens,
+            cost = ChapterCost(amount = cost, currency = "CNY", estimated = true),
+            glossaryRevision = config.storyRevision.takeIf { it.isNotBlank() }
+                ?: config.glossaryRevision.takeIf { it.isNotBlank() },
+            storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
+        )
+        return if (sidecar.status == "partial") {
+            commit(book, chapterIndex, TranslationOutcome.Partial(cleaned, sidecar))
+        } else {
+            commit(book, chapterIndex, TranslationOutcome.Complete(cleaned, sidecar))
+        }
+    }
+
+    private fun validatePolish(
+        raw: String,
+        oldZh: String,
+        newZh: String,
+        config: TranslationConfig,
+    ): String? {
+        if (!TranslationValidators.detectChinese(newZh)) return "不是简体中文"
+        val oldParagraphs = TranslationValidators.splitParagraphs(oldZh)
+        val newParagraphs = TranslationValidators.splitParagraphs(newZh)
+        if (oldParagraphs.size != newParagraphs.size) {
+            return "段落数变化（${oldParagraphs.size} → ${newParagraphs.size}）"
+        }
+        val sourceParagraphs = TranslationValidators.splitParagraphs(raw)
+        for (index in newParagraphs.indices) {
+            val source = sourceParagraphs.getOrNull(index).orEmpty()
+            val translated = newParagraphs[index]
+            if (!TranslationValidators.hasTranslatable(source)) continue
+            val issue = TranslationValidators.paragraphIssue(source, translated)
+            if (issue != null) return "第 ${index + 1} 段：$issue"
+            if (TranslationValidators.missingDialogue(source, translated)) {
+                return "第 ${index + 1} 段对白疑似被合并"
+            }
+        }
+        for (entry in config.glossary) {
+            if (entry.source in raw && entry.target !in newZh) {
+                return "锁定译名丢失：${entry.source} → ${entry.target}"
+            }
+        }
+        val oldLength = oldZh.count { !it.isWhitespace() }.coerceAtLeast(1)
+        val newLength = newZh.count { !it.isWhitespace() }
+        val ratio = newLength.toDouble() / oldLength
+        if (ratio < 0.60 || ratio > 1.70) {
+            return "润色后长度异常（${"%.2f".format(ratio)} 倍）"
+        }
+        return null
     }
 
     private suspend fun commit(

@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.reader
+package com.kacyraho.lightnovel.reader
 
 import android.graphics.Typeface
 import android.text.TextPaint

@@ -36,6 +36,7 @@ import com.kacyraho.lightnovel.R
 import com.kacyraho.lightnovel.feature.chapters.ChapterListRoute
 import com.kacyraho.lightnovel.feature.discover.DiscoverRoute
 import com.kacyraho.lightnovel.feature.library.LibraryRoute
+import com.kacyraho.lightnovel.feature.memory.StoryMemoryRoute
 import com.kacyraho.lightnovel.feature.reader.ReaderRoute
 import com.kacyraho.lightnovel.feature.settings.SettingsRoute
 import com.kacyraho.lightnovel.feature.tasks.TaskCenterRoute
@@ -272,6 +273,18 @@ private fun NavGraphBuilder.bookRoutes(
             onSearchTag = { tag ->
                 onDiscoverSearch("discover?q=${Uri.encode(tag)}&mode=tag")
             },
+            onOpenMemory = { nav.navigate("memory/$bookId") },
+        )
+    }
+    composable(
+        route = "memory/{bookId}",
+        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
+    ) { entry ->
+        val bookId = entry.arguments?.getString("bookId") ?: return@composable
+        StoryMemoryRoute(
+            container = container,
+            bookId = bookId,
+            onBack = { nav.popBackStack() },
         )
     }
     readerRoute(nav, container)
@@ -311,6 +324,7 @@ private fun NavGraphBuilder.readerRoute(
                     }
                 }
             },
+            onOpenMemory = { nav.navigate("memory/$bookId") },
             onOpenChapter = { next ->
                 nav.navigate("reader/$bookId/$next") {
                     popUpTo(entry.destination.id) { inclusive = true }

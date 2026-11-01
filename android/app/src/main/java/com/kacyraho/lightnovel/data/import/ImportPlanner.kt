@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.data.import
+package com.kacyraho.lightnovel.data.import
 
 import com.kacyraho.lightnovel.data.backup.BackupManifest
 import com.kacyraho.lightnovel.data.catalog.Catalog

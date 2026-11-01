@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.core.storage
+package com.kacyraho.lightnovel.core.storage
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,6 +34,7 @@ data class ChapterSidecar(
     @SerialName("incomplete_paragraphs") val incompleteParagraphs: List<Int> = emptyList(),
     @SerialName("incomplete_reason") val incompleteReason: String? = null,
     @SerialName("glossary_revision") val glossaryRevision: String? = null,
+    @SerialName("story_revision") val storyRevision: String? = null,
 )
 
 internal val SidecarJson = Json {

@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.core.settings
+package com.kacyraho.lightnovel.core.settings
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider

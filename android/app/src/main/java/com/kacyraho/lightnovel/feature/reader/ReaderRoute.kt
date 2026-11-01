@@ -63,6 +63,7 @@ fun ReaderRoute(
     onBack: () -> Unit,
     onOpenCatalog: (() -> Unit)? = null,
     onOpenChapter: (Int) -> Unit,
+    onOpenMemory: (() -> Unit)? = null,
 ) {
     val viewModel: ReaderViewModel = viewModel(key = "reader-$bookId-$chapterIndex") {
         ReaderViewModel(
@@ -71,7 +72,8 @@ fun ReaderRoute(
             translationService = container.translationService,
             settingsStore = container.settingsStore,
             chapterCache = container.readerChapterCache,
-            glossaryStore = container.glossaryStore,
+            storyMemoryStore = container.storyMemoryStore,
+            storyMemoryService = container.storyMemoryService,
             versionStore = container.versionStore,
             onlineBookService = container.directLibraryService,
             taskRegistry = container.translationTaskRegistry,
@@ -101,6 +103,8 @@ fun ReaderRoute(
         onPageChanged = viewModel::onPageChanged,
         onScrollParagraphChanged = viewModel::onScrollParagraphChanged,
         onTranslate = viewModel::translateChapter,
+        onPolish = viewModel::polishChapter,
+        onOpenMemory = onOpenMemory,
         onCancelTranslation = viewModel::cancelTranslation,
         onThemeChange = viewModel::setTheme,
         onDisplayModeChange = viewModel::setDisplayMode,
@@ -124,6 +128,8 @@ private fun ReaderContent(
     onPageChanged: (Int) -> Unit,
     onScrollParagraphChanged: (Int) -> Unit,
     onTranslate: () -> Unit,
+    onPolish: () -> Unit,
+    onOpenMemory: (() -> Unit)?,
     onCancelTranslation: () -> Unit,
     onThemeChange: (String) -> Unit,
     onDisplayModeChange: (String) -> Unit,
@@ -212,6 +218,8 @@ private fun ReaderContent(
                 onThemeChange(entries[(current + 1) % entries.size].id)
             },
             onRetranslate = onTranslate,
+            onPolish = onPolish,
+            onOpenMemory = onOpenMemory,
             onShowInfo = { showChapterInfo = true },
             onShowGlossary = { showGlossary = true },
             onShowParagraph = { showParagraph = currentParagraph != null },

@@ -1,4 +1,4 @@
-﻿package com.kacyraho.lightnovel.data.import
+package com.kacyraho.lightnovel.data.import
 
 import com.kacyraho.lightnovel.fixture.SyntheticBackup
 import java.nio.file.Files

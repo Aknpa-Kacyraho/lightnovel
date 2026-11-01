@@ -100,7 +100,7 @@ class TranslationCalibratorTest {
                 return ChatResult(text, 10, 20, model, "stop")
             }
 
-            val body = user.substringAfter("【待翻译段落】", "")
+            val body = user.substringAfter("【原文段落（每段前的编号必须保留）】", "")
             val paragraphs = body.lineSequence().mapNotNull { line ->
                 val match = Regex("^\\s*(\\d+)\\.\\s*(.*)$").find(line)
                 match?.let { it.groupValues[1].toInt() to it.groupValues[2] }

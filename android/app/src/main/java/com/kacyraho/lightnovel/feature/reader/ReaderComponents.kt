@@ -222,6 +222,8 @@ fun ReaderTopBar(
     onFontSizeChange: (Float) -> Unit,
     onThemeChange: () -> Unit,
     onRetranslate: () -> Unit,
+    onPolish: () -> Unit,
+    onOpenMemory: (() -> Unit)?,
     onShowInfo: () -> Unit,
     onShowGlossary: () -> Unit,
     onShowParagraph: () -> Unit,
@@ -269,6 +271,8 @@ fun ReaderTopBar(
             enabled = !translationRunning,
             textColor = textColor,
             onRetranslate = onRetranslate,
+            onPolish = onPolish,
+            onOpenMemory = onOpenMemory,
             onShowInfo = onShowInfo,
             onShowGlossary = onShowGlossary,
             onShowParagraph = onShowParagraph,
@@ -363,6 +367,8 @@ private fun TranslationMenu(
     enabled: Boolean,
     textColor: Color,
     onRetranslate: () -> Unit,
+    onPolish: () -> Unit,
+    onOpenMemory: (() -> Unit)?,
     onShowInfo: () -> Unit,
     onShowGlossary: () -> Unit,
     onShowParagraph: () -> Unit,
@@ -388,6 +394,23 @@ private fun TranslationMenu(
                     onRetranslate()
                 },
             )
+            DropdownMenuItem(
+                text = { Text("润色本章") },
+                enabled = enabled,
+                onClick = {
+                    expanded = false
+                    onPolish()
+                },
+            )
+            if (onOpenMemory != null) {
+                DropdownMenuItem(
+                    text = { Text("本书设定") },
+                    onClick = {
+                        expanded = false
+                        onOpenMemory()
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text("本章信息") },
                 onClick = {
