@@ -1,0 +1,50 @@
+# Runtime data: never commit books, translations, reading state or profiles.
+/data/
+/novels/
+/lntrans/data/
+/lntrans/novels/
+/lnfinder/taste_profile.json
+/lnfinder/candidates.json
+/lnfinder/history.jsonl
+/lnfinder/reports/
+/lnfinder/recommend-latest.md
+
+# v5 data roots and migration artifacts
+/.lntrans-state.json
+/.lntrans.lock
+/backups/
+/generations/
+/staging/
+**/.lntrans.lock
+**/.lntrans-state.json
+**/*.bak-*
+**/*.restore-tmp
+**/*.part
+**/*.tmp
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+
+# Logs and caches
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local test and browser artifacts
+.playwright-cli/
+output/
+

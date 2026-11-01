@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lightnovel.local/contracts/chapter-meta-v1.schema.json",
+  "title": "Lightnovel chapter sidecar v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "source_sha256",
+    "content_sha256",
+    "translation_config_hash",
+    "model_provider",
+    "model_role",
+    "model_id",
+    "prompt_version",
+    "translated_at",
+    "tokens",
+    "cost",
+    "incomplete_paragraphs"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"enum": ["complete", "partial"]},
+    "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "translation_config_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "model_provider": {"type": "string", "minLength": 1},
+    "model_role": {"const": "translate"},
+    "model_id": {"type": "string", "minLength": 1},
+    "prompt_version": {"type": "string", "minLength": 1},
+    "translated_at": {"type": "string", "minLength": 1},
+    "tokens": {
+      "type": "object",
+      "required": ["input", "output"],
+      "properties": {
+        "input": {"type": "integer", "minimum": 0},
+        "output": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "cost": {
+      "type": "object",
+      "required": ["amount", "currency", "estimated"],
+      "properties": {
+        "amount": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "minLength": 1},
+        "estimated": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "incomplete_paragraphs": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0},
+      "uniqueItems": true
+    },
+    "incomplete_reason": {
+      "type": "string",
+      "enum": ["budget_exhausted", "provider_incomplete"]
+    },
+    "glossary_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "complete"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {"incomplete_paragraphs": {"maxItems": 0}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"const": "partial"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {"incomplete_paragraphs": {"minItems": 1}}
+      }
+    }
+  ],
+  "additionalProperties": false
+}

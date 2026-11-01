@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lightnovel.local/contracts/job-v1.schema.json",
+  "title": "Lightnovel durable translation job v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "job_id",
+    "idempotency_key",
+    "slug",
+    "status",
+    "target",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "job_id": {"type": "string", "minLength": 1},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "slug": {"type": "string", "minLength": 1},
+    "status": {
+      "enum": [
+        "queued",
+        "running",
+        "interrupted",
+        "cancelled",
+        "budget_exhausted",
+        "provider_error",
+        "partial",
+        "done"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "required": ["from_chapter", "to_chapter"],
+      "properties": {
+        "from_chapter": {"type": "integer", "minimum": 1},
+        "to_chapter": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "model_provider": {"type": "string"},
+    "model_role": {"type": "string"},
+    "model_id": {"type": "string"},
+    "translation_config_hash": {"type": "string"},
+    "usage": {
+      "type": "object",
+      "properties": {
+        "input": {"type": "integer", "minimum": 0},
+        "output": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "amount": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "minLength": 1},
+        "estimated": {"type": "boolean"}
+      }
+    },
+    "created_at": {"type": "string"},
+    "updated_at": {"type": "string"},
+    "error": {"type": ["string", "null"]}
+  },
+  "additionalProperties": true
+}

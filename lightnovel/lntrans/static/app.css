@@ -1,0 +1,889 @@
+/* 主题按钮：固定在右下角，半透明胶囊，不与卡片内容抢位置
+   （踩过：它没有任何 CSS，用浏览器默认样式浮在卡片上） */
+/* ===== 作品详情页 ===== */
+.back{display:inline-block;margin:0 0 14px;font-size:.85em;color:var(--ct);
+  text-decoration:none;font-family:system-ui,sans-serif}
+.back:active{opacity:.6}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;
+  font-size:.74em;font-family:system-ui,sans-serif;
+  background:var(--paper);border:1px solid var(--rule);color:var(--ct);
+  line-height:1.7;white-space:nowrap}
+.chip.g{border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip.tag{text-decoration:none;color:var(--accent);
+  border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}
+.chip.tag:active{background:var(--accent);color:var(--paper)}
+.card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.card-tags .chip{font-size:10.5px;padding:1px 7px;line-height:1.7}
+.tagcloud{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tagcard{display:inline-flex;align-items:baseline;gap:7px;padding:7px 11px;
+  border:1px solid var(--rule);border-radius:9px;background:var(--panel);
+  text-decoration:none;color:var(--ink)}
+.tagcard b{font-size:.86em;font-weight:600}
+.tagcard span{font-family:var(--ui);font-size:.7em;color:var(--ct)}
+.tagcard:hover{border-color:var(--accent);color:var(--accent)}
+/* 「翻到第 N 章」：输入框必须和按钮并列，不能嵌在按钮里。
+   踩过：按钮里放输入框，点输入框会冒泡成按钮点击 → 直接按默认值开翻。 */
+.ceil-row{display:inline-flex;align-items:center;gap:6px;
+  font-family:system-ui,sans-serif;font-size:13px;color:var(--ct)}
+/* 状态 chip：让用户扫列表时一眼看出"这本我在跟吗、译了多少" */
+.chip.ok{border-color:#6a8a5a;color:#6a8a5a;font-weight:600}
+.chip.fav{border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip.tk{border-color:var(--accent);color:var(--accent)}
+.chip.tr{opacity:.8}
+/* R18 必须一眼可见：书架上误点开一本成人向作品很尴尬。 */
+.chip.r18{border-color:#b0524f;color:#b0524f;font-weight:700;letter-spacing:.02em}
+/* 「来源」chip：origin 可能是长关键词（整句日文），窄屏（手机/平板）必须能断行，
+   否则一行撑出卡片被裁掉。基类 .chip 是 white-space:nowrap，这里显式改回。 */
+.chip.src{white-space:normal;overflow-wrap:anywhere;max-width:100%;
+  border-style:dashed;opacity:.85}
+.lnkbtn{display:inline-flex;align-items:center;justify-content:center;
+  font-size:11px;padding:5px 10px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ct);
+  text-decoration:none;font-family:system-ui,sans-serif}
+.lnkbtn.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.lnkbtn.primary{border-color:var(--accent);background:var(--accent);
+  color:var(--paper);font-weight:600}
+.lnkbtn.danger{color:#b05a5a;border-color:color-mix(in srgb,#b05a5a 35%,var(--rule))}
+.minihelp{margin-top:9px;font-family:system-ui,sans-serif;font-size:.76em;
+  color:var(--ct)}
+.minihelp>summary{cursor:pointer;color:var(--ct);list-style:none;display:inline-block}
+.minihelp>summary::-webkit-details-marker{display:none}
+.minihelp>summary::before{content:"ⓘ ";color:var(--accent)}
+.minihelp>div{margin-top:5px;line-height:1.6;opacity:.85}
+/* 中文主标题 + 日文原名（小、半透明），形成清晰层级 */
+.jp-sub{margin-top:7px;font-size:.66em;line-height:1.55;
+  color:var(--ct);opacity:.55;font-weight:400}
+.syn{white-space:pre-wrap;line-height:1.9;margin-top:6px;font-size:1.02em}
+.syn.jp{opacity:.6;font-size:.94em}
+/* 「接着读」：老读者打开就想继续，别让他自己找书 */
+.resume{margin:16px 0 6px;padding:14px 16px;border-radius:12px;
+  border:1px solid var(--accent);background:var(--panel);
+  box-shadow:var(--shadow)}
+.resume .rs-t{font-size:.72em;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);font-family:system-ui,sans-serif;font-weight:700}
+.resume .rs-b{margin-top:6px;font-size:1.08em;font-weight:700;line-height:1.4}
+.resume .rs-s{margin-top:5px;font-size:.8em;color:var(--ct);
+  font-family:system-ui,sans-serif}
+.hint{font-size:.74em;color:var(--ct);opacity:.7;
+  font-family:system-ui,sans-serif;align-self:center}
+.card-syn{margin-top:7px;font-size:.82em;line-height:1.6;opacity:.9}
+.card-syn.jp{opacity:.5}
+.card-syn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden}
+.card .jp-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;min-width:0}
+.card.rec .jp{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card.rec .s.rec-stats{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-note{margin-top:5px;font-size:.72em;color:var(--ct);opacity:.65;
+  font-family:system-ui,sans-serif}
+.card .jp-sub{margin-top:5px;font-size:.68em;opacity:.5}
+.orig{margin-top:10px}
+.orig summary{cursor:pointer;font-size:.76em;color:var(--ct);opacity:.75;
+  font-family:system-ui,sans-serif;list-style:none}
+.orig summary::-webkit-details-marker{display:none}
+.orig summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+.orig[open] summary::before{transform:rotate(90deg)}
+.tocch{margin:14px 0 4px;font-weight:600;font-size:.9em;
+  font-family:system-ui,sans-serif}
+.toc{list-style:none;margin:0;padding:0}
+.toc li{display:flex;gap:10px;align-items:baseline;
+  padding:6px 2px;border-bottom:1px solid var(--rule)}
+.toc .epn{flex:1;min-width:0;font-size:.88em}
+.toc .epd{font-size:.72em;color:var(--ct);white-space:nowrap;
+  font-family:system-ui,sans-serif}
+
+.pagebar{display:flex;justify-content:flex-end;align-items:center;margin:0 0 6px}
+
+/* ===== 校对面板（阅读页） ===== */
+#reviewbox{margin:18px 0;padding:14px;border:1px solid var(--rule);
+  border-radius:12px;background:var(--panel);font-family:system-ui,sans-serif}
+#reviewbox h3{margin:0 0 10px;font-size:1rem;color:var(--ink)}
+#reviewbox .review-tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+#review-status{font-size:.82em;color:var(--ct);min-height:1.4em}
+#review-status[data-kind="error"]{color:#c05a5a}
+#review-status[data-kind="ok"]{color:#4a8b5a}
+.review-summary{font-size:.85em;color:var(--ct);margin:8px 0 10px}
+.review-empty,.review-escalate{font-size:.85em;padding:8px 10px;border-radius:8px;
+  background:var(--paper);color:var(--ct);margin:6px 0}
+.review-escalate{border-left:3px solid #c08a3a;color:var(--ink)}
+.review-item{padding:9px 10px;margin:8px 0;border-radius:8px;
+  border-left:3px solid var(--rule);background:var(--paper);
+  font-size:.82em;line-height:1.6}
+.review-item.review-blocker{border-left-color:#c05a5a}
+.review-item.review-suggestion{border-left-color:#c08a3a}
+.review-item.review-observation{border-left-color:#7a8ba0}
+.review-head{font-weight:600;color:var(--ink);margin-bottom:3px}
+.review-q,.review-ev,.review-sug{color:var(--ct);margin-top:2px;
+  word-break:break-word}
+.review-sug{color:var(--ink)}
+@media(max-width:420px){#reviewbox{padding:11px}.review-item{font-size:.78em}}
+/* 底部留白，避免最后一张卡片被悬浮按钮遮住 */
+body{padding-bottom:64px}
+body.pg-read{padding-bottom:120px}
+nav.crumbs{font-family:system-ui,sans-serif;font-size:.78em;color:var(--ct);
+  margin:0 0 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+nav.crumbs a{color:var(--accent);text-decoration:none}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin:14px 0 30px}
+/* 分页（用户：推荐和收藏在同一界面会拥挤，要分开的界面）
+   用 hash 路由 + 三个独立面板，纯前端切换，不刷新。 */
+.pager{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;
+  margin:16px 0 30px;font-family:system-ui,sans-serif;font-size:13px}
+.pager button{border:1px solid var(--rule);background:var(--panel);color:var(--ct);
+  border-radius:8px;padding:7px 11px;cursor:pointer;min-width:38px}
+.pager button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.pager .pinfo{color:var(--ct);font-size:12px;margin-left:8px}
+.tabs{display:flex;gap:6px;margin:20px 0 6px;font-family:system-ui,sans-serif;
+  border-bottom:1px solid var(--rule);padding-bottom:0}
+.tabs a{flex:1;text-align:center;padding:11px 4px;font-size:14px;text-decoration:none;
+  color:var(--ct);border-bottom:2px solid transparent;cursor:pointer}
+.tabs a.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.pane{display:none}
+.pane.on{display:block}
+/* 书架状态筛选条 */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-family:system-ui,sans-serif}
+.filters button{border:1px solid var(--rule);background:var(--panel);color:var(--ct);
+  border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer}
+.filters button.on{border-color:var(--accent);color:var(--accent);font-weight:600;
+  background:color-mix(in srgb,var(--accent) 12%,transparent)}
+/* 详情页「同标签的相似作品」 */
+.simlist{display:flex;flex-direction:column;gap:2px;margin-top:10px}
+.simrow{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  padding:9px 10px;border-radius:9px;text-decoration:none;color:inherit;
+  border-bottom:1px solid var(--rule)}
+.simrow:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.simt{flex:1 1 100%;font-size:15px;line-height:1.45}
+.simrow .simjp{font-size:.68em;opacity:.5;margin-left:7px}
+.simtag{font-size:12px;color:var(--accent);font-family:system-ui,sans-serif}
+.simp{font-size:12px;color:var(--ct);font-family:system-ui,sans-serif;margin-left:auto}
+/* 「不感兴趣」原因菜单（推荐页/书库页/标签页共用） */
+.dlmenu{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:9px;
+  padding:9px;border-radius:9px;border:1px dashed var(--rule);
+  font-family:system-ui,sans-serif;font-size:12.5px;color:var(--ct);width:100%}
+.dlmenu button{border:1px solid var(--rule);background:var(--panel);color:var(--ct);
+  border-radius:999px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+.dlmenu button:hover{border-color:var(--accent);color:var(--accent)}
+.shelf{margin:26px 0 0}
+/* summary 上不要用 flex：会把"★ 收藏"这类短标题拆成两行。用行内元素 + 箭头 span */
+.shelf>summary{cursor:pointer;font-family:system-ui,sans-serif;font-size:.95em;
+  font-weight:600;color:var(--ink);padding:13px 2px 11px;
+  border-bottom:1px solid var(--rule);list-style:none;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.shelf>summary::-webkit-details-marker{display:none}
+.shelf>summary .arrow{color:var(--accent);margin-right:7px;
+  display:inline-block;transition:transform .15s}
+.shelf[open]>summary .arrow{transform:rotate(90deg)}
+.shelf>summary .n{font-weight:400;color:var(--ct);font-size:.82em;margin-left:6px;
+  white-space:nowrap}
+.badge{font-family:system-ui,sans-serif;font-size:.7em;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--rule);color:var(--ct);margin-left:6px;vertical-align:middle}
+.badge.fav{border-color:#c8a86a;color:#b8944f}
+.badge.fin{border-color:#7a9a6a;color:#6a8a5a}
+.badge.drop{border-color:#a08a8a;color:#9a8080}
+.badge.new{border-color:#c86a6a;color:#c05a5a;background:rgba(200,90,90,.09)}
+button.badge{cursor:pointer;font-family:system-ui,sans-serif}
+button.badge:hover{background:rgba(200,90,90,.18)}
+.ctrls{display:flex;gap:6px;margin-top:10px;font-family:system-ui,sans-serif;
+  /* 必须换行：按钮多了（收藏/在读/看完/弃文/移出/查更新/开启翻译 共 7 个）
+     不换行就会横向溢出、被裁切，看起来像"按钮和文字重叠"（用户报过） */
+  flex-wrap:wrap;row-gap:6px}
+.ctrls button{font-size:11px;padding:5px 10px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ct)}
+.ctrls button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+/* 次要按钮（如"重新抓取源站"）：虚线边框，一眼能看出它比"换一批"重 */
+.ctrls button.ghost{border-style:dashed;color:var(--ct);opacity:.85}
+.ctrls button:disabled{opacity:.5;cursor:wait}
+.toast{
+  /* 浮在卡片右上角：有实底 + 阴影，绝不与下方按钮行重叠
+     （踩过：原来 bottom:12px 正好压在 .ctrls 上，且无背景 → 文字糊在按钮上） */
+  position:absolute;right:12px;top:12px;z-index:5;
+  max-width:72%;
+  font-family:system-ui,sans-serif;font-size:12px;font-weight:600;
+  color:var(--accent);background:var(--panel);
+  border:1px solid var(--accent);border-radius:999px;
+  padding:5px 12px;box-shadow:var(--shadow);
+  opacity:0;transform:translateY(-4px);
+  transition:opacity .18s,transform .18s;
+  pointer-events:none;               /* 不挡任何点击 */
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{position:relative}
+.card{min-width:0}
+/* 没有卡片可挂时的页面级提示（详情页/阅读页）。position:fixed + left/right:0 +
+   margin:auto 居中，**不能用 transform 居中** —— flash() 要用 transform 做动画。 */
+.toast.page{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;
+  max-width:86vw;top:14px;z-index:60}
+.card{cursor:pointer}
+.card{display:block;padding:15px 17px;background:var(--panel);border:1px solid var(--rule);
+  border-radius:12px;text-decoration:none;color:inherit;box-shadow:var(--shadow);
+  transition:transform .12s ease,border-color .12s ease}
+.card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.card .t{font-size:1.02em;font-weight:600;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .s{color:var(--ct);font-size:.79em;font-family:system-ui,sans-serif;margin-top:6px}
+.card .jp{color:var(--ct);font-size:.73em;font-family:system-ui,sans-serif;
+  margin-top:3px;opacity:.7;display:-webkit-box;-webkit-line-clamp:1;
+  -webkit-box-orient:vertical;overflow:hidden}
+.pill{display:inline-block;font-family:system-ui,sans-serif;font-size:.72em;
+  padding:2px 9px;border-radius:999px;border:1px solid var(--rule);color:var(--ct);
+  margin-left:8px;vertical-align:middle}
+.pill.ok{border-color:#7a9a6a;color:#6a8a5a}
+.pill.run{border-color:var(--accent);color:var(--accent)}
+.pbar{height:4px;background:var(--rule);border-radius:99px;overflow:hidden;margin-top:10px}
+.pbar>i{display:block;height:100%;background:var(--accent);width:0}
+/* ===== 阅读页：章节列表 + "这一章还没译好"占位 ===== */
+/* 列表要能当目录用：全部已译章 + 中文标题 + 本页外的章也能点进去 */
+nav.toc .tocn{float:right;font-size:.86em;letter-spacing:0;color:var(--ct);
+  font-weight:400;text-transform:none}
+nav.toc .toc-note{margin:12px 0 0;font-size:.72em;color:var(--ct);
+  font-family:system-ui,sans-serif}
+/* 「已译章节」列表：li 内是单个 <a>，用 grid 排「序号｜中文标题」，日文原名独占第二行。
+   踩过（整片错位）：结构对不上样式（没有 .epn 却被 .toc li 当成 flex）、
+   <ol> 又保留浏览器默认序号、日文副标题 nowrap 在 columns:3 里溢出到邻列。
+   这里一律由 nav.toc 显式接管，别回退到 flex / 默认 ol 序号。 */
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc li{display:block;break-inside:avoid;padding:7px 2px;
+  border-bottom:1px solid var(--rule)}
+nav.toc li a{display:grid;grid-template-columns:auto 1fr;column-gap:9px;
+  align-items:baseline;text-decoration:none;color:inherit}
+/* 灭掉 lnrender.py 那条 `nav.toc a::before{content:counter(c)}`：阅读页的样式表里
+   同时含 lnrender 的整段 CSS，它的序号伪元素会变成 grid 的第 1 格、把标题挤到第二列，
+   且与我们显式的 .epnum 重复成一个左一个右两个编号。序号只认 .epnum（= 真实章号，
+   目录有空洞时也不会数错）。 */
+nav.toc li a::before{content:none}
+nav.toc .epnum{font-size:.78em;color:var(--ct);opacity:.8;min-width:1.7em;
+  text-align:right;font-variant-numeric:tabular-nums}
+nav.toc .epn{min-width:0}
+nav.toc li.cur a{color:var(--accent)}
+nav.toc .epd{grid-column:2;font-size:.72em;color:var(--ct);opacity:.75;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+section.ch.pending>h2{border-top:1px dashed var(--rule)}
+nav.toc .part{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;
+  font-size:.7em;font-family:system-ui,sans-serif;border:1px solid #b08a4a;color:#b08a4a;
+  vertical-align:middle}
+.pending-note{font-family:system-ui,sans-serif;font-size:.88em;color:var(--ct);
+  text-indent:0;border:1px dashed var(--rule);border-radius:10px;
+  padding:20px 16px;text-align:center;margin:18px 0 0}
+/* 反馈浮层。入口在「阅读与翻译设置」里，不再常驻悬浮按钮。 */
+#fbpanel{position:fixed;left:12px;right:12px;bottom:12px;
+  bottom:calc(12px + env(safe-area-inset-bottom));z-index:80;
+  background:var(--panel);border:1px solid var(--rule);border-radius:14px;
+  padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3);display:none}
+#fbpanel.open{display:block}
+#fbpanel h3{margin:0 0 6px;font-size:.95em}
+#fbpanel .where{font-family:system-ui,sans-serif;font-size:12px;color:var(--ct);
+  margin-bottom:12px}
+#fbpanel .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+#fbpanel button,#fbpanel textarea{font-family:system-ui,sans-serif;font-size:13px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink);
+  border-radius:8px;padding:8px 12px;cursor:pointer}
+#fbpanel button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+#fbpanel textarea{width:100%;min-height:56px;resize:vertical;cursor:text}
+#translatebar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
+  border-top:1px solid var(--rule);
+  padding:11px 18px;
+  padding:11px 18px calc(11px + env(safe-area-inset-bottom));
+  font-family:system-ui,sans-serif;
+  font-size:13px;color:var(--ct);display:flex;gap:14px;align-items:center;z-index:60}
+#translatebar b{color:var(--ink)}
+/* 进度：细条在条顶 + 右侧文字。给"还要等多久/翻到哪了"一个看得见的答案
+   （用户要求「希望能看到翻译进度」；以前只有某个分支里闪一下 x/y）。 */
+#translatebar #tb-fill{position:absolute;left:0;top:-1px;height:2px;width:0;
+  background:var(--accent);transition:width .3s;border-radius:0 2px 2px 0}
+#translatebar #tb-status{flex:1 1 auto;min-width:0}
+#translatebar #tb-status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 章内的「段 x/y」单独一个槽：它每几秒就变一次，混进状态文案里就会
+   和「正在翻译第 N 章」互相抢显示（用户报过两次）。状态文案只留一套模板。 */
+#translatebar #tb-seg{flex:0 0 auto;font-variant-numeric:tabular-nums;
+  font-size:10.5px;opacity:.72;white-space:nowrap}
+#translatebar #tb-seg:empty{display:none}
+#translatebar #tb-prog{flex:0 0 auto;font-variant-numeric:tabular-nums;
+  color:var(--ct);font-size:.92em;white-space:nowrap}
+.fb{margin:38px 0 0;padding:20px;background:var(--panel);border:1px solid var(--rule);
+  border-radius:12px}
+.fb h3{margin:0 0 12px;font-size:.8em;letter-spacing:.16em;color:var(--accent);
+  font-family:system-ui,sans-serif;text-transform:uppercase}
+.fb summary{cursor:pointer;font-family:system-ui,sans-serif;font-size:.82em;
+  letter-spacing:.12em;color:var(--accent);font-weight:600;list-style:none}
+.fb summary::-webkit-details-marker{display:none}
+.fb summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+.fb[open] summary::before{transform:rotate(90deg)}
+/* 标签 facet：单行横向滚动，别让 40 个标签把手机首屏铺满 */
+.facetrow{display:flex;align-items:center;gap:6px;margin:8px 0 0;
+  overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.facetrow .facetlabel{flex:0 0 auto;font-family:system-ui,sans-serif;
+  font-size:12px;color:var(--ct)}
+.facetrow .libtag{flex:0 0 auto;white-space:nowrap}
+.fb .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.fb button,.fb input,.fb textarea{font-family:system-ui,sans-serif;font-size:13px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink);
+  border-radius:8px;padding:8px 12px}
+.fb button{cursor:pointer}
+.fb button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.fb textarea{width:100%;min-height:64px;resize:vertical}
+.fb .sent{color:#6a8a5a;font-size:13px}
+
+/* 章节末尾导航：读到章末能直接翻下一章，不用滚回顶部的目录去选。
+   （用户报「看到后面最后没有下一章按键，还得翻到最上面选」。） */
+/* 目录折叠：以前它是正文前面的一大坨（23 章 = 一屏多），读者每次翻章
+   都要先往下翻过它才能看到正文。收起后正文紧跟标题栏。 */
+.tocbox{margin:0 0 18px;border:1px solid var(--rule);border-radius:10px;
+  background:var(--panel);overflow:hidden}
+.tocbox>summary{list-style:none;cursor:pointer;padding:10px 14px;
+  font-family:system-ui,sans-serif;font-size:.9em;color:var(--ct);
+  display:flex;align-items:center;gap:8px}
+.tocbox>summary::-webkit-details-marker{display:none}
+.tocbox>summary::before{content:"▸";transition:transform .15s;color:var(--accent)}
+.tocbox[open]>summary::before{transform:rotate(90deg)}
+.tocbox .toc-hint{margin-left:auto;font-size:.78em;opacity:.7}
+.tocbox nav.toc{margin:0;padding:0 14px 12px}
+.chapnav{display:flex;gap:10px;align-items:stretch;margin:32px 0 0;
+  padding-top:20px;border-top:1px solid var(--rule);
+  font-family:system-ui,sans-serif;flex-wrap:wrap}
+.chapnav .navbtn{flex:1 1 0;display:block;text-align:center;padding:12px 10px;
+  border-radius:10px;border:1px solid var(--rule);background:var(--panel);
+  color:var(--ink);text-decoration:none;font-size:.95em;white-space:nowrap}
+.chapnav .navbtn:hover{border-color:var(--accent);color:var(--accent)}
+.chapnav .navbtn.mid{flex:0 0 auto;color:var(--ct);font-size:.88em}
+.chapnav .navbtn.off{opacity:.4;border-style:dashed}
+
+/* ===== 阅读页头部：先让正文出现，再让高级设置按需展开 =====
+   手机上原来标题、三块大数字、两排翻译按钮和说明占掉首屏 500px+，
+   正文要滚一整屏才出现。现在只留标题/进度/「继续翻译」，
+   自动翻译、翻到第 N 章、显示日文、校对都收进一个折叠栏。 */
+header.book{padding:20px 4px 16px;text-align:left}
+.bookline{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.bookline h1{font-size:1.35em;line-height:1.4;margin:.15em 0 .25em;
+  -webkit-line-clamp:2}
+.bookline .meta{max-width:none;margin:0;text-align:left;font-size:.78em}
+.bookmeta{margin-top:8px;color:var(--ct);font-size:.78em;
+  font-family:system-ui,sans-serif}
+.bookmeta b{color:var(--ink);font-size:1.08em}
+.morebtn{border:1px solid var(--ink);background:var(--ink);color:var(--paper);
+  border-radius:999px;padding:8px 13px;font-size:12px;font-weight:600;
+  font-family:var(--ui);cursor:pointer;white-space:nowrap}
+.adv{margin-top:12px;border-top:1px solid var(--rule);padding-top:2px}
+.adv>summary{list-style:none;cursor:pointer;padding:7px 0;color:var(--ct);
+  font-family:system-ui,sans-serif;font-size:.8em;display:flex;gap:6px;align-items:center}
+.adv>summary::-webkit-details-marker{display:none}
+.adv>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+.adv[open]>summary::before{transform:rotate(90deg)}
+.adv .tools{justify-content:flex-start;margin:8px 0 0}
+.adv .tools button{padding:7px 12px;font-size:12px}
+.adv .toc-note{text-align:left;margin-top:8px}
+.adv .s{text-align:left!important;margin-top:8px!important}
+.tocbox{margin:10px 0 14px}
+section.ch{margin-top:30px}
+section.ch>h2{padding-top:18px}
+
+/* 首页统计：四个短标签一行，不再让「连续阅读天数」在 80px 里折成两行 */
+.home-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;margin:12px 0 0;text-align:center}
+.home-stats>div{font-size:.7em;line-height:1.5;white-space:nowrap;min-width:0}
+.home-stats b{display:block;font-size:1.25em;margin-bottom:1px}
+
+/* ===== 大屏（平板 / 宽屏）适配 =====
+   手机是单列窄栏；平板上如果还锁在 44rem、卡片单列，就会两侧一大片空白、
+   几十张卡一字排开（用户报"平板上还是手机排版，难受"）。
+   ≥880px 起放宽容器、卡片排成多列网格。
+   阅读页（pg-read）**不跟**：正文 44rem 是刻意留的阅读行宽，行拉太长伤眼；
+   这里只把目录列数加多。 */
+@media (min-width:880px){
+  body.pg-home main,body.pg-list main{max-width:64rem}
+  body.pg-detail main{max-width:62rem}
+  body.pg-home .cards,body.pg-list .cards{
+    grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* 相似作品保持单列：两列时相邻标题挤在一起、"共同标签/话数" 基线错位 */
+  body.pg-read nav.toc ol{columns:3}
+}
+@media (min-width:1200px){
+  body.pg-home main,body.pg-list main{max-width:80rem}
+  body.pg-home .cards,body.pg-list .cards{
+    grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* ===== 阅读页：可调排版（字号 / 行距） =====
+   原文空行被渲染成 p.blank，配上 p 的 1.45em 下边距，中文一屏只剩两百多字。
+   默认收紧到 1.1em + .55em；读者仍可用「显示选项」调到舒服的字号/行距。 */
+body.pg-read{font-size:18px;line-height:2.0}
+html[data-fs="s"] body.pg-read{font-size:16px}
+html[data-fs="l"] body.pg-read{font-size:20px}
+html[data-lh="tight"] body.pg-read{line-height:1.78}
+html[data-lh="loose"] body.pg-read{line-height:2.18}
+body.pg-read .body p{margin:0 0 .8em}
+body.pg-read .body p.blank{height:.55em}
+html[data-lh="tight"] body.pg-read .body p{margin-bottom:.62em}
+html[data-lh="loose"] body.pg-read .body p{margin-bottom:.98em}
+body.pg-read .body p.blank{text-indent:0}
+
+/* 阅读页只让正文保留衬线；标题、目录和控件与首页使用同一套无衬线 UI 字体，
+   避免同一产品里像换了一个主题。 */
+body.pg-read{font-family:var(--ui)}
+body.pg-read header.book h1,
+body.pg-read section.ch>h2,
+body.pg-read nav.toc,
+body.pg-read .bookline,
+body.pg-read .adv,
+body.pg-read .bookmeta{font-family:var(--ui)}
+body.pg-read .body{font-family:"Noto Serif SC","Source Han Serif SC","Songti SC",
+  "SimSun","Songti TC",Georgia,serif}
+
+/* 阅读设置：两个原生 select，比六个按钮省地方、手机上也好点 */
+.readopts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  font-family:system-ui,sans-serif;font-size:13px;color:var(--ct);margin-top:8px}
+.readopts label{display:inline-flex;align-items:center;gap:6px}
+.readopts select{font:inherit;padding:5px 8px;border-radius:7px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+
+/* 章末：让读者明确知道这章读完了，而不是"下一页怎么没字了" */
+.chapend{margin:34px 0 0;text-align:center;color:var(--ct);opacity:.7;
+  font-family:system-ui,sans-serif;font-size:.78em;letter-spacing:.3em}
+.chapend::before,.chapend::after{content:"";display:inline-block;width:36px;
+  height:1px;background:var(--rule);vertical-align:middle;margin:0 12px}
+
+/* 目录被常驻工具栏遮住时，锚点滚动留出 56px */
+body.pg-read #tocbox{scroll-margin-top:56px}
+body.pg-read .body p.blank{height:.42em;margin:0}
+
+/* 首页统计：一行小字即可。四个大数字曾占据首屏 60px，对"接着读"没有帮助。 */
+.stats-line{margin:8px 0 0;font-family:system-ui,sans-serif;font-size:.72em;
+  color:var(--ct);opacity:.75;letter-spacing:.02em}
+/* 「停止」只在任务运行时出现；点它 = 取消任务 + 关闭自动翻译 */
+#translatebar #tb-stop{display:none;flex:0 0 auto;margin-left:2px;
+  padding:2px 9px;font-size:.9em;line-height:1.5;border-radius:999px;
+  border:1px solid var(--rule);background:transparent;color:var(--ct)}
+#translatebar #tb-stop.on{display:inline-block}
+#translatebar #tb-stop:hover{color:var(--accent);border-color:var(--accent)}
+
+/* 阅读页控制统一在底栏（#readerbar）；细进度条只显示状态与进度。 */
+
+/* 常驻工具栏是 fixed 的：#cN 锚点跳转/续读定位时，章标题不能被它盖住 */
+body.pg-read section.ch,body.pg-read .needbox{scroll-margin-top:60px}
+/* 阅读进度条在底栏之上，别被底栏盖住 */
+body.pg-read #bar{z-index:70}
+
+/* ============================================================
+   商业版界面：设计系统（覆盖层）
+   ------------------------------------------------------------
+   目标：界面用无衬线、字号层级收敛、按钮安静、色阶中性；
+   阅读页正文（body.pg-read）仍保留衬线，不受这里影响。
+   放在文件末尾，用同特异性覆盖前面的历史规则。
+   ============================================================ */
+:root{
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",
+       "Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+}
+body.pg-home,body.pg-list,body.pg-detail{
+  font-family:var(--ui);font-size:16px;line-height:1.62;letter-spacing:0;
+  -webkit-font-smoothing:antialiased;
+}
+body.pg-home main,body.pg-list main{max-width:48rem;padding:26px 20px 88px}
+body.pg-detail main{max-width:52rem;padding:26px 20px 88px}
+@media (min-width:900px){
+  body.pg-home main,body.pg-list main{max-width:72rem;padding:34px 28px 96px}
+  body.pg-detail main{max-width:62rem;padding:34px 28px 96px}
+}
+
+/* ---------- 首页头部 ---------- */
+.hero{padding:2px 0 22px;border-bottom:1px solid var(--rule)}
+.hero .brand{font-size:10.5px;font-weight:600;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--accent)}
+.hero-row{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:20px;margin-top:12px}
+.hero h1{margin:0;font-size:30px;line-height:1.24;font-weight:600;
+  letter-spacing:-.015em}
+.hero .lede{margin:9px 0 0;font-size:13px;line-height:1.6;color:var(--ct);
+  max-width:36em}
+.hero .stats-line{margin-top:18px}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--rule);background:var(--panel);color:var(--ct);
+  border-radius:7px;padding:7px 11px;font:500 12px/1 var(--ui);
+  cursor:pointer;white-space:nowrap}
+.iconbtn:hover{border-color:var(--ink);color:var(--ink)}
+
+/* ---------- 主导航 ---------- */
+.tabs{display:flex;gap:8px;margin:22px 0 0;border-bottom:1px solid var(--rule);
+  padding:0}
+.tabs a{flex:1;text-align:center;padding:11px 6px 12px;font-size:14px;
+  color:var(--ct);border-bottom:2px solid transparent;margin-bottom:-1px;
+  text-decoration:none;cursor:pointer}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+    .tabs .tabn{display:inline-block;margin-left:7px;padding:1px 6px;
+      border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);
+      font-size:11px;font-weight:500;color:var(--ct);
+      font-variant-numeric:tabular-nums}
+    /* 「翻译列表」不是第三个页签，是次要入口：不参与等分、字号更小、靠右。 */
+    .tabs a.tab-aux{flex:0 0 auto;font-size:12px;color:var(--ct);
+      padding-left:10px;padding-right:0;white-space:nowrap}
+    .tabs a.tab-aux:hover{color:var(--accent)}
+@media (min-width:640px){
+  .tabs{gap:30px}
+  .tabs a{flex:0 0 auto;min-width:76px;text-align:left;padding-left:0;padding-right:0}
+}
+
+/* ---------- 卡片与排版层级 ---------- */
+body.pg-home .cards,body.pg-list .cards{
+  grid-template-columns:minmax(0,1fr);gap:14px;margin:18px 0 28px}
+body.pg-home .card,body.pg-list .card,body.pg-detail .card{
+  padding:18px 20px;border-radius:10px;box-shadow:none;
+  transition:border-color .15s ease,box-shadow .15s ease}
+body.pg-home .card:hover,body.pg-list .card:hover{
+  transform:none;border-color:color-mix(in srgb,var(--accent) 42%,var(--rule));
+  box-shadow:var(--shadow)}
+body.pg-home .card .t,body.pg-list .card .t{
+  font-size:15px;line-height:1.5;font-weight:600;letter-spacing:0}
+body.pg-home .card .s,body.pg-list .card .s{font-size:12px;margin-top:8px}
+body.pg-home .card .jp,body.pg-list .card .jp{font-size:11.5px;margin-top:5px}
+body.pg-home .card-syn,body.pg-list .card-syn{font-size:12.5px;line-height:1.65;
+  color:var(--ink-soft);margin-top:8px}
+body.pg-home .jp-sub,body.pg-list .jp-sub,body.pg-detail .jp-sub{
+  font-size:11.5px;opacity:.6;margin-top:5px}
+body.pg-home .tr-note,body.pg-list .tr-note{font-size:11.5px}
+@media (min-width:760px){
+  body.pg-home .cards,body.pg-list .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1180px){
+  body.pg-home .cards,body.pg-list .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* 标签：4px 小圆角比满圆更像产品标签，也不占高度 */
+.chip{padding:2px 8px;border-radius:4px;font-size:11px;line-height:1.7}
+.chip.src{border-style:solid;background:color-mix(in srgb,var(--ink) 3%,transparent);
+  opacity:1;color:var(--ct)}
+.badge{font-size:10.5px;padding:2px 7px;border-radius:4px;margin-left:7px}
+.pill{font-size:10.5px;padding:2px 7px;border-radius:4px;margin-left:7px}
+.card .t .pill,.card .t .badge{vertical-align:2px}
+
+/* ---------- 按钮：安静、统一高度 ---------- */
+.ctrls{gap:8px;margin-top:12px;row-gap:8px}
+.ctrls button,.ctrls .lnkbtn{font-family:var(--ui);font-size:12px;
+  padding:6px 11px;border-radius:6px;line-height:1.25;
+  border:1px solid var(--rule);background:var(--panel);color:var(--ct)}
+.ctrls button:hover,.ctrls .lnkbtn:hover{border-color:var(--accent);color:var(--ink)}
+.ctrls button.on,.ctrls .lnkbtn.on{border-color:var(--ink);color:var(--ink);
+  font-weight:600;background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.ctrls button.primary,.ctrls .lnkbtn.primary{
+  background:var(--ink);border-color:var(--ink);color:var(--paper);
+  font-weight:600}
+.ctrls button.primary:hover,.ctrls .lnkbtn.primary:hover{
+  background:color-mix(in srgb,var(--ink) 88%,var(--accent));color:var(--paper)}
+.ctrls button.ghost{border-style:dashed}
+.lnkbtn{font-size:12px;padding:7px 13px;border-radius:6px}
+
+/* ---------- 分组标题 / 区块 ---------- */
+.shelf{margin:24px 0 0}
+.shelf>summary{font-family:var(--ui);font-size:13.5px;font-weight:600;
+  padding:14px 0 12px;letter-spacing:.01em}
+.shelf>summary .n{font-size:12px;margin-left:8px;color:var(--ct);font-weight:400}
+.fb{margin:30px 0 0;padding:0;background:transparent;border:0;border-radius:0}
+.fb h3{font-size:12px;letter-spacing:.12em;color:var(--ct);font-weight:600;
+  text-transform:none;margin:0 0 10px}
+.fb .row{margin-bottom:10px}
+.fb button,.fb input,.fb textarea{border-radius:6px;padding:8px 11px;font-size:13px}
+.fb button{background:var(--panel)}
+.fb button.on{border-color:var(--ink);color:var(--ink)}
+
+/* 「接着读」：左侧强调线 + 克制的容器，不再整圈高亮 */
+.resume{margin:22px 0 0;padding:18px 20px;border:1px solid var(--rule);
+  border-left:2px solid var(--accent);border-radius:8px;background:var(--panel);
+  box-shadow:none}
+.resume .rs-t{font-size:10.5px;letter-spacing:.18em;font-weight:600;
+  color:var(--accent)}
+.resume .rs-b{font-size:17px;font-weight:600;line-height:1.45;margin-top:7px}
+.resume .rs-s{font-size:12px;color:var(--ct);margin-top:6px}
+
+/* ---------- 分页 / 筛选 ---------- */
+.pager{gap:4px;margin:18px 0 26px;font-size:12px}
+.pager button{border-radius:6px;padding:6px 10px;min-width:34px;
+  background:var(--panel)}
+.pager button.on{border-color:var(--ink);color:var(--ink);background:var(--paper)}
+.pager .pinfo{font-size:11.5px;margin-left:10px}
+.filters{gap:6px;margin-top:10px}
+.filters button{font-family:var(--ui);font-size:12px;padding:5px 11px;
+  border-radius:6px;background:var(--panel)}
+.filters button.on{border-color:var(--ink);color:var(--ink);
+  background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.facetrow{gap:6px;margin:10px 0 0}
+.libtag{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  font:500 12px/1.2 var(--ui);padding:6px 10px;border-radius:6px;
+  border:1px solid var(--rule);background:var(--panel);color:var(--ct)}
+.libtag:hover{border-color:var(--accent);color:var(--ink)}
+.libtag.on{border-color:var(--ink);color:var(--ink);
+  background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.libtag .s{font-size:10.5px;color:var(--ct);opacity:.75}
+.libtag.clear{color:var(--ct);border-style:dashed}
+
+/* 详情页头部左对齐、副标题紧贴标题（原来 .meta 是居中盒子，视觉上飘到右边） */
+body.pg-detail header.book{text-align:left;padding:6px 0 20px;
+  border-bottom:1px solid var(--rule);margin-bottom:4px}
+body.pg-detail header.book .kicker{font-size:11px;letter-spacing:.18em;
+  font-weight:600}
+body.pg-detail header.book h1{font-size:26px;line-height:1.35;font-weight:600;
+  margin:.35em 0 .2em}
+body.pg-detail header.book .meta{max-width:none;margin:6px 0 0;text-align:left;
+  font-size:12px}
+body.pg-detail .syn{font-size:14px;line-height:1.9}
+body.pg-detail .syn.jp{font-size:13px}
+body.pg-detail .simlist{gap:0;margin-top:8px}
+body.pg-detail .simrow{padding:11px 2px;border-radius:0}
+body.pg-detail .simt{font-size:14px}
+body.pg-detail .simjp{display:block;font-size:11.5px;opacity:.45;margin:3px 0 0;line-height:1.55}
+body.pg-detail .simtag,body.pg-detail .simp{font-size:11.5px}
+
+/* 页内返回链接与折叠说明 */
+.back{font-family:var(--ui);font-size:12px;margin:0 0 16px;letter-spacing:.01em}
+.minihelp{font-family:var(--ui);font-size:11.5px;margin-top:10px}
+.minihelp>div{line-height:1.7}
+.hint{font-size:11.5px;opacity:.8}
+
+/* 统计行：数字用等宽，分隔符更轻 */
+.stats-line{font-variant-numeric:tabular-nums;letter-spacing:.02em;opacity:.8}
+
+/* ---------- 书架图例 / 局域网提示 ---------- */
+.shelf-legend{font-family:var(--ui);font-size:12px;line-height:1.7;
+  color:var(--ct);margin:0 0 12px}
+.shelf-legend b{color:var(--ink);font-weight:600}
+.lanbox{margin-top:26px;padding-top:18px;border-top:1px solid var(--rule);
+  font-family:var(--ui);font-size:12px;line-height:1.85;color:var(--ct)}
+.lanbox .lan-title{font-size:10.5px;letter-spacing:.16em;color:var(--accent);
+  font-weight:600;margin-bottom:7px}
+.lanbox b{color:var(--ink);font-weight:600}
+.lanbox #lanurl{word-break:break-all}
+/* 搜索框不要铺满整行（桌面端一行 1100px 的输入框不像成品） */
+#q,#libq{max-width:26rem}
+@media (max-width:560px){#q,#libq{max-width:100%}}
+/* 书架卡按钮多，允许两行，间距略收紧 */
+body.pg-home .card .ctrls{gap:6px}
+body.pg-home .card .ctrls button{font-size:11.5px;padding:5px 9px}
+
+/* ---------- 移动端细化 ---------- */
+@media (max-width:560px){
+  /* 阅读页标题别被「继续翻译」挤成两行半：按钮换到标题下方独占一行 */
+  body.pg-read .bookline{flex-wrap:wrap;gap:6px}
+  body.pg-read .bookline>div{flex:1 1 100%}
+  body.pg-read #btn-more{align-self:flex-start;padding:6px 11px;font-size:11.5px}
+}
+
+/* 卡片上的次要诊断信息（上次检查时间）另起一行小字，主行不再被挤换行 */
+.card .s.micro{font-size:11px;opacity:.7;margin-top:2px;font-family:var(--ui)}
+/* 手机上书架搜索框独占一行，别和「检查全部更新」挤成半截 */
+@media (max-width:560px){
+  .shelf-search #q{flex:1 1 100%!important}
+  .shelf-search button{flex:0 0 auto}
+  /* 书库搜索同样独占一行，两个按钮跟在下面 */
+  .lib-search #libq{flex:1 1 100%!important}
+  .lib-search button{flex:0 0 auto}
+}
+
+/* 标签 facet：桌面有横向空间，直接换行铺开（比一条滚动条好读）；
+   手机上仍保持单行横滚，并隐藏滚动条（触摸滑动即可）。 */
+@media (min-width:561px){
+  .facetrow{flex-wrap:wrap;overflow-x:visible;padding-bottom:0}
+}
+@media (max-width:560px){
+  .facetrow{scrollbar-width:none}
+  .facetrow::-webkit-scrollbar{display:none}
+}
+
+/* ===== 前情 · 人物（隔周回来先看这个）=====
+   数据早就有：summaries（每章梗概）、characters（人物卡）、glossary（术语）。
+   以前它们只喂翻译 prompt，读者一个都看不见。这里做成阅读页的一个折叠块，
+   默认收起（正文要先出来），只用到**当前章之前的章节**，不剧透后文。
+   样式对齐 .tocbox，少写一套视觉。 */
+.membox{margin:0 0 18px;border:1px solid var(--rule);border-radius:10px;
+  background:var(--panel);overflow:hidden}
+.membox>summary{list-style:none;cursor:pointer;padding:10px 14px;
+  font-family:system-ui,sans-serif;font-size:.9em;color:var(--ct);
+  display:flex;align-items:center;gap:8px}
+.membox>summary::-webkit-details-marker{display:none}
+.membox>summary::before{content:"▸";transition:transform .15s;color:var(--accent)}
+.membox[open]>summary::before{transform:rotate(90deg)}
+.membox .mem-n{margin-left:auto;font-size:.78em;opacity:.7}
+.mem{padding:0 14px 14px}
+.mem h4{margin:12px 0 6px;font-family:system-ui,sans-serif;font-size:.78em;
+  font-weight:600;color:var(--accent);letter-spacing:.04em}
+.mem .recap{list-style:none;margin:0;padding:0}
+.mem .recap li{padding:7px 0;border-top:1px solid var(--rule)}
+.mem .recap li:first-child{border-top:0}
+.mem .recap a{text-decoration:none;color:var(--ink);font-size:.9em}
+.mem .recap a:hover{color:var(--accent)}
+.mem .recap p{margin:4px 0 0;font-size:.82em;line-height:1.75;color:var(--ct)}
+.mem .recap .mem-hint{font-size:.78em;color:var(--ct);opacity:.8;
+  margin:8px 0 0;line-height:1.7}
+.mem .mchars{list-style:none;margin:0;padding:0}
+.mem .mchars li{padding:7px 0;border-top:1px solid var(--rule);font-size:.88em}
+.mem .mchars li:first-child{border-top:0}
+.mem .mchars b{font-weight:600}
+.mem .mchars .jpname{margin-left:6px;font-size:.78em;color:var(--ct);opacity:.75}
+.mem .mchars p{margin:3px 0 0;font-size:.82em;line-height:1.75;color:var(--ct)}
+.mem .mterms{display:flex;flex-wrap:wrap;gap:6px}
+.mem .mterm{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;
+  border:1px solid var(--rule);border-radius:999px;font-size:.8em;
+  font-family:system-ui,sans-serif}
+.mem .mterm i{font-style:normal;font-size:.82em;color:var(--ct);opacity:.8}
+.mem .mem-note{margin:12px 0 0;font-size:.74em;color:var(--ct);opacity:.8}
+
+/* 正文里的术语/人名：点一下看原文和人物简介。
+   手机上 hover 不存在，所以用点击；下划线只做"这里能点"的提示，不抢正文。 */
+.gloss{border-bottom:1px dotted var(--accent);cursor:pointer}
+#gtip{position:fixed;z-index:60;max-width:min(78vw,320px);
+  background:var(--ink);color:var(--paper);border-radius:10px;
+  padding:9px 12px;font-family:system-ui,sans-serif;font-size:13px;
+  line-height:1.65;white-space:pre-line;
+  box-shadow:0 6px 24px rgba(0,0,0,.22);pointer-events:none}
+
+/* ===== 详情页的作品横幅 =====
+   源站 og:image 是 1200×630 的宣传图（大字标题 + 简介），16:9 的详情页正合适；
+   卡片那种 58×80 的竖版缩略框塞进去会被切掉大半（看着像坏了），所以只放详情页；
+   书架/书库的卡片保持纯文字。 */
+.hero img{display:block;width:100%;height:auto;border-radius:10px;
+  margin:10px 0 4px;box-shadow:0 2px 10px rgba(35,30,20,.08)}
+
+/* 「下载 EPUB」：和同一排的按钮长得一样，但它是链接（点了直接下载） */
+.adv .tools .dlbtn{display:inline-flex;align-items:center;padding:7px 12px;
+  border-radius:8px;border:1px solid var(--rule);background:var(--panel);
+  color:var(--ink);text-decoration:none;font-size:12px;font-family:var(--ui)}
+.adv .tools .dlbtn:hover{border-color:var(--accent);color:var(--accent)}
+.recovery-warn{max-width:64rem;margin:14px auto;padding:12px 14px;border:1px solid #c98b52;
+  border-radius:10px;background:#fff4e6;color:#5b3a1e;font:14px/1.55 var(--ui);
+  overflow-wrap:anywhere}
+.recovery-warn code{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:6px;
+  background:#f5dfc7;color:#4c2d15}
+html[data-t=dark] .recovery-warn{background:#3a2a1c;border-color:#a66b34;color:#f2d6b8}
+html[data-t=dark] .recovery-warn code{background:#523720;color:#ffe1bd}
+.model-note{text-align:left;font-family:var(--ui);font-size:12px;color:var(--ct);
+  line-height:1.65;margin-top:8px;overflow-wrap:anywhere}
+
+/* ===== 翻译列表 =====
+   一张一排：书名 + 为什么在翻（在读/队列）+ 进度条 + 操作。
+   比卡片更紧凑——这个页面是用来"管队列"的，不是用来浏览的。 */
+.qlist{list-style:none;margin:10px 0 0;padding:0}
+.qrow{display:grid;grid-template-columns:1fr auto;gap:6px 12px;
+  padding:12px 14px;margin-top:8px;background:var(--panel);
+  border:1px solid var(--rule);border-radius:10px}
+.qmain{min-width:0;font-size:.95em}
+.qmain a{color:var(--ink);text-decoration:none}
+.qmain a:hover{color:var(--accent)}
+.qwhy{margin-left:8px;font-family:var(--ui);font-size:.75em;color:var(--ct)}
+.qbar{grid-column:1/-1;height:4px;border-radius:999px;background:var(--rule);overflow:hidden}
+.qbar i{display:block;height:100%;background:var(--accent)}
+.qmeta{font-family:var(--ui);font-size:.78em;color:var(--ct)}
+.qops{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.qops button{font-family:var(--ui);font-size:12px;padding:5px 10px;border-radius:8px;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer}
+.qops button:hover{border-color:var(--accent);color:var(--accent)}
+.qstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;
+  margin:12px 0 0;text-align:center}
+.qstats>div{min-width:0;padding:8px 4px;background:var(--panel);
+  border:1px solid var(--rule);border-radius:9px}
+.qstats b{display:block;font-size:1.2em;line-height:1.25}
+.qstats span{display:block;font-family:var(--ui);font-size:.68em;
+  color:var(--ct);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qprog{margin-top:12px;padding:10px 12px;background:var(--panel);
+  border:1px solid var(--rule);border-radius:10px}
+.qprog-head{display:flex;gap:8px 14px;justify-content:space-between;
+  flex-wrap:wrap;font-family:var(--ui);font-size:.76em;color:var(--ct)}
+.qprog .qbar{margin-top:7px}
+.qgroup{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:26px 0 0}
+.qgroup span{font-family:var(--ui);font-size:.72em;font-weight:400;color:var(--ct)}
+.qrow.is-paused{opacity:.78}
+.qmeta{display:flex;justify-content:space-between;gap:10px}
+
+/* ===== 阅读页底栏（上一章 / 详情 / 目录 / 设置 / 下一章） =====
+   手机阅读时手在屏幕下半部：翻章与目录不再需要滚回顶部。
+   进度条改成一条细带 + 一行状态，不再和正文抢高度。 */
+#translatebar{display:block;padding:5px 14px;
+  padding-bottom:calc(5px + env(safe-area-inset-bottom));
+  bottom:calc(52px + env(safe-area-inset-bottom));z-index:59}
+#translatebar .tb-row{display:flex;gap:10px;align-items:center;min-height:21px}
+#translatebar #tb-fill{top:0;height:2px}
+body.pg-read #translatebar{padding-right:14px}
+#readerbar{position:fixed;left:0;right:0;bottom:0;z-index:61;display:flex;
+  align-items:stretch;background:var(--panel);border-top:1px solid var(--rule);
+  padding-bottom:env(safe-area-inset-bottom);font-family:var(--ui);font-size:12px}
+#readerbar a,#readerbar button,#readerbar span.off{flex:1 1 0;display:flex;
+  align-items:center;justify-content:center;min-height:52px;color:var(--ink);
+  text-decoration:none;background:transparent;border:0;font:inherit;cursor:pointer;
+  padding:0 2px;white-space:nowrap}
+#readerbar a:active,#readerbar button:active{background:var(--jp-bg)}
+#readerbar button:hover{color:var(--accent)}
+#readerbar span.off{color:var(--ct);opacity:.4;cursor:default}
+body.pg-read main{padding-bottom:150px}
+body.pg-read #fbpanel{bottom:calc(96px + env(safe-area-inset-bottom))}
+
+/* ===== 书架卡：主操作 + 更多菜单 =====
+   以前 7 个按钮占两行，卡片比正文还高；现在只留「继续阅读 / 自动翻译 / ⋯」。 */
+.card-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card-actions .lnkbtn.primary{text-decoration:none}
+/* 推荐卡：同一行卡片的信息行/操作行对齐。
+   标题最多两行、日文副标题一行、简介两行，先给它们留固定高度；
+   底部信息 + 按钮包在 .card-foot 里，用 margin-top:auto 推到卡片底部。 */
+.cards>.card{display:flex;flex-direction:column;height:100%}
+.cards>.card>.ctrls:last-child{margin-top:auto}
+.card.rec{display:flex;flex-direction:column;height:100%}
+.card.rec>.t{min-height:2.9em}
+.card.rec>.jp-sub{min-height:1.35em}
+.card.rec>.card-syn{min-height:3.3em}
+.card.rec>.card-foot{margin-top:auto;padding-top:8px}
+.card.rec>.card-foot .rec-stats{margin-top:0}
+.card.rec>.card-foot .rec-hit{margin-top:3px;color:var(--accent)}
+.card.rec>.card-foot .ctrls{margin-top:10px}
+.moremenu{position:relative;display:inline-block;margin-left:auto}
+.moremenu>summary{list-style:none;cursor:pointer;border:1px solid var(--rule);
+  background:var(--panel);color:var(--ct);border-radius:8px;padding:7px 12px;
+  font:13px/1 var(--ui);user-select:none}
+.moremenu>summary::-webkit-details-marker{display:none}
+.moremenu[open]>summary{border-color:var(--accent);color:var(--accent)}
+.morelist{position:absolute;right:0;top:calc(100% + 8px);z-index:40;min-width:158px;
+  background:var(--panel);border:1px solid var(--rule);border-radius:10px;
+  box-shadow:0 8px 24px rgba(25,20,12,.14);padding:6px;
+  display:flex;flex-direction:column;gap:2px}
+.morelist button{text-align:left;border:0;background:transparent;color:var(--ink);
+  padding:9px 10px;border-radius:7px;font:13px/1.3 var(--ui);cursor:pointer}
+.morelist button:hover,.morelist button:focus-visible{background:var(--jp-bg)}
+.morelist button.on{color:var(--accent);font-weight:600}
+
+/* 设置页的勾选项 */
+.setrow{display:flex;align-items:center;gap:10px;font-family:var(--ui);font-size:14px}
+.setrow input{width:18px;height:18px;accent-color:var(--accent)}
+
+/* 设置页里的正文链接跟主题色一致（浏览器默认蓝在纸质底上很跳） */
+.fb a,.s a{color:var(--accent)}
+
+/* 设置页的排版预览：只影响这一行，方便比较字号/行距 */
+#fs-preview{font-family:var(--ui);font-size:16px;line-height:2;color:var(--ct);
+  border-left:3px solid var(--accent);padding-left:10px}
+html[data-fs="s"] #fs-preview{font-size:14px}
+html[data-fs="l"] #fs-preview{font-size:20px}
+html[data-lh="tight"] #fs-preview{line-height:1.78}
+html[data-lh="loose"] #fs-preview{line-height:2.18}
+
+/* 章末「下一章（译好才有）」现在是 button：清掉浏览器默认按钮外观 */
+button.navbtn{font-family:inherit;cursor:pointer}
+
+/* 混排对照：日文以小字半透明跟在译文后，不抢正文。 */
+body.pg-read.mixjp .body p.jp{opacity:.42;font-size:.84em;line-height:1.75;
+  background:transparent;border-left:0;border-radius:0;padding:0 .2em;
+  margin:-.7em 0 1.05em;text-indent:0}
+body.pg-read.mixjp .body p.jp:hover{opacity:.95}
+
+/* 术语表改过：这一章用旧译名翻的，给一条就地提示（不打断阅读） */
+.stale-note{margin:12px 0 0;padding:10px 12px;border:1px solid var(--accent);
+  border-radius:10px;background:var(--panel);font-family:var(--ui);font-size:12.5px;
+  line-height:1.8;color:var(--ink)}
+.stale-note .s{display:block;margin-top:4px;color:var(--ct);font-size:11.5px}
+.stale-note button{margin-left:8px;padding:3px 9px;border:1px solid var(--accent);
+  border-radius:999px;background:transparent;color:var(--accent);
+  font:inherit;cursor:pointer}
+
+/* detail metadata block */
+.infobox{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 18px;
+  padding:12px 16px;border:1px solid var(--rule);border-radius:10px;background:var(--panel);
+  font-family:var(--ui);font-size:13px;line-height:1.7}
+.infrow{display:flex;gap:10px;justify-content:space-between;min-width:0}
+.infrow span{color:var(--ct);flex:0 0 auto}
+.infrow b{font-weight:500;color:var(--ink);text-align:right;overflow-wrap:anywhere}
+
+.info-block{margin:22px 0}
+.info-title{margin:0 0 8px;font-family:var(--ui);font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent)}

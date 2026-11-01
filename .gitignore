@@ -1,0 +1,79 @@
+# Local scratch, generated artifacts, snapshots
+.tmp/
+_newver_tmp/
+.playwright-mcp/
+_snapshots/
+pictures/
+output/
+phone-dsha-handoff.md
+*.zip
+*.log
+*.pid
+
+# Third-party reference checkout (GPL); never ship it
+novelia-main/
+
+# Android local/build artifacts
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Real assets: never commit books, translations, profiles, reading state
+lightnovel/lntrans/novels/
+lightnovel/lntrans/data/
+lightnovel/lntrans/backups/
+lightnovel/lntrans/generations/
+lightnovel/lntrans/staging/
+lightnovel/lntrans/*-中文.md
+lightnovel/.lntrans-state.json
+lightnovel/.lntrans.lock
+lightnovel/lnfinder/taste_profile.json
+lightnovel/lnfinder/candidates.json
+lightnovel/lnfinder/history.jsonl
+lightnovel/lnfinder/reports/
+lightnovel/lnfinder/recommend-latest.md
+**/.lntrans-state.json
+**/.lntrans.lock
+**/*.bak-*
+**/*.restore-tmp
+**/*.part
+**/*.tmp
+
+# Secrets, tokens, local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+*credential*
+*credentials*
+*token*.txt
+*token*.json
+*secret*.txt
+*secret*.json
+
+# intercom runtime state
+intercom/server.json
+intercom/transcript.*
+intercom/watch.*
+intercom/run_state.json
+intercom/STOP
+intercom/permission_audit.jsonl
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

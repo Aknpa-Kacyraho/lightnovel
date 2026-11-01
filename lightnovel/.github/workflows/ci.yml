@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  selftests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Compile Python
+        run: python -m compileall -q lntrans lnfinder
+      - name: Run isolated behavior tests
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: utf-8
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python lntrans/run_selftests.py
+      - name: Run finder self-test
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: utf-8
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python lnfinder/selftest.py
+
+  readonly-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CI-only image
+        run: docker build -f Dockerfile.ci -t lightnovel-ci .
+      - name: Prepare writable data volume
+        run: |
+          mkdir -p "$RUNNER_TEMP/lnhome"
+          chmod 0777 "$RUNNER_TEMP/lnhome"
+      - name: Run data safety tests with read-only code
+        run: |
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp \
+            --user 10001:10001 \
+            -v "$RUNNER_TEMP/lnhome:/data" \
+            -e LNTRANS_HOME=/data \
+            lightnovel-ci python lntrans/test_data_safety.py
+      - name: Initialize migrated data home
+        run: |
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp \
+            --user 10001:10001 \
+            -v "$RUNNER_TEMP/lnhome:/data" \
+            -e LNTRANS_HOME=/data \
+            lightnovel-ci python lntrans/lnmigrate.py init --home /data --write
+      - name: Start with read-only application layer
+        run: |
+          docker run -d --name lightnovel-ci \
+            --read-only \
+            --tmpfs /tmp \
+            --user 10001:10001 \
+            -v "$RUNNER_TEMP/lnhome:/data" \
+            -e LNTRANS_HOME=/data \
+            lightnovel-ci
+      - name: Verify HTTP inside container and graceful stop
+        run: |
+          for i in $(seq 1 40); do
+            if docker exec lightnovel-ci python -c \
+              "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/api/net', timeout=2).read()"; then
+              break
+            fi
+            sleep 0.5
+          done
+          docker exec lightnovel-ci python -c \
+            "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/api/net', timeout=2).read()"
+          docker stop --time 10 lightnovel-ci
+          docker logs lightnovel-ci
+          test "$(docker inspect -f '{{.State.ExitCode}}' lightnovel-ci)" = "0"
+      - name: Check application layer was not modified
+        run: |
+          docker run --rm --read-only --tmpfs /tmp --user 10001:10001 \
+            lightnovel-ci python -c \
+            "from pathlib import Path; assert not list(Path('lntrans').rglob('__pycache__'))"
