@@ -116,7 +116,14 @@ object TranslationProviders {
     fun normalizeBaseUrl(raw: String): String {
         var value = raw.trim()
         if (value.isEmpty()) return ""
-        if (!value.contains("://")) value = "https://$value"
+        if (!value.contains("://")) {
+            val host = value.substringBefore('/').substringBefore(':').lowercase()
+            value = if (host in LOCAL_HOSTS || host.startsWith("127.")) {
+                "http://$value"
+            } else {
+                "https://$value"
+            }
+        }
         return value.trimEnd('/')
     }
 
@@ -173,5 +180,6 @@ object TranslationProviders {
         "::1",
         "[::1]",
         "0.0.0.0",
+        "10.0.2.2",
     )
 }
