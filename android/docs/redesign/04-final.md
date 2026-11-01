@@ -233,10 +233,10 @@ Column
 
 ## 8. 实施补充（2026-10-31）
 
-- 当前构建：`0.9.0`（versionCode 23）。
+- 当前构建：`0.9.1`（versionCode 24）。
 - 任务中心已按书分组，支持状态筛选（全部/失败/未译全/进行中）；失败/未译全可带 `retry=true` 进入阅读器自动重试。
 - 从标签/作者进入发现搜索时，搜索页提供返回箭头；仍保留当前栈 push 语义，完整多 Tab 栈恢复未做。
-- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 123 tests / 0 failures / 1 skipped。
+- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 124 tests / 0 failures / 1 skipped。
 - 翻译设置支持 OpenAI 兼容供应商预设与自定义端点；首次保存自动校准 batch/sakura 协议和安全块大小，结果按端点+模型缓存，可手动重测。
 - 故事记忆按书存 `story.json`：术语/人物卡/梗概/风格/经验；翻译只注入本段相关记忆，自动生成章节梗概；「本书设定」可编辑与扫描人物/检查译名；阅读器支持「润色本章」。
 - 事实级知识库按书存 `knowledge.json`：Entity/Fact/Relation/VoiceFact/Secret，带原文 quote 与锚点；翻译后增量抽取；阅读器查询模式支持正文下划线、点词卡片、章节出处和「资料更新中」状态。

@@ -282,6 +282,21 @@ private fun ReaderContent(
             ) {
                 Text(if (state.readerMode == "scroll") "翻页" else "滚动")
             }
+            if (state.queryMode && state.readerMode != "scroll") {
+                val lastPage = (state.layout?.pages?.lastIndex ?: 0).coerceAtLeast(0)
+                TextButton(
+                    onClick = { onPageChanged((state.pageIndex - 1).coerceAtLeast(0)) },
+                    colors = buttonColors,
+                ) {
+                    Text("◀")
+                }
+                TextButton(
+                    onClick = { onPageChanged((state.pageIndex + 1).coerceAtMost(lastPage)) },
+                    colors = buttonColors,
+                ) {
+                    Text("▶")
+                }
+            }
             TextButton(
                 onClick = {
                     if (tts.speaking) {

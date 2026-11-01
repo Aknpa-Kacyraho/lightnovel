@@ -94,6 +94,20 @@ class WorldlineServiceTest {
     }
 
     @Test
+    fun validatorViolationStopsBranchAndDoesNotWrite() = runTest {
+        val env = environment(validatorViolation = true)
+        val result = env.service.createBranch(
+            book = env.book,
+            title = "分支",
+            forkChapter = 2,
+            forkParagraph = 0,
+            intervention = Intervention("爱丽丝", "拒绝", ""),
+        )
+        assertTrue(result.isFailure)
+        assertTrue(env.store.list(env.book.storageDir).isEmpty())
+    }
+
+    @Test
     fun comparisonModeAsksForDiffButWriterNeverSeesRevealContent() = runTest {
         val env = environment(comparison = true)
         val result = env.service.createBranch(
@@ -116,6 +130,7 @@ class WorldlineServiceTest {
         shortWriter: Boolean = false,
         forbiddenWriter: Boolean = false,
         comparison: Boolean = false,
+        validatorViolation: Boolean = false,
     ): Env {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val settings = SettingsStore(context)
@@ -179,6 +194,7 @@ class WorldlineServiceTest {
         val client = FakeClient(
             shortWriter = shortWriter,
             forbiddenWriter = forbiddenWriter,
+            validatorViolation = validatorViolation,
         )
         val service = WorldlineService(
             contentStore = content,
@@ -220,6 +236,7 @@ class WorldlineServiceTest {
     private class FakeClient(
         private val shortWriter: Boolean,
         private val forbiddenWriter: Boolean,
+        private val validatorViolation: Boolean,
     ) : TranslationClient {
         val prompts = mutableListOf<String>()
         private var writerCount = 0
@@ -244,7 +261,11 @@ class WorldlineServiceTest {
                     }
                 }
                 system.contains("分支一致性校对员") ->
-                    """{"violations":[],"canProceed":true}"""
+                    if (validatorViolation) {
+                        """{"violations":[{"type":"knowledge","quote":"","reason":"角色知道了未知信息"}],"canProceed":false}"""
+                    } else {
+                        """{"violations":[],"canProceed":true}"""
+                    }
                 system.contains("世界线差异分析员") ->
                     """{"items":[{"type":"event","branchEvent":"爱丽丝拒绝了主角","canonReference":"原作中她跟随了主角","impact":"后续同行剧情不会发生","causedByIntervention":true}]}"""
                 else -> "{}"
