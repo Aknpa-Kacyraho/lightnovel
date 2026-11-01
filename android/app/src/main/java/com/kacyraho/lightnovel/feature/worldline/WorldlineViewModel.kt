@@ -23,6 +23,7 @@ data class WorldlineUiState(
     val error: String? = null,
     val titleInput: String = "",
     val forkChapterInput: String = "1",
+    val modeInput: String = "exploration",
     val characterInput: String = "",
     val actionInput: String = "",
     val constraintInput: String = "",
@@ -47,6 +48,12 @@ class WorldlineViewModel(
 
     fun setForkChapter(value: String) {
         _state.value = _state.value.copy(forkChapterInput = value)
+    }
+
+    fun setMode(value: String) {
+        _state.value = _state.value.copy(
+            modeInput = if (value == "comparison") "comparison" else "exploration",
+        )
     }
 
     fun setCharacter(value: String) {
@@ -95,6 +102,7 @@ class WorldlineViewModel(
                 forkChapter = forkChapter.coerceAtLeast(1),
                 forkParagraph = 0,
                 intervention = intervention,
+                mode = current.modeInput,
             ).onSuccess {
                 reload(selectedId = it.id)
                 _state.value = _state.value.copy(

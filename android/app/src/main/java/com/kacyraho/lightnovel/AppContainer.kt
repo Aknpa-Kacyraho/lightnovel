@@ -16,6 +16,7 @@ import com.kacyraho.lightnovel.data.glossary.GlossaryStore
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeExtractionService
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeQueryService
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
+import com.kacyraho.lightnovel.data.worldline.BranchKnowledgeExtractor
 import com.kacyraho.lightnovel.data.worldline.WorldlineService
 import com.kacyraho.lightnovel.data.worldline.WorldlineStore
 import com.kacyraho.lightnovel.data.story.StoryMemoryService
@@ -129,11 +130,19 @@ class AppContainer(
 
     val worldlineStore: WorldlineStore = WorldlineStore(contentStore)
 
+    val branchKnowledgeExtractor: BranchKnowledgeExtractor = BranchKnowledgeExtractor(
+        worldlineStore = worldlineStore,
+        knowledgeStore = knowledgeStore,
+        settingsStore = settingsStore,
+        apiKeyStore = apiKeyStore,
+    )
+
     val worldlineService: WorldlineService = WorldlineService(
         contentStore = contentStore,
         knowledgeStore = knowledgeStore,
         storyMemoryStore = storyMemoryStore,
         worldlineStore = worldlineStore,
+        branchKnowledgeExtractor = branchKnowledgeExtractor,
         settingsStore = settingsStore,
         apiKeyStore = apiKeyStore,
     )

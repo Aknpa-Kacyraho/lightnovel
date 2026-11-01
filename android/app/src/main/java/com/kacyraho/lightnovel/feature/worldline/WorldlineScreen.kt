@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
+import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 import com.kacyraho.lightnovel.data.worldline.BranchChapter
 import com.kacyraho.lightnovel.data.worldline.WorldlineFile
 
@@ -69,6 +70,7 @@ fun WorldlineRoute(
         onBack = onBack,
         onTitleChange = viewModel::setTitle,
         onForkChapterChange = viewModel::setForkChapter,
+        onModeChange = viewModel::setMode,
         onCharacterChange = viewModel::setCharacter,
         onActionChange = viewModel::setAction,
         onConstraintChange = viewModel::setConstraint,
@@ -89,6 +91,7 @@ fun WorldlineScreen(
     onBack: () -> Unit,
     onTitleChange: (String) -> Unit,
     onForkChapterChange: (String) -> Unit,
+    onModeChange: (String) -> Unit,
     onCharacterChange: (String) -> Unit,
     onActionChange: (String) -> Unit,
     onConstraintChange: (String) -> Unit,
@@ -142,6 +145,7 @@ fun WorldlineScreen(
                     state = state,
                     onTitleChange = onTitleChange,
                     onForkChapterChange = onForkChapterChange,
+                    onModeChange = onModeChange,
                     onCharacterChange = onCharacterChange,
                     onActionChange = onActionChange,
                     onConstraintChange = onConstraintChange,
@@ -197,6 +201,7 @@ private fun CreateForm(
     state: WorldlineUiState,
     onTitleChange: (String) -> Unit,
     onForkChapterChange: (String) -> Unit,
+    onModeChange: (String) -> Unit,
     onCharacterChange: (String) -> Unit,
     onActionChange: (String) -> Unit,
     onConstraintChange: (String) -> Unit,
@@ -221,6 +226,28 @@ private fun CreateForm(
         label = { Text("从第几章分叉") },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+    )
+    Text("模式", style = MaterialTheme.typography.titleSmall)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BrandFilterChip(
+            selected = state.modeInput == "exploration",
+            onClick = { onModeChange("exploration") },
+            label = { Text("探索型") },
+        )
+        BrandFilterChip(
+            selected = state.modeInput == "comparison",
+            onClick = { onModeChange("comparison") },
+            label = { Text("对照型") },
+        )
+    }
+    Text(
+        if (state.modeInput == "comparison") {
+            "对照型会引用原作走向生成差异报告，但 Writer 仍只写分支自己的走向。"
+        } else {
+            "探索型只记录分支偏离，不引用原作未来走向。"
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     OutlinedTextField(
         value = state.characterInput,
@@ -295,6 +322,11 @@ private fun BranchDetail(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
+        "资料：${if (branch.knowledgeStatus == "ready") "已抽取" else "待抽取"} · 到第 ${branch.branchExtractedThrough} 章",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
         "介入：${branch.intervention.character} → ${branch.intervention.action}",
         style = MaterialTheme.typography.bodyMedium,
     )
@@ -313,6 +345,30 @@ private fun BranchDetail(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+    if (branch.diffReports.isNotEmpty()) {
+        Text("差异报告（对照型）", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "含原作走向参照，可能剧透。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+        branch.diffReports.forEach { report ->
+            Text("第 ${report.chapter} 章", style = MaterialTheme.typography.labelMedium)
+            report.items.forEach { item ->
+                Text(
+                    "· ${item.branchEvent}${if (item.impact.isBlank()) "" else "（${item.impact}）"}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                item.canonReference?.takeIf(String::isNotBlank)?.let {
+                    Text(
+                        "  原作参照：$it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
     branch.chapters.forEach { chapter ->

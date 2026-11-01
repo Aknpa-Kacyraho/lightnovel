@@ -50,6 +50,51 @@ class WorldlineStore(
     }
 
     @Synchronized
+    fun loadKnowledge(storageDir: String, id: String): BranchKnowledgeFile? {
+        val path = knowledgePath(storageDir, id)
+        if (!Files.isRegularFile(path)) return null
+        return runCatching {
+            json.decodeFromString(
+                BranchKnowledgeFile.serializer(),
+                Files.readAllBytes(path).toString(Charsets.UTF_8),
+            )
+        }.getOrNull()
+    }
+
+    @Synchronized
+    fun saveKnowledge(storageDir: String, knowledge: BranchKnowledgeFile): BranchKnowledgeFile {
+        val chapters = knowledge.extractedChapters.distinct().sorted()
+        val value = knowledge.copy(
+            extractedChapters = chapters,
+            branchExtractedThrough = contiguousThrough(chapters),
+            updatedAt = Instant.now().toString(),
+        )
+        val path = knowledgePath(storageDir, value.worldlineId)
+        Files.createDirectories(path.parent)
+        val tmp = path.resolveSibling("${path.fileName}.tmp-${System.nanoTime()}")
+        try {
+            Files.write(
+                tmp,
+                json.encodeToString(BranchKnowledgeFile.serializer(), value)
+                    .toByteArray(Charsets.UTF_8),
+            )
+            try {
+                Files.move(
+                    tmp,
+                    path,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE,
+                )
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            Files.deleteIfExists(tmp)
+        }
+        return value
+    }
+
+    @Synchronized
     fun save(storageDir: String, worldline: WorldlineFile): WorldlineFile {
         val value = worldline.copy(
             branchCursor = worldline.chapters.size,
@@ -96,9 +141,19 @@ class WorldlineStore(
             "$bookId|$forkChapter|$forkParagraph|${System.nanoTime()}",
         ).take(12)
 
+    private fun contiguousThrough(chapters: List<Int>): Int {
+        val set = chapters.toSet()
+        var value = 0
+        while (set.contains(value + 1)) value++
+        return value
+    }
+
     private fun root(storageDir: String) =
         contentStore.paths(storageDir).bookDir.resolve("worldlines")
 
     private fun path(storageDir: String, id: String) =
         root(storageDir).resolve(id).resolve("worldline.json")
+
+    private fun knowledgePath(storageDir: String, id: String) =
+        root(storageDir).resolve(id).resolve("knowledge.json")
 }

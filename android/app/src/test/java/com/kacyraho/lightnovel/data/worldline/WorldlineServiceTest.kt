@@ -2,6 +2,7 @@ package com.kacyraho.lightnovel.data.worldline
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.InMemoryApiKeyStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.FileContentStore
@@ -35,7 +36,7 @@ class WorldlineServiceTest {
     fun resetSettings() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         kotlinx.coroutines.runBlocking {
-            SettingsStore(context).update { com.kacyraho.lightnovel.core.settings.AppSettings() }
+            SettingsStore(context).update { AppSettings() }
         }
     }
 
@@ -52,18 +53,22 @@ class WorldlineServiceTest {
         assertTrue(result.isSuccess)
         val branch = result.getOrThrow()
         assertTrue(branch.branchCursor == 1)
-        assertFalse(env.client.prompts.first().contains("未来事实"))
-        assertTrue(env.client.prompts.first().contains("分叉点前已知事实"))
+        val writerPrompts = env.client.prompts.filter {
+            it.contains("【分叉点前已知事实】")
+        }
+        assertTrue(writerPrompts.isNotEmpty())
+        assertFalse(writerPrompts.any { it.contains("未来事实") })
+        assertTrue(writerPrompts.any { it.contains("分叉点前已知事实") })
 
         val next = env.service.continueBranch(env.book, branch.id)
         assertTrue(next.isSuccess)
         assertTrue(next.getOrThrow().branchCursor == 2)
-        assertTrue(env.client.prompts[1].contains("上一章梗概"))
+        assertTrue(env.client.prompts.any { it.contains("上一章梗概") })
     }
 
     @Test
     fun rejectsShortOutputAndDoesNotAdvanceCursor() = runTest {
-        val env = environment(replies = listOf("""{"title":"短","text":"太短","summary":"短"}"""))
+        val env = environment(shortWriter = true)
         val result = env.service.createBranch(
             book = env.book,
             title = "分支",
@@ -77,7 +82,7 @@ class WorldlineServiceTest {
 
     @Test
     fun rejectsForbiddenRevealTerm() = runTest {
-        val env = environment(replies = listOf(validReply(text = "妹妹出现了。" + "正文".repeat(300))))
+        val env = environment(forbiddenWriter = true)
         val result = env.service.createBranch(
             book = env.book,
             title = "分支",
@@ -88,7 +93,30 @@ class WorldlineServiceTest {
         assertTrue(result.isFailure)
     }
 
-    private fun environment(replies: List<String>? = null): Env {
+    @Test
+    fun comparisonModeAsksForDiffButWriterNeverSeesRevealContent() = runTest {
+        val env = environment(comparison = true)
+        val result = env.service.createBranch(
+            book = env.book,
+            title = "对照分支",
+            forkChapter = 2,
+            forkParagraph = 0,
+            intervention = Intervention("爱丽丝", "拒绝", ""),
+            mode = "comparison",
+        )
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().diffReports.isNotEmpty())
+        assertFalse(
+            env.client.prompts.filter { it.contains("【分叉点前已知事实】") }
+                .any { it.contains("未来事实") },
+        )
+    }
+
+    private fun environment(
+        shortWriter: Boolean = false,
+        forbiddenWriter: Boolean = false,
+        comparison: Boolean = false,
+    ): Env {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val settings = SettingsStore(context)
         kotlinx.coroutines.runBlocking {
@@ -123,6 +151,7 @@ class WorldlineServiceTest {
                         text = "分叉点前已知事实",
                         sourceAnchor = FactAnchor(1, 0, 0, ""),
                         readerKnown = true,
+                        knownBy = listOf("ent-alice"),
                     ),
                     Fact(
                         id = "future",
@@ -147,7 +176,10 @@ class WorldlineServiceTest {
             ),
         )
         val store = WorldlineStore(content)
-        val client = FakeClient(replies ?: listOf(validReply(), validReply(text = "第二章正文。" + "正文".repeat(300))))
+        val client = FakeClient(
+            shortWriter = shortWriter,
+            forbiddenWriter = forbiddenWriter,
+        )
         val service = WorldlineService(
             contentStore = content,
             knowledgeStore = knowledgeStore,
@@ -185,9 +217,12 @@ class WorldlineServiceTest {
         val book: BookEntity,
     )
 
-    private class FakeClient(private val replies: List<String>) : TranslationClient {
+    private class FakeClient(
+        private val shortWriter: Boolean,
+        private val forbiddenWriter: Boolean,
+    ) : TranslationClient {
         val prompts = mutableListOf<String>()
-        private var index = 0
+        private var writerCount = 0
 
         override suspend fun complete(
             messages: List<ChatMessage>,
@@ -195,15 +230,34 @@ class WorldlineServiceTest {
             maxTokens: Int,
             temperature: Double,
         ): ChatResult {
+            val system = messages.first().content
             prompts += messages.last().content
-            val reply = replies[index.coerceAtMost(replies.lastIndex)]
-            index++
+            val reply = when {
+                system.contains("分支剧情规划师") -> PLAN
+                system.contains("分支续写作者") -> {
+                    writerCount++
+                    when {
+                        shortWriter -> """{"title":"短","text":"太短","summary":"短"}"""
+                        forbiddenWriter -> chapterJson("妹妹出现了。" + "正文".repeat(300))
+                        writerCount == 1 -> chapterJson()
+                        else -> chapterJson("第二章正文。" + "正文".repeat(300))
+                    }
+                }
+                system.contains("分支一致性校对员") ->
+                    """{"violations":[],"canProceed":true}"""
+                system.contains("世界线差异分析员") ->
+                    """{"items":[{"type":"event","branchEvent":"爱丽丝拒绝了主角","canonReference":"原作中她跟随了主角","impact":"后续同行剧情不会发生","causedByIntervention":true}]}"""
+                else -> "{}"
+            }
             return ChatResult(reply, 10, 20, model, "stop")
         }
     }
 
     private companion object {
-        fun validReply(text: String = "分支正文。" + "正文".repeat(300)): String =
+        const val PLAN =
+            """{"beats":["爱丽丝拒绝同行","主角独自离开"],"characters":["爱丽丝"],"intendedDivergence":"爱丽丝没有跟随主角","futureRisks":[],"stateChanges":["关系变化"]}"""
+
+        fun chapterJson(text: String = "分支正文。" + "正文".repeat(300)): String =
             """{"title":"分支章","text":"$text","summary":"分支梗概","state":{"time":"夜","location":"车站","summary":"局势","facts":[],"openThreads":[]},"divergence":{"type":"event","summary":"爱丽丝拒绝了主角","canonSummary":null,"causedByIntervention":true}}"""
     }
 }
