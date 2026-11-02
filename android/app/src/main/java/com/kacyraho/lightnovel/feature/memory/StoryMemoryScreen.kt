@@ -218,17 +218,24 @@ private fun TermsTab(
     var target by remember { mutableStateOf("") }
     var aliases by remember { mutableStateOf("") }
     Text(
-        "只作用于本书；保存后相关章节会标记为过期，重译时强制使用这里的译名。",
+        "本书译名。修改后相关章节会标记过期。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     if (state.legacyGlossaryCount > 0) {
         OutlinedButton(onClick = onImportLegacy, enabled = !state.busy) {
-            Text("从旧全局术语表导入（${state.legacyGlossaryCount} 条）")
+            Text("导入旧术语（${state.legacyGlossaryCount}）")
         }
     }
     OutlinedButton(onClick = onRebuildKnowledge, enabled = !state.busy) {
-        Text("重建已译章节资料（会花 token）")
+        Text("更新章节资料")
+    }
+    if (state.memory.glossary.isEmpty()) {
+        Text(
+            "还没有术语。在「前情」提取人物和术语。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
     state.memory.glossary.forEach { entry ->
         Row(
@@ -292,12 +299,12 @@ private fun CharactersTab(
     var syntax by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     Text(
-        "人物卡只在本书生效；翻译时只注入本段实际登场的人。语气/称呼/词汇习惯越具体，角色越不容易同腔。",
+        "人物卡只在本书生效；越具体越稳定。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     OutlinedButton(onClick = onScanCharacters, enabled = !state.busy) {
-        Text("扫描人物")
+        Text("提取人物和术语")
     }
     state.memory.characters.forEach { card ->
         Card(modifier = Modifier.fillMaxWidth()) {

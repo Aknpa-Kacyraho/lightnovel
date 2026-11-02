@@ -107,11 +107,11 @@ object TranslationPrompts {
         }
         if (!context.isNullOrBlank()) {
             appendLine("【前文译文（仅供衔接，不要重复翻译）】")
-            appendLine(context.takeLast(400))
+            appendLine(context.takeLast(1_200))
             appendLine()
         } else if (story.previousChapterTail.isNotBlank()) {
             appendLine("【上一章译文结尾（仅供衔接，不要重复翻译）】")
-            appendLine(story.previousChapterTail.takeLast(400))
+            appendLine(story.previousChapterTail.takeLast(1_200))
             appendLine()
         }
 
@@ -209,10 +209,10 @@ object TranslationPrompts {
         }
         if (!context.isNullOrBlank()) {
             append(" 上文译文片段（仅供理解人称，不要重复输出）：")
-            append(context.replace("\n", " ").takeLast(160))
+            append(context.replace("\n", " ").takeLast(320))
         } else if (story.previousChapterTail.isNotBlank()) {
             append(" 上一章结尾（仅供衔接，不要重复）：")
-            append(story.previousChapterTail.replace("\n", " ").takeLast(160))
+            append(story.previousChapterTail.replace("\n", " ").takeLast(320))
         }
         append(" 保留原文的段落与空行结构；只输出简体中文译文，不要编号、不要解释、不要输出原文。")
     }

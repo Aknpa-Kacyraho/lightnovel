@@ -55,6 +55,10 @@ class TranslationValidatorsTest {
     fun splitsParagraphsAndParsesNumberedReply() {
         val paragraphs = TranslationValidators.splitParagraphs("a\nb\n\nc")
         assertEquals(listOf("a\nb", "", "c"), paragraphs)
+        assertEquals(
+            listOf("a", "b", "c"),
+            TranslationValidators.splitParagraphs("a\nb\nc"),
+        )
 
         val parsed = TranslationValidators.parseNumbered(
             "1. 你好\n2. 世界\n3) 继续",

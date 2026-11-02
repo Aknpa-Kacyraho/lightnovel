@@ -11,19 +11,20 @@
 
 ## 最新版本
 
-Android **0.9.4**（versionCode 27）：
+Android **0.9.5**（versionCode 28）：
 
-- 大书库：搜索/推荐/翻译元数据持久化，支持来源、状态、标签多选（同时满足）与排序。
-- 发现池：排行榜扩充目录、7 天防重复爬、随机推荐与「换一批」；已加入书架的书不再推荐。
-- 标签本地化：常用日文标签显示中文，热门标签点击仍用原文搜索。
-- 阅读器：按页构建排版、滚动知识状态防抖；单换行正文按段落锚定，世界线分叉点精确到当前段。
-- 阅读体验：封面按尺寸显示 8–30 字、长作者省略、HTML 数字实体解码、查询模式空态提示。
+- 查询模式：修复 DeepSeek 空正文（关闭 thinking）、补全知识抽取 JSON 字段、自动抽取本章资料并回填术语表。
+- 世界线：阅读器内直接编辑本章正文，点「生成」按修改后的文本分叉，不再先填角色行动表单。
+- 大书库：标签改可搜索面板，「更多」固定可见；章节标题从源站回填；已在书架状态同步。
+- 阅读性能：滚动段落状态 120ms 防抖，实测 jank 0.13%–0.52%，90th 12ms。
+- 翻译：单换行正文按段切分，按 `maxChars` 聚合，上下文尾部扩到 1200 字；关闭 thinking 减少空返回。
+- 其他：单换行段落锚点、封面 8–30 字、长作者省略、HTML 实体解码、查询/设定文案精简。
 
-下载：[Release v0.9.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.4)
+下载：[Release v0.9.5](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.5)
 
-APK：`lightnovel-0.9.4-debug.apk`
+APK：`lightnovel-0.9.5-debug.apk`
 
-自检：140 JVM tests / 0 failures / 1 skipped；lint 0 errors。
+自检：141 JVM tests / 0 failures / 1 skipped；lint 0 errors。
 
 ## 快速开始（Web）
 

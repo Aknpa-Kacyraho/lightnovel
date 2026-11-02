@@ -125,6 +125,10 @@ class WorldlineContextBuilder(
         if (branch.intervention.constraint.isNotBlank()) {
             appendLine("约束：${branch.intervention.constraint}")
         }
+        if (branch.forkText.isNotBlank()) {
+            appendLine("【用户修改后的分叉正文（以此为准）】")
+            appendLine(branch.forkText.take(8_000))
+        }
         appendLine(canonReference(book, forkChapter, comparison))
         appendLine("【当前分支状态】")
         appendLine("时间：${branch.state.time}；地点：${branch.state.location}")
@@ -185,6 +189,10 @@ class WorldlineContextBuilder(
         appendLine("【用户介入】${branch.intervention.character}：${branch.intervention.action}")
         if (branch.intervention.constraint.isNotBlank()) {
             appendLine("约束：${branch.intervention.constraint}")
+        }
+        if (branch.forkText.isNotBlank()) {
+            appendLine("【用户修改后的分叉正文（必须以此为准）】")
+            appendLine(branch.forkText.take(10_000))
         }
         if (previousSummary.isNotBlank()) appendLine("【上一章梗概】$previousSummary")
         if (previousTail.isNotBlank()) appendLine("【上一章结尾】$previousTail")

@@ -46,7 +46,10 @@ class DeepSeekClient(
     private val apiKey: String,
     private val http: OkHttpClient = defaultHttp(),
 ) : TranslationClient {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
 
     override suspend fun complete(
         messages: List<ChatMessage>,
@@ -60,6 +63,11 @@ class DeepSeekClient(
             maxTokens = maxTokens,
             temperature = temperature,
             stream = false,
+            thinking = if (baseUrl.contains("api.deepseek.com", ignoreCase = true)) {
+                ThinkingDto("disabled")
+            } else {
+                null
+            },
         )
         val builder = Request.Builder()
             .url(endpoint())
@@ -97,7 +105,13 @@ class DeepSeekClient(
                 ?: throw TranslationException(response.code, "翻译 API 返回空 choices", true)
             val content = choice.message.content
             if (content.isBlank()) {
-                throw TranslationException(response.code, "翻译 API 返回空正文", true)
+                val reason = choice.finishReason ?: "unknown"
+                val reasoning = choice.message.reasoningContent?.length ?: 0
+                throw TranslationException(
+                    statusCode = response.code,
+                    message = "翻译 API 返回空正文（finish=$reason，reasoning=$reasoning）",
+                    retryable = reason != "content_filter",
+                )
             }
             ChatResult(
                 content = content,
@@ -134,12 +148,19 @@ private data class ChatRequest(
     @SerialName("max_tokens") val maxTokens: Int,
     val temperature: Double,
     val stream: Boolean = false,
+    val thinking: ThinkingDto? = null,
+)
+
+@Serializable
+private data class ThinkingDto(
+    val type: String,
 )
 
 @Serializable
 private data class MessageDto(
     val role: String,
     val content: String,
+    @SerialName("reasoning_content") val reasoningContent: String? = null,
 )
 
 @Serializable

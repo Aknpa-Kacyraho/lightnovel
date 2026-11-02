@@ -262,7 +262,7 @@ fun ChapterListScreen(
                             }
                             if (onOpenWorldlines != null) {
                                 DropdownMenuItem(
-                                    text = { Text("世界线") },
+                                    text = { Text("世界线管理") },
                                     onClick = {
                                         menuOpen = false
                                         onOpenWorldlines()

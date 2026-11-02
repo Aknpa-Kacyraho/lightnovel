@@ -207,9 +207,9 @@ private fun CreateForm(
     onConstraintChange: (String) -> Unit,
     onCreate: () -> Unit,
 ) {
-    Text("新建世界线", style = MaterialTheme.typography.titleMedium)
+    Text("新建分支", style = MaterialTheme.typography.titleMedium)
     Text(
-        "从指定章节分叉；AI 只使用分叉点之前的资料。生成一章会消耗 token。",
+        "推荐在阅读器里编辑正文生成；这里按角色行动分叉。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -242,9 +242,9 @@ private fun CreateForm(
     }
     Text(
         if (state.modeInput == "comparison") {
-            "对照型会引用原作走向生成差异报告，但 Writer 仍只写分支自己的走向。"
+            "对照型：额外生成差异报告"
         } else {
-            "探索型只记录分支偏离，不引用原作未来走向。"
+            "探索型：只写分支"
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -252,20 +252,20 @@ private fun CreateForm(
     OutlinedTextField(
         value = state.characterInput,
         onValueChange = onCharacterChange,
-        label = { Text("介入角色（日文名/中文名）") },
+        label = { Text("角色") },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
     OutlinedTextField(
         value = state.actionInput,
         onValueChange = onActionChange,
-        label = { Text("此刻这个角色会做什么") },
+        label = { Text("行动") },
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
         value = state.constraintInput,
         onValueChange = onConstraintChange,
-        label = { Text("约束（不能使用魔法、必须保留戒心…）") },
+        label = { Text("约束（可选）") },
         modifier = Modifier.fillMaxWidth(),
     )
     Button(

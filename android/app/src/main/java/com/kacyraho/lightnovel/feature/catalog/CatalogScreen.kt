@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -112,11 +113,25 @@ fun CatalogScreen(
     onPreview: (CatalogBookEntity) -> Unit,
     onAdd: (CatalogBookEntity) -> Unit,
 ) {
+    var showTags by remember { mutableStateOf(false) }
+    var tagQuery by remember { mutableStateOf("") }
     val visibleTags = remember(state.tags, state.selectedTags) {
         state.tags.sortedWith(
             compareByDescending<CatalogTag> { it.source in state.selectedTags }
                 .thenByDescending { it.count },
-        ).take(60)
+        )
+    }
+    val inlineTags = remember(visibleTags) { visibleTags.take(10) }
+    if (showTags) {
+        TagPickerSheet(
+            tags = visibleTags,
+            selected = state.selectedTags,
+            query = tagQuery,
+            onQueryChange = { tagQuery = it },
+            onToggle = onTagToggle,
+            onClear = onClearTags,
+            onDismiss = { showTags = false },
+        )
     }
     Scaffold(
         topBar = {
@@ -139,7 +154,7 @@ fun CatalogScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                label = { Text("搜索爬过的书名 / 作者 / 标签") },
+                label = { Text("搜索书名 / 作者 / 标签") },
                 singleLine = true,
             )
             LazyRow(
@@ -221,7 +236,7 @@ fun CatalogScreen(
                 ) {
                     item {
                         Text(
-                            "标签（可多选，同时满足）",
+                            "标签 · 多选",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -237,7 +252,16 @@ fun CatalogScreen(
                             onClick = onClearTags,
                         )
                     }
-                    items(visibleTags, key = { it.source }) { tag ->
+                    if (visibleTags.isNotEmpty()) {
+                        item {
+                            LnTag(
+                                text = "更多",
+                                kind = LnTagKind.KEYWORD,
+                                onClick = { showTags = true },
+                            )
+                        }
+                    }
+                    items(inlineTags, key = { it.source }) { tag ->
                         LnTag(
                             text = tag.label,
                             kind = if (tag.source in state.selectedTags) {
@@ -295,9 +319,9 @@ fun CatalogScreen(
                 ) {
                     Text(
                         if (state.total == 0) {
-                            "还没有爬过的书。去发现页搜索一次，结果会自动收进大书库。"
+                            "还没有书。去发现页搜索。"
                         } else {
-                            "没有匹配的书；清除筛选后再试。"
+                            "没有匹配结果。"
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -322,6 +346,93 @@ fun CatalogScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TagPickerSheet(
+    tags: List<CatalogTag>,
+    selected: Set<String>,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val filtered = remember(tags, query) {
+        if (query.isBlank()) {
+            tags
+        } else {
+            tags.filter {
+                it.label.contains(query, ignoreCase = true) ||
+                    it.source.contains(query, ignoreCase = true)
+            }
+        }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (selected.isEmpty()) "标签" else "标签 · 已选 ${selected.size}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onClear, enabled = selected.isNotEmpty()) {
+                    Text("清除")
+                }
+            }
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("搜索标签") },
+                singleLine = true,
+            )
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(filtered, key = { it.source }) { tag ->
+                    val checked = tag.source in selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggle(tag.source) }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (checked) "✓" else "",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.width(24.dp),
+                        )
+                        Text(
+                            text = tag.label,
+                            modifier = Modifier.weight(1f),
+                            color = if (checked) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                        Text(
+                            text = tag.count.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("完成")
             }
         }
     }

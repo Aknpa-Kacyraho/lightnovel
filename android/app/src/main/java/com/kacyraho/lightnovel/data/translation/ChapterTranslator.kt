@@ -165,13 +165,13 @@ class ChapterTranslator(
             if (missing.isEmpty()) {
                 context = chunk.lastOrNull()
                     ?.let { translated[it.index] }
-                    ?.takeLast(400)
+                    ?.takeLast(1_200)
                 continue
             }
 
             val result = translateChunk(missing, sourceByIndex, config, context)
-            context = result.translated[missing.last().index]?.takeLast(400)
-                ?: missing.last().text.takeLast(400)
+            context = result.translated[missing.last().index]?.takeLast(1_200)
+                ?: missing.last().text.takeLast(1_200)
             translated.putAll(result.translated)
             tokensIn += result.tokensIn
             tokensOut += result.tokensOut
@@ -247,7 +247,7 @@ class ChapterTranslator(
             if (cachedBlock != null && cachedBlock.sourceHash == Hashes.sha256(block)) {
                 translatedBlocks[blockIndex] = cachedBlock.text
                 outputs[blockIndex] = cachedBlock.text
-                context = cachedBlock.text.takeLast(400)
+                context = cachedBlock.text.takeLast(1_200)
                 done += range.count { TranslationValidators.hasTranslatable(paragraphs[it]) }
                 onProgress(done, total)
                 continue
@@ -260,10 +260,10 @@ class ChapterTranslator(
                 outputs[blockIndex] = text
                 tokensIn += result.tokensIn
                 tokensOut += result.tokensOut
-                context = text.takeLast(400)
+                context = text.takeLast(1_200)
             } else {
                 outputs[blockIndex] = block
-                context = block.takeLast(400)
+                context = block.takeLast(1_200)
                 range.forEach { index ->
                     if (TranslationValidators.hasTranslatable(paragraphs[index])) {
                         incomplete += index

@@ -45,17 +45,25 @@ class WorldlineService(
         forkParagraph: Int,
         intervention: Intervention,
         mode: String = "exploration",
+        forkText: String = "",
     ): Result<WorldlineFile> {
-        if (intervention.character.isBlank() || intervention.action.isBlank()) {
-            return Result.failure(IllegalArgumentException("角色和行动不能为空"))
+        val edited = forkText.trim().take(12_000)
+        if ((intervention.character.isBlank() || intervention.action.isBlank()) &&
+            edited.isBlank()
+        ) {
+            return Result.failure(IllegalArgumentException("请先修改正文或填写角色行动"))
         }
         val now = Instant.now().toString()
         val worldline = WorldlineFile(
             id = worldlineStore.newId(book.id, forkChapter, forkParagraph),
             bookId = book.id,
-            title = title.ifBlank { "从第 $forkChapter 章开始的分支" },
+            title = title.ifBlank {
+                if (edited.isNotBlank()) "从第 $forkChapter 章修改开始的分支"
+                else "从第 $forkChapter 章开始的分支"
+            },
             forkChapter = forkChapter,
             forkParagraph = forkParagraph,
+            forkText = edited,
             intervention = intervention,
             mode = if (mode == "comparison") "comparison" else "exploration",
             createdAt = now,

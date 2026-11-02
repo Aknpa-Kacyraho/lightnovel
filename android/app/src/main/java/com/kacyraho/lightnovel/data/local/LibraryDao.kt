@@ -61,6 +61,15 @@ interface LibraryDao {
     @Query("UPDATE chapters SET title_zh = :titleZh WHERE book_id = :bookId AND idx = :idx")
     suspend fun updateChapterTitle(bookId: String, idx: Int, titleZh: String)
 
+    @Query(
+        """
+        UPDATE chapters SET title = :title
+        WHERE book_id = :bookId AND idx = :idx
+          AND (title IS NULL OR title = '')
+        """,
+    )
+    suspend fun fillChapterTitle(bookId: String, idx: Int, title: String)
+
     @Query("SELECT * FROM read_state WHERE book_id = :bookId")
     suspend fun readState(bookId: String): ReadStateEntity?
 

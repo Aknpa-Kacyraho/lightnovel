@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.data.knowledge
 import com.kacyraho.lightnovel.core.settings.ApiKeyStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.ChatMessage
@@ -84,6 +85,7 @@ class KnowledgeExtractionService(
         }
         return runCatching {
             merge(book, chapterIndex, raw, zh, current, output)
+                .also { seedGlossary(book, output) }
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(it) },
@@ -134,7 +136,7 @@ class KnowledgeExtractionService(
             val source = item.source.trim()
             if (source.isBlank()) continue
             val quote = item.sourceQuote.ifBlank { source }
-            val anchor = locate(raw, chapter, quote) ?: continue
+            val anchor = locate(raw, chapter, quote, source) ?: continue
             val existingIndex = entities.indexOfFirst {
                 it.id == nameToId[source] ||
                     it.canonicalName == source ||
@@ -189,7 +191,7 @@ class KnowledgeExtractionService(
             val entityId = nameToId[item.entity.trim()] ?: continue
             val text = item.text.trim()
             if (text.isBlank()) continue
-            val anchor = locate(raw, chapter, item.sourceQuote) ?: continue
+            val anchor = locate(raw, chapter, item.sourceQuote, item.entity) ?: continue
             val kind = item.kind.takeIf {
                 it in setOf("persona", "direction", "reveal_constraint", "reveal_content", "event")
             } ?: "persona"
@@ -249,7 +251,7 @@ class KnowledgeExtractionService(
         for (item in output.relations) {
             val from = nameToId[item.from.trim()] ?: continue
             val to = nameToId[item.to.trim()] ?: continue
-            val anchor = locate(raw, chapter, item.sourceQuote) ?: continue
+            val anchor = locate(raw, chapter, item.sourceQuote, item.from) ?: continue
             val id = id("rel", book.id, chapter, item.type, from, to, item.label)
             val old = relations.firstOrNull { it.id == id }
             val conflictIndex = relations.indexOfFirst {
@@ -301,7 +303,7 @@ class KnowledgeExtractionService(
             val entityId = nameToId[item.entity.trim()] ?: continue
             val text = item.text.trim()
             if (text.isBlank()) continue
-            val anchor = locate(raw, chapter, item.sourceQuote) ?: continue
+            val anchor = locate(raw, chapter, item.sourceQuote, item.entity) ?: continue
             val id = id("voice", book.id, chapter, item.dimension, entityId, text)
             val old = voices.firstOrNull { it.id == id }
             val merged = VoiceFact(
@@ -337,7 +339,7 @@ class KnowledgeExtractionService(
         for (item in output.secrets) {
             val subject = nameToId[item.subject.trim()] ?: continue
             val content = item.contentFacts.mapNotNull { contentItem ->
-                val anchor = locate(raw, chapter, contentItem.sourceQuote) ?: return@mapNotNull null
+                val anchor = locate(raw, chapter, contentItem.sourceQuote, item.subject) ?: return@mapNotNull null
                 val text = contentItem.text.trim()
                 if (text.isBlank()) return@mapNotNull null
                 val id = id("fact", book.id, chapter, "reveal_content", subject, "secret", text)
@@ -402,14 +404,58 @@ class KnowledgeExtractionService(
         )
     }
 
-    private fun locate(raw: String, chapter: Int, quote: String): FactAnchor? {
-        if (quote.isBlank()) return null
-        val location = FactAnchorMapper.locate(raw, quote) ?: return null
+    private fun seedGlossary(book: BookEntity, output: ExtractionOutput) {
+        val store = storyMemoryStore ?: return
+        val memory = store.load(book.storageDir, book.id, book.title)
+        val entries = memory.glossary.toMutableList()
+        var changed = false
+        for (item in output.entities) {
+            val source = item.source.trim()
+            val target = item.canonicalName.trim().ifBlank {
+                item.aliases.firstOrNull { it.trim().isNotBlank() }.orEmpty().trim()
+            }
+            if (source.isBlank() || target.isBlank() || source == target) continue
+            val index = entries.indexOfFirst { it.source == source }
+            if (index < 0) {
+                entries += GlossaryEntry(
+                    id = source,
+                    source = source,
+                    target = target,
+                    aliases = item.aliases.map(String::trim)
+                        .filter(String::isNotBlank)
+                        .distinct(),
+                )
+                changed = true
+            }
+        }
+        if (changed) store.save(book.storageDir, memory.copy(glossary = entries))
+    }
+
+    private fun locate(
+        raw: String,
+        chapter: Int,
+        quote: String,
+        fallback: String = "",
+    ): FactAnchor? {
+        val candidates = listOf(quote, quote.replace(Regex("\\s+"), ""), fallback)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+        for (candidate in candidates) {
+            val location = FactAnchorMapper.locate(raw, candidate) ?: continue
+            return FactAnchor(
+                chapter = chapter,
+                paragraph = location.first,
+                charOffset = location.second,
+                quoteHash = FactAnchorMapper.quoteHash(candidate),
+            )
+        }
+        if (raw.isBlank()) return null
         return FactAnchor(
             chapter = chapter,
-            paragraph = location.first,
-            charOffset = location.second,
-            quoteHash = FactAnchorMapper.quoteHash(quote),
+            paragraph = 0,
+            charOffset = 0,
+            quoteHash = FactAnchorMapper.quoteHash(candidates.firstOrNull().orEmpty()),
         )
     }
 
@@ -446,9 +492,9 @@ class KnowledgeExtractionService(
             appendLine("【术语表译名（优先使用）】")
             glossary.take(40).forEach(::appendLine)
         }
-        appendLine("【本章原文】")
+        appendLine("【本章原文（sourceQuote 只能从这里逐字复制）】")
         appendLine(raw.take(9_000))
-        appendLine("【本章译文】")
+        appendLine("【本章译文（仅帮助理解，不能作为 sourceQuote）】")
         appendLine(zh.take(9_000))
         appendLine("只输出 JSON。")
     }
@@ -549,11 +595,31 @@ class KnowledgeExtractionService(
         const val SYSTEM_PROMPT =
             "你从日文轻小说原文和中文译文中抽取可查询的设定事实。" +
                 "只抽取本章明确出现或确认的信息，不推测后文。" +
-                "每条事实必须附原文短句 sourceQuote；sourceQuote 必须是原文子串。" +
+                "每条事实必须附原文短句 sourceQuote；sourceQuote 必须逐字复制【本章原文】中的日文子串，" +
+                "禁止使用中文译文、改写或概括；找不到可逐字复制的原文就留空。" +
                 "区分 readerKnown（读者是否已看到）与 knownBy（哪些角色知道）；" +
                 "叙述者展示给读者但角色不知道的信息，readerKnown=true、knownBy 留空。" +
                 "persona/direction 必须是抽象倾向，不得写具体揭示事件。" +
                 "对白语气放 voiceFacts，附对白例句。秘密放 secrets，附 forbiddenTerms。" +
-                "只输出 JSON：{entities:[],facts:[],relations:[],voiceFacts:[],secrets:[]}。"
+                "source/entity/from/to/subject 必须填日文原名；canonicalName 填中文译名。" +
+                "只输出 JSON，字段名必须严格使用下面格式：" +
+                "{\"entities\":[{\"source\":\"日文名\",\"aliases\":[\"日文别名\"]," +
+                "\"type\":\"character|place|organization|item|skill|concept\"," +
+                "\"canonicalName\":\"中文名\",\"sourceQuote\":\"日文原文\"," +
+                "\"displayQuote\":\"中文译文\",\"readerKnown\":true,\"knownBy\":[\"角色名\"]}]," +
+                "\"facts\":[{\"entity\":\"日文名\",\"key\":\"稳定键\"," +
+                "\"kind\":\"persona|direction|event|reveal_constraint|reveal_content\"," +
+                "\"text\":\"中文事实\",\"participantEntities\":[],\"sourceQuote\":\"日文原文\"," +
+                "\"displayQuote\":\"中文译文\",\"readerKnown\":true,\"knownBy\":[]," +
+                "\"confidence\":0.8,\"forbiddenTerms\":[]}]," +
+                "\"relations\":[{\"from\":\"日文名\",\"to\":\"日文名\",\"type\":\"relation\"," +
+                "\"label\":\"中文关系\",\"sourceQuote\":\"日文原文\",\"displayQuote\":\"中文译文\"," +
+                "\"readerKnown\":true,\"knownBy\":[],\"confidence\":0.8}]," +
+                "\"voiceFacts\":[{\"entity\":\"日文名\",\"dimension\":\"语气\",\"text\":\"中文描述\"," +
+                "\"exampleQuote\":\"中文例句\",\"sourceQuote\":\"日文原文\",\"displayQuote\":\"中文译文\"," +
+                "\"readerKnown\":true,\"knownBy\":[],\"confidence\":0.8}]," +
+                "\"secrets\":[{\"subject\":\"日文名\",\"contentFacts\":[{\"text\":\"中文秘密\"," +
+                "\"sourceQuote\":\"日文原文\",\"displayQuote\":\"中文译文\"}]," +
+                "\"canonRevealChapter\":null,\"allowedHints\":[],\"forbiddenTerms\":[]}]}。"
     }
 }

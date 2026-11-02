@@ -153,7 +153,7 @@ private fun ReaderContent(
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
     onOpenWorldlines: (() -> Unit)?,
-    onCreateWorldline: (String, String, String, String, String) -> Unit,
+    onCreateWorldline: (String) -> Unit,
     onConsumeWorldlineResult: () -> Unit,
     onOpenQuery: () -> Unit,
     onSelectEntity: (String) -> Unit,
@@ -554,6 +554,9 @@ private fun ReaderContent(
             QuerySheet(
                 entries = state.queryEntries,
                 status = state.knowledgeStatus,
+                busy = translationState.running,
+                message = translationState.message,
+                error = translationState.error,
                 theme = readerTheme,
                 onDismiss = { showQuery = false },
                 onSelect = { entityId ->
@@ -567,16 +570,14 @@ private fun ReaderContent(
         if (showWorldline) {
             ReaderWorldlineSheet(
                 chapterIndex = state.chapterIndex,
-                paragraphIndex = currentParagraphId,
-                contextText = currentParagraph?.translated
-                    ?: currentParagraph?.source.orEmpty(),
+                initialText = state.chapterText,
                 state = worldlineState,
                 theme = readerTheme,
                 onDismiss = {
                     showWorldline = false
                     onConsumeWorldlineResult()
                 },
-                onCreate = onCreateWorldline,
+                onGenerate = onCreateWorldline,
                 onOpenWorldlines = onOpenWorldlines?.let { open ->
                     {
                         showWorldline = false

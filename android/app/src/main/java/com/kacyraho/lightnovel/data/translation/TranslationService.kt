@@ -44,7 +44,7 @@ class TranslationService(
         }
         val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
         val previousTail = if (chapterIndex > 1) {
-            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(1_200).orEmpty()
         } else {
             ""
         }
@@ -136,7 +136,7 @@ class TranslationService(
         }
         val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
         val previousTail = if (chapterIndex > 1) {
-            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(1_200).orEmpty()
         } else {
             ""
         }

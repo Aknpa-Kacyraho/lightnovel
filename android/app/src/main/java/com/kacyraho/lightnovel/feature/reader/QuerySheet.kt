@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +35,9 @@ import com.kacyraho.lightnovel.reader.engine.ReaderTheme
 fun QuerySheet(
     entries: List<QueryEntry>,
     status: KnowledgeStatus?,
+    busy: Boolean,
+    message: String?,
+    error: String?,
     theme: ReaderTheme,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
@@ -63,6 +67,25 @@ fun QuerySheet(
                 style = MaterialTheme.typography.bodySmall,
                 color = theme.secondary,
             )
+            if (busy) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            error?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (!busy && error == null) {
+                message?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = theme.secondary,
+                    )
+                }
+            }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -104,11 +127,12 @@ fun QuerySheet(
             }
             Button(
                 onClick = onUpdate,
-                enabled = status?.translationUpdating != true,
+                enabled = !busy && status?.translationUpdating != true,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     when {
+                        busy -> "更新中…"
                         status == null -> "更新本章资料"
                         status.translationUpdating -> "本章翻译中"
                         status.extractionUpdating -> "更新本章资料"
@@ -232,10 +256,10 @@ private fun FactRow(
 }
 
 private fun statusMessage(status: KnowledgeStatus?): String = when {
-    status == null -> "资料状态未知"
-    status.translationUpdating -> "本章翻译中，资料会在翻译完成后更新"
-    status.extractionUpdating -> "本章资料更新中"
-    status.locationDegraded -> "本章段落定位失败，只显示前一章及更早的资料"
+    status == null -> "还没有资料"
+    status.translationUpdating -> "本章翻译中"
+    status.extractionUpdating -> "资料更新中"
+    status.locationDegraded -> "定位失败，只显示前一章及更早资料"
     else -> "资料更新至第 ${status.canonExtractedThrough} 章"
 }
 

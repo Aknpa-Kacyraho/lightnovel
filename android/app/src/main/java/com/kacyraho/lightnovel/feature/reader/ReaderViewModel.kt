@@ -141,6 +141,7 @@ class ReaderViewModel(
     private var anchorToRestore: ReaderAnchor? = null
     private var paginationJob: Job? = null
     private var saveJob: Job? = null
+    private var scrollStateJob: Job? = null
     private var translationJob: Job? = null
     private var knowledgeStatusJob: Job? = null
     private var settingsJob: Job? = null
@@ -538,50 +539,41 @@ class ReaderViewModel(
         }
     }
 
-    fun createWorldline(
-        title: String,
-        character: String,
-        action: String,
-        constraint: String,
-        mode: String,
-    ) {
+    fun createWorldline(editedText: String) {
         if (_worldlineState.value.running) return
         val book = bookEntity ?: return
         val service = worldlineService ?: run {
             _worldlineState.value = ReaderWorldlineState(error = "世界线服务不可用")
             return
         }
-        val intervention = Intervention(
-            character = character.trim(),
-            action = action.trim(),
-            constraint = constraint.trim(),
-        )
-        if (intervention.character.isBlank() || intervention.action.isBlank()) {
-            _worldlineState.value = ReaderWorldlineState(error = "角色和行动不能为空")
+        val text = editedText.trim()
+        if (text.isBlank()) {
+            _worldlineState.value = ReaderWorldlineState(error = "正文不能为空")
             return
         }
         val forkParagraph = currentParagraphIndex()
         _worldlineState.value = ReaderWorldlineState(
             running = true,
-            message = "正在从第 $chapterIndex 章第 ${forkParagraph + 1} 段生成世界线…",
+            message = "正在按修改生成…",
         )
         viewModelScope.launch {
             service.createBranch(
                 book = book,
-                title = title.trim(),
+                title = "",
                 forkChapter = chapterIndex,
                 forkParagraph = forkParagraph,
-                intervention = intervention,
-                mode = mode,
+                intervention = Intervention(),
+                mode = "exploration",
+                forkText = text,
             ).onSuccess { branch ->
                 _worldlineState.value = ReaderWorldlineState(
-                    message = "世界线已生成：${branch.title}",
+                    message = "已生成：${branch.title}",
                     createdId = branch.id,
                     createdTitle = branch.title,
                 )
             }.onFailure {
                 _worldlineState.value = ReaderWorldlineState(
-                    error = it.message ?: "世界线生成失败",
+                    error = it.message ?: "生成失败",
                 )
             }
         }
@@ -757,6 +749,7 @@ class ReaderViewModel(
         currentReadAnchor = read
         val queryMode = _state.value.queryMode
         val names = if (queryMode) service.visibleNames(current, read) else emptyMap()
+        val namesChanged = names != _state.value.queryNames
         _state.value = _state.value.copy(
             knowledgeStatus = service.status(
                 knowledge = current,
@@ -767,9 +760,14 @@ class ReaderViewModel(
             ),
             queryNames = names,
             queryHint = if (queryMode && names.isEmpty()) {
-                "当前进度还没有可查询词条，先在本页词条里更新本章资料。"
+                "本章还没有可查询资料"
             } else {
                 null
+            },
+            revision = if (namesChanged) {
+                _state.value.revision + 1
+            } else {
+                _state.value.revision
             },
         )
     }
@@ -823,12 +821,17 @@ class ReaderViewModel(
             queryMode = enabled,
             queryNames = names,
             queryHint = if (enabled && names.isEmpty()) {
-                "当前进度还没有可查询词条，先在本页词条里更新本章资料。"
+                "本章还没有可查询资料"
             } else {
                 null
             },
             revision = _state.value.revision + 1,
         )
+        if (enabled && currentKnowledge?.extractedChapters?.contains(chapterIndex) != true &&
+            !_translationState.value.running
+        ) {
+            extractCurrentChapter()
+        }
     }
 
     fun selectEntity(entityId: String) {
@@ -1026,21 +1029,26 @@ class ReaderViewModel(
     }
 
     fun onScrollParagraphChanged(paragraphId: Int) {
-        if (paragraphId == _state.value.scrollParagraph) return
         val safe = paragraphId.coerceAtLeast(0)
-        _state.value = _state.value.copy(scrollParagraph = safe, pageIndex = 0)
-        scheduleKnowledgeStatusRefresh()
-        saveJob?.cancel()
-        saveJob = viewModelScope.launch {
-            delay(500)
-            repository.updateProgress(
-                bookId,
-                ReaderAnchor(
-                    chapterIndex = chapterIndex,
-                    paragraphId = safe,
-                    charOffset = 0,
-                ),
-            )
+        if (safe == _state.value.scrollParagraph) return
+        scrollStateJob?.cancel()
+        scrollStateJob = viewModelScope.launch {
+            delay(120)
+            if (safe == _state.value.scrollParagraph) return@launch
+            _state.value = _state.value.copy(scrollParagraph = safe, pageIndex = 0)
+            scheduleKnowledgeStatusRefresh()
+            saveJob?.cancel()
+            saveJob = viewModelScope.launch {
+                delay(500)
+                repository.updateProgress(
+                    bookId,
+                    ReaderAnchor(
+                        chapterIndex = chapterIndex,
+                        paragraphId = safe,
+                        charOffset = 0,
+                    ),
+                )
+            }
         }
     }
 

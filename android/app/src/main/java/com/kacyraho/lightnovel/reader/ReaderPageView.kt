@@ -75,17 +75,22 @@ class ReaderPageView(context: Context) : View(context) {
         return super.onTouchEvent(event)
     }
 
+    fun entityAt(x: Float, y: Float): String? {
+        val layout = pageLayout ?: return null
+        val spanned = layout.text as? Spanned ?: return null
+        val line = layout.getLineForVertical(y.toInt().coerceIn(0, layout.height))
+        val offset = layout.getOffsetForHorizontal(line, x.coerceIn(0f, width.toFloat()))
+        val right = (offset + 1).coerceAtMost(spanned.length)
+        val left = (offset - 1).coerceAtLeast(0)
+        return (spanned.getSpans(offset, right, EntityClickSpan::class.java).firstOrNull()
+            ?: spanned.getSpans(left, offset, EntityClickSpan::class.java).firstOrNull())
+            ?.entityId
+    }
+
     private fun handleTap(event: MotionEvent) {
-        val layout = pageLayout ?: return
-        val spanned = layout.text as? Spanned ?: return
-        val y = event.y.toInt().coerceIn(0, layout.height)
-        val line = layout.getLineForVertical(y)
-        val x = event.x.coerceIn(0f, width.toFloat())
-        val offset = layout.getOffsetForHorizontal(line, x)
-        val span = spanned.getSpans(offset, offset, EntityClickSpan::class.java)
-            .firstOrNull() ?: return
+        val id = entityAt(event.x, event.y) ?: return
         performClick()
-        onEntityClick?.invoke(span.entityId)
+        onEntityClick?.invoke(id)
     }
 
     override fun performClick(): Boolean {

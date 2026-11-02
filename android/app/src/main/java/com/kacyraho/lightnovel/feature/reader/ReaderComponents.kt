@@ -432,7 +432,7 @@ private fun TranslationMenu(
                 )
             }
             DropdownMenuItem(
-                text = { Text("从这里开世界线") },
+                text = { Text("编辑并生成世界线") },
                 onClick = {
                     expanded = false
                     onOpenWorldline()

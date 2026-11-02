@@ -67,6 +67,26 @@ class WorldlineServiceTest {
     }
 
     @Test
+    fun createsBranchFromEditedCanonText() = runTest {
+        val env = environment()
+        val result = env.service.createBranch(
+            book = env.book,
+            title = "",
+            forkChapter = 2,
+            forkParagraph = 0,
+            intervention = Intervention(),
+            forkText = "爱丽丝没有拒绝，而是把信收进了口袋。",
+        )
+
+        assertTrue(result.isSuccess)
+        val branch = result.getOrThrow()
+        assertTrue(branch.forkText.contains("把信收进了口袋"))
+        assertTrue(
+            env.client.prompts.any { it.contains("用户修改后的分叉正文") },
+        )
+    }
+
+    @Test
     fun rejectsShortOutputAndDoesNotAdvanceCursor() = runTest {
         val env = environment(shortWriter = true)
         val result = env.service.createBranch(

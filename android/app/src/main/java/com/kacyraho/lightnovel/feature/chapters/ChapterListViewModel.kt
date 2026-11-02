@@ -56,11 +56,26 @@ class ChapterListViewModel(
                 val detail = book?.takeIf { !it.local }?.let {
                     runCatching { onlineBookService.detail(it) }.getOrNull()
                 }
+                if (book != null && detail != null) {
+                    runCatching { onlineBookService.syncChapterTitles(book, detail) }
+                }
+                val titledChapters = chapters.map { chapter ->
+                    if (!chapter.title.isNullOrBlank()) {
+                        chapter
+                    } else {
+                        detail?.chapters
+                            ?.getOrNull(chapter.idx - 1)
+                            ?.title
+                            ?.takeIf(String::isNotBlank)
+                            ?.let { chapter.copy(title = it) }
+                            ?: chapter
+                    }
+                }
                 ChapterListUiState(
                     loading = false,
                     book = book,
                     detail = detail,
-                    chapters = chapters,
+                    chapters = titledChapters,
                     readState = readState,
                     favorite = readState?.favorite == true,
                 )

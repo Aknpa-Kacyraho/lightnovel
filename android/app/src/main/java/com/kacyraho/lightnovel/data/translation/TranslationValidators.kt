@@ -18,7 +18,13 @@ object TranslationValidators {
     )
 
     fun splitParagraphs(text: String): List<String> {
-        val lines = text.replace("\r\n", "\n").split("\n")
+        val normalized = text.replace("\r\n", "\n")
+        if (!Regex("""\n[ \t]*\n""").containsMatchIn(normalized)) {
+            return normalized.split('\n')
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+        }
+        val lines = normalized.split("\n")
         val out = mutableListOf<String>()
         val buffer = mutableListOf<String>()
         for (line in lines) {

@@ -249,7 +249,7 @@ fun DiscoverRoute(
             }
             if (state.metadataLoading) {
                 Text(
-                    text = "正在翻译书名 / 简介…",
+                    text = "翻译书名和简介…",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -355,14 +355,14 @@ private fun DiscoverHome(
                 TextButton(onClick = onShuffle) { Text("换一批") }
             }
             Text(
-                "从大书库随机抽取；来自 Kakuyomu / 成为小说家吧。",
+                "大书库随机推荐",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             if (loadingPool) {
                 Text(
-                    "正在扩充大书库…",
+                    "补充书库…",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),

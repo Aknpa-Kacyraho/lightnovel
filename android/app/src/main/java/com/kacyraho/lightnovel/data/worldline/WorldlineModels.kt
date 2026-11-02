@@ -65,6 +65,7 @@ data class WorldlineFile(
     val title: String = "",
     val forkChapter: Int = 1,
     val forkParagraph: Int = 0,
+    val forkText: String = "",
     val intervention: Intervention = Intervention(),
     val mode: String = "exploration",
     val branchCursor: Int = 0,

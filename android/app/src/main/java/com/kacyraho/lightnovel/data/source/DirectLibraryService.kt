@@ -23,6 +23,15 @@ class DirectLibraryService(
 
     suspend fun shelfKeys(): Set<String> = dao.onlineKeys().toSet()
 
+    suspend fun syncChapterTitles(book: BookEntity, detail: SourceDetail) {
+        detail.chapters.forEachIndexed { index, chapter ->
+            val title = chapter.title.trim()
+            if (title.isNotBlank()) {
+                dao.fillChapterTitle(book.id, index + 1, title)
+            }
+        }
+    }
+
     suspend fun addToShelf(book: SourceBook): BookEntity {
         val source = byId[book.provider] ?: error("不支持的书源：${book.provider}")
         val detail = source.detail(book.id)
