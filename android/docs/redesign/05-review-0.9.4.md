@@ -55,3 +55,4 @@
 - lint：`0 errors / 25 warnings / 2 hints`。
 - 真机：`0.9.4` / code27 安装成功；阅读器世界线 Sheet 从“第 1 章第 1 段”变为“第 1 章第 35 段”，当前段落内容随页变化；发现热门标签已显示“打脸 / 放逐 / 反派千金 / 转生 / 开挂”。
 - 未做真实 LLM 世界线生成 E2E（会消耗 token，未获本次授权）。
+- 发布：GitHub Release `v0.9.4`，APK `lightnovel-0.9.4-debug.apk`；代码提交 `3a61b86`。
