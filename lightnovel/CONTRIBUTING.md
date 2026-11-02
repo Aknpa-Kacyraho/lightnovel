@@ -36,7 +36,7 @@ without documenting it as an explicit limitation.
 ## Commits and licenses
 
 By submitting a contribution, you agree that it may be distributed under the
-Apache License 2.0 in `LICENSE`. Add attribution to `NOTICE` when incorporating
-third-party code or assets. Do not copy upstream code without recording its
-license and source.
+GNU Affero General Public License v3.0 or later in `LICENSE`. Add attribution to
+`NOTICE` when incorporating third-party code or assets. Do not copy upstream
+code without recording its license and source.
 

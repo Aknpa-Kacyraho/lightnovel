@@ -114,4 +114,8 @@ icon-preview.png   图标预览
 
 ## 许可
 
-Apache License 2.0，见 `lightnovel/LICENSE` 与 `lightnovel/NOTICE`。
+GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later），见根目录 `LICENSE` 与 `lightnovel/NOTICE`。
+
+你可以商用、修改和分发；但分发修改版，或将它作为网络服务提供给他人使用时，必须按 AGPL 提供完整对应源码。
+
+`0.9.5` 及更早版本按 Apache-2.0 发布，其授权不可撤销；当前源码及后续版本使用 AGPL-3.0-or-later。
