@@ -69,6 +69,7 @@ import com.kacyraho.lightnovel.data.local.BookTags
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.SourceDetail
 import com.kacyraho.lightnovel.ui.components.BookCover
+import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 import com.kacyraho.lightnovel.ui.components.LnTag
 import com.kacyraho.lightnovel.ui.components.LnTagKind
@@ -392,6 +393,7 @@ private fun Hero(
             BookCover(
                 title = title,
                 modifier = Modifier.size(width = 82.dp, height = 112.dp),
+                size = BookCoverSize.MEDIUM,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -420,7 +422,9 @@ private fun Hero(
                             text = author,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { onSearchAuthor(author) },
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .clickable { onSearchAuthor(author) },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -667,7 +671,11 @@ private fun InfoRow(
             style = MaterialTheme.typography.bodySmall,
             color = if (onClick != null) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurface,
-            modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+            modifier = Modifier
+                .weight(1f)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

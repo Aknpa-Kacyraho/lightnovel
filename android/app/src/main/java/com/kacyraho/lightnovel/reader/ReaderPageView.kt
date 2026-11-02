@@ -10,8 +10,9 @@ import android.view.ViewConfiguration
 import kotlin.math.abs
 
 class ReaderPageView(context: Context) : View(context) {
+    private var sourceLayout: StaticLayout? = null
+    private var sourceSlice: PageSlice? = null
     private var pageLayout: StaticLayout? = null
-    private var page: PageSlice? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
     private var downY = 0f
@@ -20,17 +21,30 @@ class ReaderPageView(context: Context) : View(context) {
     var onEntityClick: ((String) -> Unit)? = null
 
     fun bind(layout: StaticLayout, slice: PageSlice) {
-        pageLayout = layout
-        page = slice
+        if (sourceLayout === layout && sourceSlice == slice) return
+        sourceLayout = layout
+        sourceSlice = slice
+        pageLayout = buildPageLayout(layout, slice)
         invalidate()
+    }
+
+    private fun buildPageLayout(layout: StaticLayout, slice: PageSlice): StaticLayout {
+        val text = layout.text
+        val start = slice.start.coerceIn(0, text.length)
+        val end = slice.end.coerceIn(start, text.length)
+        if (start == end) return layout
+        return StaticLayoutPaginator.build(
+            text = text.subSequence(start, end),
+            widthPx = layout.width,
+            paint = layout.paint,
+            lineSpacingMultiplier = layout.spacingMultiplier,
+        )
     }
 
     override fun onDraw(canvas: Canvas) {
         val layout = pageLayout ?: return
-        val slice = page ?: return
         canvas.save()
         canvas.clipRect(0, 0, width, height)
-        canvas.translate(0f, -slice.top.toFloat())
         layout.draw(canvas)
         canvas.restore()
     }
@@ -63,9 +77,8 @@ class ReaderPageView(context: Context) : View(context) {
 
     private fun handleTap(event: MotionEvent) {
         val layout = pageLayout ?: return
-        val slice = page ?: return
         val spanned = layout.text as? Spanned ?: return
-        val y = (event.y + slice.top).toInt().coerceIn(0, layout.height)
+        val y = event.y.toInt().coerceIn(0, layout.height)
         val line = layout.getLineForVertical(y)
         val x = event.x.coerceIn(0f, width.toFloat())
         val offset = layout.getOffsetForHorizontal(line, x)

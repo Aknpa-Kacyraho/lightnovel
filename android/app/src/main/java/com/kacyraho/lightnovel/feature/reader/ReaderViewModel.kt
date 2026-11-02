@@ -8,6 +8,7 @@ import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.knowledge.DisplayAnchor
 import com.kacyraho.lightnovel.data.knowledge.EntityCard
@@ -33,6 +34,8 @@ import com.kacyraho.lightnovel.data.translation.TranslationOutcome
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationVersionStore
+import com.kacyraho.lightnovel.data.worldline.Intervention
+import com.kacyraho.lightnovel.data.worldline.WorldlineService
 import com.kacyraho.lightnovel.reader.engine.MonoPaginator
 import com.kacyraho.lightnovel.reader.engine.MonoStyle
 import com.kacyraho.lightnovel.reader.engine.ReaderBlock
@@ -85,6 +88,7 @@ data class ReaderUiState(
     val entityCard: EntityCard? = null,
     val queryMode: Boolean = false,
     val queryNames: Map<String, String> = emptyMap(),
+    val queryHint: String? = null,
     val paragraphs: List<ReaderParagraph> = emptyList(),
 )
 
@@ -93,6 +97,14 @@ data class ReaderTranslationState(
     val message: String? = null,
     val error: String? = null,
     val partial: Boolean = false,
+)
+
+data class ReaderWorldlineState(
+    val running: Boolean = false,
+    val message: String? = null,
+    val error: String? = null,
+    val createdId: String? = null,
+    val createdTitle: String? = null,
 )
 
 class ReaderViewModel(
@@ -109,6 +121,7 @@ class ReaderViewModel(
     private val versionStore: TranslationVersionStore? = null,
     private val onlineBookService: ChapterFetcher? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
+    private val worldlineService: WorldlineService? = null,
     private val bookId: String,
     private val chapterIndex: Int,
 ) : ViewModel() {
@@ -118,6 +131,9 @@ class ReaderViewModel(
     private val _translationState = MutableStateFlow(ReaderTranslationState())
     val translationState: StateFlow<ReaderTranslationState> = _translationState.asStateFlow()
 
+    private val _worldlineState = MutableStateFlow(ReaderWorldlineState())
+    val worldlineState: StateFlow<ReaderWorldlineState> = _worldlineState.asStateFlow()
+
     private var readerChapter: ReaderChapter? = null
     private var bookEntity: BookEntity? = null
     private var chapterList: List<ChapterEntity> = emptyList()
@@ -126,6 +142,7 @@ class ReaderViewModel(
     private var paginationJob: Job? = null
     private var saveJob: Job? = null
     private var translationJob: Job? = null
+    private var knowledgeStatusJob: Job? = null
     private var settingsJob: Job? = null
     private var lastKey: String? = null
     private var currentConfigHash: String? = null
@@ -521,11 +538,65 @@ class ReaderViewModel(
         }
     }
 
+    fun createWorldline(
+        title: String,
+        character: String,
+        action: String,
+        constraint: String,
+        mode: String,
+    ) {
+        if (_worldlineState.value.running) return
+        val book = bookEntity ?: return
+        val service = worldlineService ?: run {
+            _worldlineState.value = ReaderWorldlineState(error = "世界线服务不可用")
+            return
+        }
+        val intervention = Intervention(
+            character = character.trim(),
+            action = action.trim(),
+            constraint = constraint.trim(),
+        )
+        if (intervention.character.isBlank() || intervention.action.isBlank()) {
+            _worldlineState.value = ReaderWorldlineState(error = "角色和行动不能为空")
+            return
+        }
+        val forkParagraph = currentParagraphIndex()
+        _worldlineState.value = ReaderWorldlineState(
+            running = true,
+            message = "正在从第 $chapterIndex 章第 ${forkParagraph + 1} 段生成世界线…",
+        )
+        viewModelScope.launch {
+            service.createBranch(
+                book = book,
+                title = title.trim(),
+                forkChapter = chapterIndex,
+                forkParagraph = forkParagraph,
+                intervention = intervention,
+                mode = mode,
+            ).onSuccess { branch ->
+                _worldlineState.value = ReaderWorldlineState(
+                    message = "世界线已生成：${branch.title}",
+                    createdId = branch.id,
+                    createdTitle = branch.title,
+                )
+            }.onFailure {
+                _worldlineState.value = ReaderWorldlineState(
+                    error = it.message ?: "世界线生成失败",
+                )
+            }
+        }
+    }
+
+    fun consumeWorldlineResult() {
+        if (_worldlineState.value.running) return
+        _worldlineState.value = ReaderWorldlineState()
+    }
+
     fun onPageChanged(pageIndex: Int) {
         val layout = _state.value.layout ?: return
         if (pageIndex !in layout.pages.indices) return
         _state.value = _state.value.copy(pageIndex = pageIndex)
-        bookEntity?.let { refreshKnowledgeStatus(it) }
+        refreshKnowledgeStatus()
         val anchor = layout.pages[pageIndex].startAnchor
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
@@ -536,105 +607,107 @@ class ReaderViewModel(
 
     private fun load() {
         viewModelScope.launch {
-            val loaded = runCatching {
-                val book = repository.book(bookId) ?: error("书不存在")
-                val chapters = repository.observeChapters(bookId).first()
-                val chapter = chapters.firstOrNull { it.idx == chapterIndex }
-                    ?: error("章节不存在")
-                if (!book.local &&
-                    contentStore.readRaw(book.storageDir, chapterIndex) == null &&
-                    contentStore.readZh(book.storageDir, chapterIndex) == null
-                ) {
-                    _state.value = _state.value.copy(loading = true, error = null)
-                    onlineBookService?.ensureChapter(book, chapterIndex)
-                }
-                val readState = repository.readState(bookId)
-                val displayMode = _state.value.displayMode
-                val cached = chapterCache.get(bookId, chapterIndex, displayMode)
-                val readerChapter = cached ?: buildChapter(book, chapter, displayMode).also {
-                    chapterCache.put(bookId, chapterIndex, displayMode, it)
-                }
-                val restore = if (readState?.progressIdx == chapterIndex) {
-                    ReaderAnchor(
-                        chapterIndex = chapterIndex,
-                        paragraphId = readState.progressBlock,
-                        charOffset = readState.progressChar,
-                    )
-                } else {
-                    null
-                }
-                Triple(book, readerChapter, chapters) to restore
-            }
-
-            loaded.onSuccess { (payload, restore) ->
-                val (book, readerChapter, chapters) = payload
-                anchorToRestore = restore ?: anchorToRestore
-                bookEntity = book
-                chapterList = chapters
-                refreshStoryMemory(book)
-                refreshKnowledge(book)
-                val raw = contentStore.readRaw(book.storageDir, chapterIndex)
-                val zh = contentStore.readZh(book.storageDir, chapterIndex)
-                rawText = raw
-                val sidecar = runCatching {
-                    contentStore.readSidecar(book.storageDir, chapterIndex)
-                }.getOrNull()
-                val stale = staleReasons(raw, sidecar, _state.value.displayMode)
-                val previous = versionStore?.latest(book.storageDir, chapterIndex)
-                val changedParagraphs = if (previous != null && zh != null) {
-                    versionStore?.diffParagraphs(previous.text, zh) ?: 0
-                } else {
-                    0
-                }
-                this@ReaderViewModel.readerChapter = readerChapter
-                lastKey = null
-                _state.value = _state.value.copy(
-                    loading = false,
-                    error = null,
-                    bookTitle = book.titleZh ?: book.title,
-                    chapterTitle = readerChapter.title,
-                    chapterCount = chapters.size,
-                    textKind = readerChapter.textKind,
-                    chapterText = readerChapter.text,
-                    chapterBlocks = readerChapter.text
-                        .split("\n")
-                        .map { it.trimEnd() }
-                        .ifEmpty { listOf(readerChapter.text) },
-                    scrollParagraph = restore?.paragraphId ?: 0,
-                    revision = _state.value.revision + 1,
-                    translationStatus = statusFor(
-                        zh = zh,
-                        sidecar = sidecar,
-                        stale = stale,
-                        chapterStatus = chapters.firstOrNull { it.idx == chapterIndex }?.status,
-                    ),
-                    hasTranslation = zh != null,
-                    staleReasons = stale,
-                    staleBannerReason = staleBannerReason(stale),
-                    chapterInfo = sidecar?.let {
-                        ReaderChapterInfo(
-                            model = it.modelId,
-                            translatedAt = it.translatedAt,
-                            tokensIn = it.tokens.input,
-                            tokensOut = it.tokens.output,
-                            costCny = it.cost.amount,
-                            incompleteParagraphs = it.incompleteParagraphs.size,
-                            cacheKey = it.contentSha256.take(12),
-                            oldVersionAvailable = previous != null,
-                            oldTranslatedAt = previous?.sidecar?.translatedAt,
-                            changedParagraphs = changedParagraphs,
+            withContext(Dispatchers.IO) {
+                val loaded = runCatching {
+                    val book = repository.book(bookId) ?: error("书不存在")
+                    val chapters = repository.observeChapters(bookId).first()
+                    val chapter = chapters.firstOrNull { it.idx == chapterIndex }
+                        ?: error("章节不存在")
+                    if (!book.local &&
+                        contentStore.readRaw(book.storageDir, chapterIndex) == null &&
+                        contentStore.readZh(book.storageDir, chapterIndex) == null
+                    ) {
+                        _state.value = _state.value.copy(loading = true, error = null)
+                        onlineBookService?.ensureChapter(book, chapterIndex)
+                    }
+                    val readState = repository.readState(bookId)
+                    val displayMode = _state.value.displayMode
+                    val cached = chapterCache.get(bookId, chapterIndex, displayMode)
+                    val readerChapter = cached ?: buildChapter(book, chapter, displayMode).also {
+                        chapterCache.put(bookId, chapterIndex, displayMode, it)
+                    }
+                    val restore = if (readState?.progressIdx == chapterIndex) {
+                        ReaderAnchor(
+                            chapterIndex = chapterIndex,
+                            paragraphId = readState.progressBlock,
+                            charOffset = readState.progressChar,
                         )
-                    },
-                    glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
-                    knowledgeStatus = _state.value.knowledgeStatus,
-                    paragraphs = buildParagraphs(raw, zh),
-                )
-                prefetchAdjacent(book, chapters, _state.value.displayMode)
-            }.onFailure { error ->
-                _state.value = _state.value.copy(
-                    loading = false,
-                    error = error.message ?: "加载失败",
-                )
+                    } else {
+                        null
+                    }
+                    Triple(book, readerChapter, chapters) to restore
+                }
+
+                loaded.onSuccess { (payload, restore) ->
+                    val (book, readerChapter, chapters) = payload
+                    anchorToRestore = restore ?: anchorToRestore
+                    bookEntity = book
+                    chapterList = chapters
+                    refreshStoryMemory(book)
+                    refreshKnowledge(book)
+                    val raw = contentStore.readRaw(book.storageDir, chapterIndex)
+                    val zh = contentStore.readZh(book.storageDir, chapterIndex)
+                    rawText = raw
+                    val sidecar = runCatching {
+                        contentStore.readSidecar(book.storageDir, chapterIndex)
+                    }.getOrNull()
+                    val stale = staleReasons(raw, sidecar, _state.value.displayMode)
+                    val previous = versionStore?.latest(book.storageDir, chapterIndex)
+                    val changedParagraphs = if (previous != null && zh != null) {
+                        versionStore?.diffParagraphs(previous.text, zh) ?: 0
+                    } else {
+                        0
+                    }
+                    this@ReaderViewModel.readerChapter = readerChapter
+                    lastKey = null
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = null,
+                        bookTitle = book.titleZh ?: book.title,
+                        chapterTitle = readerChapter.title,
+                        chapterCount = chapters.size,
+                        textKind = readerChapter.textKind,
+                        chapterText = readerChapter.text,
+                        chapterBlocks = readerChapter.text
+                            .split("\n")
+                            .map { it.trimEnd() }
+                            .ifEmpty { listOf(readerChapter.text) },
+                        scrollParagraph = restore?.paragraphId ?: 0,
+                        revision = _state.value.revision + 1,
+                        translationStatus = statusFor(
+                            zh = zh,
+                            sidecar = sidecar,
+                            stale = stale,
+                            chapterStatus = chapters.firstOrNull { it.idx == chapterIndex }?.status,
+                        ),
+                        hasTranslation = zh != null,
+                        staleReasons = stale,
+                        staleBannerReason = staleBannerReason(stale),
+                        chapterInfo = sidecar?.let {
+                            ReaderChapterInfo(
+                                model = it.modelId,
+                                translatedAt = it.translatedAt,
+                                tokensIn = it.tokens.input,
+                                tokensOut = it.tokens.output,
+                                costCny = it.cost.amount,
+                                incompleteParagraphs = it.incompleteParagraphs.size,
+                                cacheKey = it.contentSha256.take(12),
+                                oldVersionAvailable = previous != null,
+                                oldTranslatedAt = previous?.sidecar?.translatedAt,
+                                changedParagraphs = changedParagraphs,
+                            )
+                        },
+                        glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
+                        knowledgeStatus = _state.value.knowledgeStatus,
+                        paragraphs = buildParagraphs(raw, zh),
+                    )
+                    prefetchAdjacent(book, chapters, _state.value.displayMode)
+                }.onFailure { error ->
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        error = error.message ?: "加载失败",
+                    )
+                }
             }
         }
     }
@@ -658,11 +731,17 @@ class ReaderViewModel(
     private fun refreshKnowledge(book: BookEntity) {
         val knowledge = knowledgeStore?.load(book.storageDir, book.id, book.title) ?: return
         currentKnowledge = knowledge
-        translatedThroughCache = translatedThrough(book)
-        refreshKnowledgeStatus(book, knowledge)
+        refreshKnowledgeStatus(knowledge)
+        viewModelScope.launch(Dispatchers.IO) {
+            val through = translatedThrough(book)
+            withContext(Dispatchers.Main) {
+                translatedThroughCache = through
+                refreshKnowledgeStatus(knowledge)
+            }
+        }
     }
 
-    private fun refreshKnowledgeStatus(book: BookEntity, knowledge: KnowledgeFile? = currentKnowledge) {
+    private fun refreshKnowledgeStatus(knowledge: KnowledgeFile? = currentKnowledge) {
         val service = knowledgeQueryService ?: return
         val current = knowledge ?: return
         val degraded = currentTranslationConfig?.mode == TranslationMode.SAKURA
@@ -676,6 +755,8 @@ class ReaderViewModel(
         )
         val translated = translatedThroughCache
         currentReadAnchor = read
+        val queryMode = _state.value.queryMode
+        val names = if (queryMode) service.visibleNames(current, read) else emptyMap()
         _state.value = _state.value.copy(
             knowledgeStatus = service.status(
                 knowledge = current,
@@ -684,12 +765,21 @@ class ReaderViewModel(
                 translatedThrough = translated,
                 locationDegraded = degraded,
             ),
-            queryNames = if (_state.value.queryMode) {
-                service.visibleNames(current, read)
+            queryNames = names,
+            queryHint = if (queryMode && names.isEmpty()) {
+                "当前进度还没有可查询词条，先在本页词条里更新本章资料。"
             } else {
-                emptyMap()
+                null
             },
         )
+    }
+
+    private fun scheduleKnowledgeStatusRefresh() {
+        knowledgeStatusJob?.cancel()
+        knowledgeStatusJob = viewModelScope.launch {
+            delay(120)
+            refreshKnowledgeStatus()
+        }
     }
 
     private fun translatedThrough(book: BookEntity): Int {
@@ -732,6 +822,11 @@ class ReaderViewModel(
         _state.value = _state.value.copy(
             queryMode = enabled,
             queryNames = names,
+            queryHint = if (enabled && names.isEmpty()) {
+                "当前进度还没有可查询词条，先在本页词条里更新本章资料。"
+            } else {
+                null
+            },
             revision = _state.value.revision + 1,
         )
     }
@@ -766,7 +861,7 @@ class ReaderViewModel(
             val result = service.extractChapter(book, chapterIndex)
             result.onSuccess {
                 currentKnowledge = it
-                refreshKnowledgeStatus(book, it)
+                refreshKnowledgeStatus(it)
                 refreshQueryEntries()
                 _translationState.value = ReaderTranslationState(message = "本章资料已更新")
             }.onFailure {
@@ -820,7 +915,7 @@ class ReaderViewModel(
             bookId = book.id,
             idx = chapter.idx,
             title = chapter.titleZh ?: chapter.title ?: "第 ${chapter.idx} 章",
-            blocks = normalized.split("\n\n").mapIndexed { index, value ->
+            blocks = Paragraphs.split(normalized).mapIndexed { index, value ->
                 ReaderBlock(index, value)
             },
             text = normalized,
@@ -882,8 +977,8 @@ class ReaderViewModel(
     }
 
     private fun buildParagraphs(raw: String?, zh: String?): List<ReaderParagraph> {
-        val sources = raw?.replace("\r\n", "\n")?.split("\n\n").orEmpty()
-        val translated = zh?.replace("\r\n", "\n")?.split("\n\n").orEmpty()
+        val sources = raw?.let(Paragraphs::split).orEmpty()
+        val translated = zh?.let(Paragraphs::split).orEmpty()
         val size = maxOf(sources.size, translated.size)
         return (0 until size).map { index ->
             ReaderParagraph(
@@ -897,8 +992,8 @@ class ReaderViewModel(
     private fun bilingualText(raw: String?, zh: String?): String? {
         if (raw == null) return zh
         if (zh == null) return raw
-        val rawParagraphs = raw.replace("\r\n", "\n").split("\n\n")
-        val zhParagraphs = zh.replace("\r\n", "\n").split("\n\n")
+        val rawParagraphs = Paragraphs.split(raw)
+        val zhParagraphs = Paragraphs.split(zh)
         val size = maxOf(rawParagraphs.size, zhParagraphs.size)
         return (0 until size).joinToString("\n\n") { index ->
             listOfNotNull(
@@ -934,7 +1029,7 @@ class ReaderViewModel(
         if (paragraphId == _state.value.scrollParagraph) return
         val safe = paragraphId.coerceAtLeast(0)
         _state.value = _state.value.copy(scrollParagraph = safe, pageIndex = 0)
-        bookEntity?.let { refreshKnowledgeStatus(it) }
+        scheduleKnowledgeStatusRefresh()
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(500)

@@ -47,7 +47,7 @@ class MonoPaginator {
             lineSpacingMultiplier = style.lineHeight,
         )
         val result = StaticLayoutPaginator.paginate(layout, viewport.heightPx)
-        val ranges = blockRanges(chapter.blocks)
+        val ranges = blockRanges(chapter.blocks, chapter.text)
         val pages = result.pages.mapIndexed { index, slice ->
             ReaderPage(
                 index = index,
@@ -65,12 +65,16 @@ class MonoPaginator {
         val end: Int,
     )
 
-    private fun blockRanges(blocks: List<ReaderBlock>): List<BlockRange> {
+    private fun blockRanges(blocks: List<ReaderBlock>, text: String): List<BlockRange> {
         val out = mutableListOf<BlockRange>()
         var cursor = 0
         for (block in blocks) {
-            out += BlockRange(block.id, cursor, cursor + block.text.length)
-            cursor += block.text.length + 2 // "\n\n"
+            if (block.text.isEmpty()) continue
+            val found = text.indexOf(block.text, cursor)
+            val start = if (found >= 0) found else cursor
+            val end = (start + block.text.length).coerceAtMost(text.length)
+            out += BlockRange(block.id, start, end)
+            cursor = end
         }
         return out
     }

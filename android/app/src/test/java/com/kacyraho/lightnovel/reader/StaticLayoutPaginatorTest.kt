@@ -1,6 +1,8 @@
 package com.kacyraho.lightnovel.reader
 
 import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spanned
 import android.text.TextPaint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -69,5 +71,23 @@ class StaticLayoutPaginatorTest {
         val result = StaticLayoutPaginator.paginate(sampleText(4), 720, 20, paint(48f))
         assertTrue(result.pages.isNotEmpty())
         assertEquals(0, result.pages.first().start)
+    }
+
+    @Test
+    fun pageSubsequenceKeepsEntityClickSpan() {
+        val text = SpannableString("爱丽丝说「走吧」。")
+        text.setSpan(
+            EntityClickSpan("ent-alice"),
+            0,
+            3,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        val pageText = text.subSequence(0, text.length)
+        val layout = StaticLayoutPaginator.build(pageText, 720, paint(48f))
+        val spanned = layout.text as Spanned
+
+        assertTrue(
+            spanned.getSpans(0, 3, EntityClickSpan::class.java).isNotEmpty(),
+        )
     }
 }

@@ -1,5 +1,8 @@
 package com.kacyraho.lightnovel.data.source
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class SourceBook(
     val provider: String,
     val id: String,
@@ -18,11 +21,13 @@ data class SourceBook(
     val tagsZh: List<String> = emptyList(),
 )
 
+@Immutable
 data class SourceChapterRef(
     val id: String,
     val title: String,
 )
 
+@Immutable
 data class SourceDetail(
     val book: SourceBook,
     val chapters: List<SourceChapterRef>,
@@ -36,6 +41,8 @@ interface WebSource {
     suspend fun search(query: String, page: Int = 0): List<SourceBook>
 
     suspend fun recommend(): List<SourceBook> = emptyList()
+
+    suspend fun discoverPage(page: Int): List<SourceBook> = emptyList()
 
     suspend fun detail(bookId: String): SourceDetail
 

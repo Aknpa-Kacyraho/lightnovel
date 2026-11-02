@@ -109,11 +109,17 @@ class SyosetuSource(
             }
         }.getOrNull()
         if (!api.isNullOrEmpty()) return api
-        return recommendHtml()
+        return recommendHtml(0)
     }
 
-    private suspend fun recommendHtml(): List<SourceBook> {
-        val html = fetch("https://yomou.syosetu.com/rank/list/type/weekly_total/", api = false)
+    override suspend fun discoverPage(page: Int): List<SourceBook> = recommendHtml(page)
+
+    private suspend fun recommendHtml(page: Int = 0): List<SourceBook> {
+        val suffix = if (page <= 0) "" else "?p=${page + 1}"
+        val html = fetch(
+            "https://yomou.syosetu.com/rank/list/type/weekly_total/$suffix",
+            api = false,
+        )
         return html.split("<!-- /.c-card -->")
             .mapNotNull { block -> parseRankBlock(block) }
             .take(20)
@@ -263,7 +269,7 @@ class SyosetuSource(
                 .filter { it.isNotBlank() },
             episodes = this["general_all_no"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0,
             url = "https://ncode.syosetu.com/${ncode.lowercase()}/",
-            synopsis = this["story"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            synopsis = stripHtml(this["story"]?.jsonPrimitive?.contentOrNull.orEmpty()),
             updatedAt = (this["general_lastup"]?.jsonPrimitive?.contentOrNull.orEmpty()).take(10),
             status = when (this["end"]?.jsonPrimitive?.contentOrNull) {
                 "1" -> "completed"
@@ -307,6 +313,14 @@ class SyosetuSource(
             .replace("&gt;", ">")
             .replace("&quot;", "\"")
             .replace("&#39;", "'")
+            .replace(Regex("""&#(x?[0-9A-Fa-f]+);""")) { match ->
+                val raw = match.groupValues[1]
+                val code = if (raw.startsWith("x")) raw.drop(1).toIntOrNull(16)
+                else raw.toIntOrNull()
+                code?.takeIf(Character::isValidCodePoint)
+                    ?.let { String(Character.toChars(it)) }
+                    ?: match.value
+            }
             .trim()
 
     private companion object {

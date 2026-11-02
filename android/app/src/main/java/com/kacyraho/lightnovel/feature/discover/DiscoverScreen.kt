@@ -51,8 +51,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
+import com.kacyraho.lightnovel.data.catalog.TagLocalizer
+import com.kacyraho.lightnovel.data.catalog.TextSanitizer
 import com.kacyraho.lightnovel.data.source.SourceBook
 import com.kacyraho.lightnovel.ui.components.BookCover
+import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 import com.kacyraho.lightnovel.ui.components.LnTag
 import com.kacyraho.lightnovel.ui.components.LnTagKind
@@ -71,11 +74,14 @@ fun DiscoverRoute(
     initialMode: String? = null,
     onBack: (() -> Unit)? = null,
     onOpenBook: (String) -> Unit,
+    onOpenCatalog: (() -> Unit)? = null,
 ) {
     val viewModel: DiscoverViewModel = viewModel {
         DiscoverViewModel(
             sources = container.directLibraryService.sources,
             library = container.directLibraryService,
+            catalog = container.catalogRepository,
+            settingsStore = container.settingsStore,
             metadataService = container.metadataTranslationService,
             historyStore = container.searchHistoryStore,
             presetStore = container.searchPresetStore,
@@ -83,6 +89,18 @@ fun DiscoverRoute(
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val visibleResults = remember(
+        state.results,
+        state.sourceFilter,
+        state.statusFilter,
+        state.characterFilter,
+    ) {
+        state.results.filter {
+            (state.sourceFilter == null || it.provider == state.sourceFilter) &&
+                it.matchesStatus(state.statusFilter) &&
+                it.matchesCharacters(state.characterFilter)
+        }
+    }
 
     LaunchedEffect(initialQuery, initialMode) {
         if (!initialQuery.isNullOrBlank()) {
@@ -137,6 +155,11 @@ fun DiscoverRoute(
                     }
                 },
                 actions = {
+                    if (onOpenCatalog != null) {
+                        TextButton(onClick = onOpenCatalog) {
+                            Text("大书库")
+                        }
+                    }
                     TextButton(onClick = viewModel::openLinkSheet) {
                         Text("链接加书")
                     }
@@ -242,11 +265,7 @@ fun DiscoverRoute(
             }
             when {
                 state.results.isNotEmpty() -> SearchResults(
-                    results = state.results.filter {
-                        (state.sourceFilter == null || it.provider == state.sourceFilter) &&
-                            it.matchesStatus(state.statusFilter) &&
-                            it.matchesCharacters(state.characterFilter)
-                    },
+                    results = visibleResults,
                     sourceFilter = state.sourceFilter,
                     onSourceFilterChange = viewModel::setSourceFilter,
                     statusFilter = state.statusFilter,
@@ -287,6 +306,8 @@ fun DiscoverRoute(
                 else -> DiscoverHome(
                     recommendations = state.recommendations,
                     loading = state.loadingRecommendations,
+                    loadingPool = state.loadingPool,
+                    onShuffle = viewModel::shuffleRecommendations,
                     onAdd = viewModel::add,
                     addingId = state.addingId,
                     addedKeys = state.addedKeys,
@@ -303,6 +324,8 @@ fun DiscoverRoute(
 private fun DiscoverHome(
     recommendations: List<SourceBook>,
     loading: Boolean,
+    loadingPool: Boolean,
+    onShuffle: () -> Unit,
     addingId: String?,
     addedKeys: Set<String>,
     onAdd: (SourceBook) -> Unit,
@@ -318,17 +341,33 @@ private fun DiscoverHome(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "本周推荐",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onShuffle) { Text("换一批") }
+            }
             Text(
-                "本周推荐",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            Text(
-                "来自 Kakuyomu / 成为小说家吧；先看简介，再决定要不要加入书架。",
+                "从大书库随机抽取；来自 Kakuyomu / 成为小说家吧。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
+            if (loadingPool) {
+                Text(
+                    "正在扩充大书库…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
         }
         item {
             LazyRow(
@@ -354,7 +393,11 @@ private fun DiscoverHome(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(commonTags) { tag ->
-                    LnTag(text = tag, kind = LnTagKind.TYPE, onClick = { onTagClick(tag) })
+                    LnTag(
+                        text = TagLocalizer.translate(tag) ?: tag,
+                        kind = LnTagKind.TYPE,
+                        onClick = { onTagClick(tag) },
+                    )
                 }
             }
         }
@@ -532,6 +575,7 @@ private fun RecommendationCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(188.dp),
+            size = BookCoverSize.LARGE,
         )
         Spacer(Modifier.height(6.dp))
         Text(
@@ -563,7 +607,7 @@ private fun SourceResultCard(
     onAuthorClick: (String) -> Unit,
     onTagClick: (String) -> Unit,
 ) {
-    val pairs = item.tagPairs()
+    val pairs = remember(item) { item.tagPairs() }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -576,6 +620,7 @@ private fun SourceResultCard(
             BookCover(
                 title = (item.titleZh ?: item.title).ifBlank { item.id },
                 modifier = Modifier.size(width = 64.dp, height = 88.dp),
+                size = BookCoverSize.SMALL,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Top) {
@@ -608,7 +653,9 @@ private fun SourceResultCard(
                             text = item.author,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { onAuthorClick(item.author) },
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .clickable { onAuthorClick(item.author) },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -629,7 +676,8 @@ private fun SourceResultCard(
                         )
                     }
                 }
-                val synopsis = item.synopsisZh ?: item.synopsis
+                val synopsis = (item.synopsisZh ?: item.synopsis)
+                    .let(TextSanitizer::decode)
                 if (synopsis.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -642,8 +690,8 @@ private fun SourceResultCard(
                 }
                 if (pairs.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        itemsIndexed(pairs.take(3)) { _, pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        pairs.take(3).forEach { pair ->
                             LnTag(
                                 text = pair.second,
                                 kind = LnTagKind.TYPE,
@@ -695,7 +743,11 @@ private fun BookPreviewSheet(
                         text = book.author,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onAuthorClick(book.author) },
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .clickable { onAuthorClick(book.author) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 SourceBadge(sourceLabel(book.provider))
@@ -721,7 +773,8 @@ private fun BookPreviewSheet(
             HorizontalDivider()
             Text("简介", style = MaterialTheme.typography.titleSmall)
             Text(
-                text = (book.synopsisZh ?: book.synopsis).ifBlank { "暂无简介" },
+                text = TextSanitizer.decode(book.synopsisZh ?: book.synopsis)
+                    .ifBlank { "暂无简介" },
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(
@@ -788,7 +841,11 @@ private fun LinkSheet(
 private fun SourceBook.tagPairs(): List<Pair<String, String>> {
     val localized = if (tagsZh.size == tags.size) tagsZh else emptyList()
     return tags.mapIndexed { index, original ->
-        original to (localized.getOrNull(index)?.takeIf(String::isNotBlank) ?: original)
+        original to (
+            localized.getOrNull(index)?.takeIf(String::isNotBlank)
+                ?: TagLocalizer.translate(original)
+                ?: original
+            )
     }
 }
 

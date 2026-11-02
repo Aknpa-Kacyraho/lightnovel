@@ -31,6 +31,35 @@ data class BookEntity(
     @ColumnInfo(name = "legacy_json") val legacyJson: String?,
 )
 
+@Entity(
+    tableName = "catalog_books",
+    primaryKeys = ["provider", "source_id"],
+    indices = [
+        Index(value = ["last_seen_at"]),
+        Index(value = ["updated_at"]),
+        Index(value = ["title"]),
+    ],
+)
+data class CatalogBookEntity(
+    val provider: String,
+    @ColumnInfo(name = "source_id") val sourceId: String,
+    val title: String,
+    val author: String?,
+    @ColumnInfo(name = "tags_json") val tagsJson: String?,
+    val episodes: Int,
+    val url: String?,
+    val synopsis: String?,
+    @ColumnInfo(name = "updated_at") val updatedAt: String?,
+    val status: String?,
+    val characters: Int?,
+    val genre: String?,
+    @ColumnInfo(name = "title_zh") val titleZh: String?,
+    @ColumnInfo(name = "synopsis_zh") val synopsisZh: String?,
+    @ColumnInfo(name = "tags_zh_json") val tagsZhJson: String?,
+    @ColumnInfo(name = "first_seen_at") val firstSeenAt: String,
+    @ColumnInfo(name = "last_seen_at") val lastSeenAt: String,
+)
+
 @Entity(tableName = "read_state")
 data class ReadStateEntity(
     @PrimaryKey @ColumnInfo(name = "book_id") val bookId: String,

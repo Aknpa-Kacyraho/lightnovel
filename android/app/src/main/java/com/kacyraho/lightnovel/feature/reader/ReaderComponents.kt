@@ -131,7 +131,7 @@ fun StaleBanner(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChapterInfoSheet(
-    info: ReaderChapterInfo,
+    info: ReaderChapterInfo?,
     reasons: Set<StaleReason>,
     theme: ReaderTheme,
     onDismiss: () -> Unit,
@@ -150,24 +150,32 @@ fun ChapterInfoSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("本章翻译信息", style = MaterialTheme.typography.titleMedium, color = theme.text)
-            InfoRow("模型", info.model, theme)
-            InfoRow("翻译时间", formatTime(info.translatedAt), theme)
-            InfoRow("Token", "${info.tokensIn} / ${info.tokensOut}", theme)
-            InfoRow("估算费用", "¥${"%.4f".format(info.costCny)}", theme)
-            InfoRow("未完成段落", info.incompleteParagraphs.toString(), theme)
-            InfoRow("内容指纹", info.cacheKey, theme)
-            InfoRow(
-                "旧版本",
-                if (info.oldVersionAvailable) {
-                    "已保存${info.oldTranslatedAt?.let { " · ${formatTime(it)}" }.orEmpty()}"
-                } else {
-                    "无"
-                },
-                theme,
-            )
-            InfoRow("与旧版差异", "${info.changedParagraphs} 段", theme)
-            if (reasons.isNotEmpty()) {
-                InfoRow("过期原因", staleLabels(reasons), theme)
+            if (info == null) {
+                Text(
+                    "本章还没有翻译信息。翻译本章后，这里会显示模型、费用、内容指纹和旧版本差异。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = theme.secondary,
+                )
+            } else {
+                InfoRow("模型", info.model, theme)
+                InfoRow("翻译时间", formatTime(info.translatedAt), theme)
+                InfoRow("Token", "${info.tokensIn} / ${info.tokensOut}", theme)
+                InfoRow("估算费用", "¥${"%.4f".format(info.costCny)}", theme)
+                InfoRow("未完成段落", info.incompleteParagraphs.toString(), theme)
+                InfoRow("内容指纹", info.cacheKey, theme)
+                InfoRow(
+                    "旧版本",
+                    if (info.oldVersionAvailable) {
+                        "已保存${info.oldTranslatedAt?.let { " · ${formatTime(it)}" }.orEmpty()}"
+                    } else {
+                        "无"
+                    },
+                    theme,
+                )
+                InfoRow("与旧版差异", "${info.changedParagraphs} 段", theme)
+                if (reasons.isNotEmpty()) {
+                    InfoRow("过期原因", staleLabels(reasons), theme)
+                }
             }
             HorizontalDivider(color = theme.secondary.copy(alpha = 0.3f))
             Row(
@@ -224,6 +232,7 @@ fun ReaderTopBar(
     onRetranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenWorldline: () -> Unit,
     onOpenQuery: () -> Unit,
     queryMode: Boolean,
     onToggleQueryMode: () -> Unit,
@@ -276,6 +285,7 @@ fun ReaderTopBar(
             onRetranslate = onRetranslate,
             onPolish = onPolish,
             onOpenMemory = onOpenMemory,
+            onOpenWorldline = onOpenWorldline,
             onOpenQuery = onOpenQuery,
             queryMode = queryMode,
             onToggleQueryMode = onToggleQueryMode,
@@ -375,6 +385,7 @@ private fun TranslationMenu(
     onRetranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenWorldline: () -> Unit,
     onOpenQuery: () -> Unit,
     queryMode: Boolean,
     onToggleQueryMode: () -> Unit,
@@ -420,6 +431,13 @@ private fun TranslationMenu(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text("从这里开世界线") },
+                onClick = {
+                    expanded = false
+                    onOpenWorldline()
+                },
+            )
             DropdownMenuItem(
                 text = { Text("本页词条") },
                 onClick = {

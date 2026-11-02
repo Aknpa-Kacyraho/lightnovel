@@ -227,21 +227,28 @@ Column
 - [ ] 设置 5 组；主题 8 套预览卡；字号/行距/边距/段距/常亮可达；高级端点折叠；清缓存确认。
 - [ ] 8 套主题浅/深色标签/状态/正文对比度通过；业务页面无硬编码颜色。
 - [ ] 最近阅读不漏导入书；`tags_json` 对在线书/本地书可解析；主题默认/回退 amber。
-- [ ] 现有 72 tests 全绿（更新允许的断言后）；新增主题/标签/继续阅读测试全绿；`lintDebug` 无新增 error。
+- [x] 当前 140 tests 全绿（0 failures / 1 skipped）；新增主题/标签/继续阅读/大书库/性能/标签汉化/段落锚点测试全绿；`lintDebug` 0 errors。
 - [ ] 真机：4 Tab、详情 Tab、标签/作者跳转、加书、最近阅读、8 主题切换、深色、返回栈无异常。
 
 
 ## 8. 实施补充（2026-10-31）
 
-- 当前构建：`0.9.1`（versionCode 24）。
+- 当前构建：`0.9.4`（versionCode 27）。
+- 大书库：发现页搜索/推荐/翻译元数据持久化到 Room `catalog_books`；发现页顶栏「大书库」支持本地搜索、来源/状态/标签多选（同时满足）、最近爬取/更新/话数/字数/书名排序；标签用 `TagLocalizer` 本地汉化，未知标签保留原文；加入书架复用 `DirectLibraryService`。
+- 发现池：目录不足 200 本时从 Kakuyomu/Syosetu 排行榜各抓 10 页写入目录，再随机抽 24 本；`(provider, source_id)` 主键去重，`catalogCrawlAt` 记录成功扩充时间，7 天内不重复爬，提供「换一批」。
+- 阅读性能：翻页视图按页构建 `StaticLayout`，不再每帧绘制整章；滚动段落知识状态 120ms 防抖，`translatedThrough` 与正文/边车读取移到 IO 线程。实测翻页 janky 1/988（0.10%），发现页 3/1040（0.29%）。
+- 封面文字：`BookCoverLabel` 清掉前导括号/首尾标点；`BookCoverSize` 按 46/52/64/82/148dp 宽度显示 8/10/14/20/30 个字符，书架小封面能显示完整短书名。
+- 阅读器内世界线：更多菜单「从这里开世界线」自动以当前章/段为分叉点，填写角色/行动/约束并确认后调用 `WorldlineService.createBranch`；生成中/成功/失败都在 Sheet 内显示，可跳到世界线页。
+- 查询模式无词条时自动打开本页词条 Sheet 并提示更新本章资料；「本章信息」无 sidecar 时显示占位说明，不再点了没反应。
+- 翻译自检：`retranslateParagraph` 在边车仍为 partial 时返回 `Partial`，不再误报完成。
 - 任务中心已按书分组，支持状态筛选（全部/失败/未译全/进行中）；失败/未译全可带 `retry=true` 进入阅读器自动重试。
 - 从标签/作者进入发现搜索时，搜索页提供返回箭头；仍保留当前栈 push 语义，完整多 Tab 栈恢复未做。
-- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 124 tests / 0 failures / 1 skipped。
+- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 140 tests / 0 failures / 1 skipped。
 - 翻译设置支持 OpenAI 兼容供应商预设与自定义端点；首次保存自动校准 batch/sakura 协议和安全块大小，结果按端点+模型缓存，可手动重测。
 - 故事记忆按书存 `story.json`：术语/人物卡/梗概/风格/经验；翻译只注入本段相关记忆，自动生成章节梗概；「本书设定」可编辑与扫描人物/检查译名；阅读器支持「润色本章」。
 - 事实级知识库按书存 `knowledge.json`：Entity/Fact/Relation/VoiceFact/Secret，带原文 quote 与锚点；翻译后增量抽取；阅读器查询模式支持正文下划线、点词卡片、章节出处和「资料更新中」状态。
 - 完整世界线：从指定章分叉、用户介入角色行动；plan → Writer → Validator → 分支知识抽取 → branchCursor/branchExtractedThrough；CharacterView 只含分叉前已知 + 分支实际经历，Writer 永不看 reveal_content；对照型生成差异报告。
-- 真机回归因测试机断开暂未重新安装 alpha.2；alpha.1 已完成 4 Tab/详情双 Tab/主题/发现/标签搜索的截图验证。
+- 真机回归：0.9.2 已验证 4 Tab、大书库搜索/标签筛选/排序、翻页/滚动阅读与查询模式翻页按钮；0.9.3 已构建，待设备重新连接后复测大书库多选、发现池与阅读器世界线。
 
 - 参考官方 Novelia 客户端：发现页增加最近搜索、来源筛选；结果行改为紧凑行（封面/标题/作者/话数/更新时间/标签/加入）。只借鉴信息层级，不复制 GPL 代码。
 

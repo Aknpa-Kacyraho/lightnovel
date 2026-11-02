@@ -50,6 +50,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.data.local.BookWithState
 import com.kacyraho.lightnovel.ui.components.BookCover
+import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -352,6 +353,7 @@ private fun ContinueCard(
             BookCover(
                 title = item.book.titleZh ?: item.book.title,
                 modifier = Modifier.size(width = 46.dp, height = 62.dp),
+                size = BookCoverSize.COMPACT,
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -389,6 +391,7 @@ private fun BookRow(
             BookCover(
                 title = item.book.titleZh ?: item.book.title,
                 modifier = Modifier.size(width = 52.dp, height = 72.dp),
+                size = BookCoverSize.TINY,
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

@@ -26,6 +26,9 @@ interface LibraryDao {
     @Query("SELECT * FROM books ORDER BY title")
     suspend fun books(): List<BookEntity>
 
+    @Query("SELECT source || '/' || source_id FROM books WHERE local = 0")
+    suspend fun onlineKeys(): List<String>
+
     @Query("SELECT * FROM books WHERE id = :bookId")
     suspend fun book(bookId: String): BookEntity?
 

@@ -34,13 +34,16 @@ class KakuyomuSource(
     }
 
     override suspend fun recommend(): List<SourceBook> {
-        val weekly = runCatching {
-            worksFromPage(fetch("https://kakuyomu.jp/rankings/all/weekly"))
-        }.getOrDefault(emptyList())
+        val weekly = runCatching { discoverPage(0) }.getOrDefault(emptyList())
         if (weekly.isNotEmpty()) return weekly
         return runCatching {
             worksFromPage(fetch("https://kakuyomu.jp/rankings/all/monthly"))
         }.getOrDefault(emptyList())
+    }
+
+    override suspend fun discoverPage(page: Int): List<SourceBook> {
+        val suffix = if (page <= 0) "" else "?page=${page + 1}"
+        return worksFromPage(fetch("https://kakuyomu.jp/rankings/all/weekly$suffix"))
     }
 
     override suspend fun detail(bookId: String): SourceDetail {
@@ -202,6 +205,14 @@ class KakuyomuSource(
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&quot;", "\"")
+            .replace(Regex("""&#(x?[0-9A-Fa-f]+);""")) { match ->
+                val raw = match.groupValues[1]
+                val code = if (raw.startsWith("x")) raw.drop(1).toIntOrNull(16)
+                else raw.toIntOrNull()
+                code?.takeIf(Character::isValidCodePoint)
+                    ?.let { String(Character.toChars(it)) }
+                    ?: match.value
+            }
             .trim()
 
     private fun divInner(html: String, marker: String): String? {

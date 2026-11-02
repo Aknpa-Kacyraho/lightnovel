@@ -33,6 +33,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.R
+import com.kacyraho.lightnovel.feature.catalog.CatalogRoute
 import com.kacyraho.lightnovel.feature.chapters.ChapterListRoute
 import com.kacyraho.lightnovel.feature.discover.DiscoverRoute
 import com.kacyraho.lightnovel.feature.library.LibraryRoute
@@ -170,6 +171,13 @@ fun LightnovelNavHost(container: AppContainer) {
                             onOpenBook = { bookId ->
                                 discoverNav.navigate("chapters/$bookId?from=discover")
                             },
+                            onOpenCatalog = { discoverNav.navigate("catalog") },
+                        )
+                    }
+                    composable("catalog") {
+                        CatalogRoute(
+                            container = container,
+                            onBack = { discoverNav.popBackStack() },
                         )
                     }
                     composable(
@@ -195,6 +203,7 @@ fun LightnovelNavHost(container: AppContainer) {
                             onOpenBook = { bookId ->
                                 discoverNav.navigate("chapters/$bookId?from=discover")
                             },
+                            onOpenCatalog = { discoverNav.navigate("catalog") },
                         )
                     }
                     bookRoutes(
@@ -216,6 +225,28 @@ fun LightnovelNavHost(container: AppContainer) {
                             onRetryChapter = { bookId, idx ->
                                 tasksNav.navigate("reader/$bookId/$idx?retry=true")
                             },
+                        )
+                    }
+                    composable(
+                        route = "memory/{bookId}",
+                        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
+                    ) { entry ->
+                        val bookId = entry.arguments?.getString("bookId") ?: return@composable
+                        StoryMemoryRoute(
+                            container = container,
+                            bookId = bookId,
+                            onBack = { tasksNav.popBackStack() },
+                        )
+                    }
+                    composable(
+                        route = "worldlines/{bookId}",
+                        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
+                    ) { entry ->
+                        val bookId = entry.arguments?.getString("bookId") ?: return@composable
+                        WorldlineRoute(
+                            container = container,
+                            bookId = bookId,
+                            onBack = { tasksNav.popBackStack() },
                         )
                     }
                     readerRoute(tasksNav, container)
@@ -338,6 +369,7 @@ private fun NavGraphBuilder.readerRoute(
                 }
             },
             onOpenMemory = { nav.navigate("memory/$bookId") },
+            onOpenWorldlines = { nav.navigate("worldlines/$bookId") },
             onOpenChapter = { next ->
                 nav.navigate("reader/$bookId/$next") {
                     popUpTo(entry.destination.id) { inclusive = true }

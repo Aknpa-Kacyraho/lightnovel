@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import com.kacyraho.lightnovel.core.settings.SearchHistoryStore
 import com.kacyraho.lightnovel.core.settings.SearchPreset
 import com.kacyraho.lightnovel.core.settings.SearchPresetStore
+import com.kacyraho.lightnovel.core.settings.SettingsStore
 import androidx.lifecycle.viewModelScope
+import com.kacyraho.lightnovel.data.catalog.CatalogRepository
 import com.kacyraho.lightnovel.data.source.DirectLibraryService
 import com.kacyraho.lightnovel.data.source.SourceBook
 import com.kacyraho.lightnovel.data.source.WebSource
@@ -16,7 +18,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class DiscoverUiState(
@@ -29,6 +34,7 @@ data class DiscoverUiState(
     val results: List<SourceBook> = emptyList(),
     val recommendations: List<SourceBook> = emptyList(),
     val loadingRecommendations: Boolean = false,
+    val loadingPool: Boolean = false,
     val metadataLoading: Boolean = false,
     val recentSearches: List<String> = emptyList(),
     val savedSearches: List<SearchPreset> = emptyList(),
@@ -45,6 +51,8 @@ data class DiscoverUiState(
 class DiscoverViewModel(
     private val sources: List<WebSource>,
     private val library: DirectLibraryService,
+    private val catalog: CatalogRepository? = null,
+    private val settingsStore: SettingsStore? = null,
     private val metadataService: MetadataTranslationService? = null,
     private val historyStore: SearchHistoryStore? = null,
     private val presetStore: SearchPresetStore? = null,
@@ -58,6 +66,8 @@ class DiscoverViewModel(
     val state: StateFlow<DiscoverUiState> = _state.asStateFlow()
     private var searchJob: Job? = null
     private var searchToken = 0
+    private var recommendationVersion = 0
+    private var poolCrawlAttempted = false
 
     init {
         loadRecommendations()
@@ -65,7 +75,104 @@ class DiscoverViewModel(
 
     fun loadRecommendations() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(loadingRecommendations = true)
+            val version = ++recommendationVersion
+            val shelf = runCatching { library.shelfKeys() }.getOrDefault(emptySet())
+            _state.value = _state.value.copy(
+                addedKeys = _state.value.addedKeys + shelf,
+            )
+            val store = catalog
+            val existing = store?.let { repo ->
+                repo.random(48).filterNot { it.key() in shelf }.take(24)
+            }.orEmpty()
+            _state.value = _state.value.copy(
+                loadingRecommendations = existing.isEmpty(),
+                recommendations = if (existing.isNotEmpty()) existing else _state.value.recommendations,
+            )
+            if (existing.isNotEmpty()) translateCards(existing, null, version)
+            if (store == null) {
+                loadSourceRecommendations()
+                return@launch
+            }
+            val count = runCatching { store.count() }.getOrDefault(0)
+            val lastCrawlAt = runCatching {
+                settingsStore?.settings?.first()?.catalogCrawlAt ?: 0L
+            }.getOrDefault(0L)
+            val crawlFresh = lastCrawlAt > 0 &&
+                System.currentTimeMillis() - lastCrawlAt < 7L * 24 * 60 * 60 * 1000
+            if (count >= 200 || poolCrawlAttempted || crawlFresh) {
+                if (existing.isEmpty()) loadSourceRecommendations()
+                return@launch
+            }
+            poolCrawlAttempted = true
+            _state.value = _state.value.copy(loadingPool = true)
+            val pool = crawlPool()
+            if (pool.isNotEmpty()) {
+                val saved = runCatching { store.remember(pool) }.getOrDefault(0)
+                if (saved > 0) {
+                    runCatching {
+                        settingsStore?.update {
+                            it.copy(catalogCrawlAt = System.currentTimeMillis())
+                        }
+                    }
+                }
+                val recommendations = runCatching {
+                    store.random(48).filterNot { it.key() in shelf }.take(24)
+                }.getOrNull().orEmpty().ifEmpty {
+                    runCatching { store.random(24) }.getOrNull().orEmpty()
+                }
+                _state.value = _state.value.copy(
+                    loadingRecommendations = false,
+                    loadingPool = false,
+                    recommendations = recommendations,
+                )
+                if (recommendations.isNotEmpty()) translateCards(recommendations, null, version)
+            } else {
+                _state.value = _state.value.copy(loadingPool = false)
+                if (existing.isEmpty()) loadSourceRecommendations()
+            }
+        }
+    }
+
+    fun shuffleRecommendations() {
+        viewModelScope.launch {
+            val version = ++recommendationVersion
+            val shelf = runCatching { library.shelfKeys() }.getOrDefault(emptySet())
+            val pool = runCatching {
+                catalog?.random(48)?.filterNot { it.key() in shelf }?.take(24)
+            }.getOrNull().orEmpty().ifEmpty {
+                runCatching { catalog?.random(24) }.getOrNull().orEmpty()
+            }
+            if (pool.isEmpty()) return@launch
+            _state.value = _state.value.copy(recommendations = pool, errors = emptyList())
+            translateCards(pool, null, version)
+        }
+    }
+
+    private suspend fun crawlPool(): List<SourceBook> {
+        val gate = Semaphore(8)
+        val found = coroutineScope {
+            sources.map { source ->
+                async {
+                    (0 until 10).map { page ->
+                        async {
+                            gate.withPermit {
+                                runCatching {
+                                    withTimeoutOrNull(8_000) { source.discoverPage(page) }
+                                        ?: emptyList()
+                                }.getOrDefault(emptyList())
+                            }
+                        }
+                    }.awaitAll().flatten()
+                }
+            }.awaitAll()
+        }
+        return interleave(found).distinctBy { it.provider + "/" + it.id }
+    }
+
+    private fun loadSourceRecommendations() {
+        viewModelScope.launch {
+            val version = ++recommendationVersion
+            val shelf = runCatching { library.shelfKeys() }.getOrDefault(emptySet())
             val found = coroutineScope {
                 sources.map { source ->
                     async {
@@ -77,17 +184,21 @@ class DiscoverViewModel(
             }
             val recommendations = interleave(
                 found.map { (_, result) -> result.getOrDefault(emptyList()) },
-            ).distinctBy { it.provider + "/" + it.id }.take(12)
+            ).distinctBy { it.provider + "/" + it.id }
+                .filterNot { it.key() in shelf }
+                .take(24)
             val errors = found.mapNotNull { (source, result) ->
                 result.exceptionOrNull()?.let { errorText(source.label, it) }
             }
             _state.value = _state.value.copy(
                 loadingRecommendations = false,
                 recommendations = recommendations,
+                addedKeys = _state.value.addedKeys + shelf,
                 errors = _state.value.errors + errors,
             )
+            runCatching { catalog?.remember(recommendations) }
             if (recommendations.isNotEmpty()) {
-                translateCards(recommendations, null)
+                translateCards(recommendations, null, version)
             }
         }
     }
@@ -168,20 +279,36 @@ class DiscoverViewModel(
                 searchedQuery = query,
                 errors = errors,
             )
+            runCatching { catalog?.remember(results) }
             if (results.isNotEmpty()) {
                 translateCards(results, token)
             }
         }
     }
 
-    private fun translateCards(items: List<SourceBook>, token: Int?) {
+    private fun translateCards(
+        items: List<SourceBook>,
+        token: Int?,
+        recommendationVersion: Int? = null,
+    ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(metadataLoading = true)
             val translated = runCatching {
-                metadataService?.translateCards(items)
+                withTimeoutOrNull(45_000) {
+                    metadataService?.translateCards(items)
+                }
             }.getOrNull()
+            if (recommendationVersion != null &&
+                recommendationVersion != this@DiscoverViewModel.recommendationVersion
+            ) {
+                _state.value = _state.value.copy(metadataLoading = false)
+                return@launch
+            }
             if (token != null && token != searchToken) {
                 _state.value = _state.value.copy(metadataLoading = false)
+                if (!translated.isNullOrEmpty()) {
+                    runCatching { catalog?.remember(translated) }
+                }
                 return@launch
             }
             _state.value = _state.value.copy(
@@ -191,6 +318,9 @@ class DiscoverViewModel(
                 results = if (token != null) translated ?: _state.value.results
                 else _state.value.results,
             )
+            if (!translated.isNullOrEmpty()) {
+                runCatching { catalog?.remember(translated) }
+            }
         }
     }
 
@@ -260,6 +390,10 @@ class DiscoverViewModel(
                         addedKeys = _state.value.addedKeys + key,
                         addedBookId = entity.id,
                     )
+                    runCatching {
+                        catalog?.remember(listOf(book))
+                        catalog?.remember(listOf(library.detail(entity).book))
+                    }
                 }
                 .onFailure {
                     _state.value = _state.value.copy(
@@ -302,6 +436,8 @@ class DiscoverViewModel(
     fun consumeAddedBook() {
         _state.value = _state.value.copy(addedBookId = null)
     }
+
+    private fun SourceBook.key(): String = "$provider/$id"
 
     private fun <T> interleave(lists: List<List<T>>): List<T> {
         val result = mutableListOf<T>()

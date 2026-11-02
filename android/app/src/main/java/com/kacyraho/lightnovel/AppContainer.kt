@@ -12,6 +12,7 @@ import com.kacyraho.lightnovel.core.storage.CacheManager
 import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.core.storage.FileContentStore
 import com.kacyraho.lightnovel.core.storage.SafStager
+import com.kacyraho.lightnovel.data.catalog.CatalogRepository
 import com.kacyraho.lightnovel.data.glossary.GlossaryStore
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeExtractionService
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeQueryService
@@ -58,7 +59,10 @@ class AppContainer(
         LightnovelDatabase::class.java,
         "lightnovel.db",
     )
-        .addMigrations(LightnovelDatabase.MIGRATION_1_2)
+        .addMigrations(
+            LightnovelDatabase.MIGRATION_1_2,
+            LightnovelDatabase.MIGRATION_2_3,
+        )
         .build()
 
     val contentStore: ContentStore = FileContentStore(dataRoot)
@@ -68,6 +72,8 @@ class AppContainer(
     val safStager: SafStager = SafStager(context)
 
     val libraryRepository: LibraryRepository = RoomLibraryRepository(database)
+
+    val catalogRepository: CatalogRepository = CatalogRepository(database.catalogDao())
 
     val readerChapterCache: ReaderChapterCache = ReaderChapterCache()
 

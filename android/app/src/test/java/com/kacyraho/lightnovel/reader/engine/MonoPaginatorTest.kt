@@ -55,6 +55,31 @@ class MonoPaginatorTest {
     }
 
     @Test
+    fun singleNewlineParagraphsAdvancePageAnchors() {
+        val text = (1..80).joinToString("\n") { i ->
+            "第${i}段：这是一行用来验证单换行分段的正文。"
+        }
+        val chapter = ReaderChapter(
+            bookId = "b1",
+            idx = 1,
+            title = "第一话",
+            blocks = text.split("\n").mapIndexed { index, value -> ReaderBlock(index, value) },
+            text = text,
+            textKind = "raw",
+        )
+        val result = MonoPaginator().paginate(
+            chapter = chapter,
+            viewport = Viewport(720, 600),
+            paint = paint(48f),
+            style = MonoStyle(fontSizeSp = 18f, lineHeight = 1.7f),
+        )
+
+        assertTrue(result.pages.size > 1)
+        assertTrue(result.pages.any { it.startAnchor.paragraphId > 0 })
+        assertTrue(result.pages.last().endAnchor.paragraphId > 0)
+    }
+
+    @Test
     fun shorterViewportDoesNotReducePageCount() {
         val tall = MonoPaginator().paginate(
             chapter = chapter(),

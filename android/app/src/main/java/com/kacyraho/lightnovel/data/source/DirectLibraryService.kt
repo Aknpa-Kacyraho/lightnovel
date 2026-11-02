@@ -21,6 +21,8 @@ class DirectLibraryService(
     private val details = ConcurrentHashMap<String, SourceDetail>()
     private val chapterMutex = Mutex()
 
+    suspend fun shelfKeys(): Set<String> = dao.onlineKeys().toSet()
+
     suspend fun addToShelf(book: SourceBook): BookEntity {
         val source = byId[book.provider] ?: error("不支持的书源：${book.provider}")
         val detail = source.detail(book.id)

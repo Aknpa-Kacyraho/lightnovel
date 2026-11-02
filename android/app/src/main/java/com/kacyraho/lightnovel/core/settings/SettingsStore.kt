@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,7 @@ data class AppSettings(
     val translationCalibrationNote: String = "",
     val noveliaBaseUrl: String = "https://n.novelia.cc/api/",
     val lastBackupAt: String? = null,
+    val catalogCrawlAt: Long = 0L,
 )
 
 private val Context.lightnovelSettings: DataStore<Preferences> by preferencesDataStore(
@@ -70,6 +72,7 @@ class SettingsStore(
             prefs[Keys.TRANSLATION_CALIBRATED_AT] = merged.translationCalibratedAt
             prefs[Keys.TRANSLATION_CALIBRATION_NOTE] = merged.translationCalibrationNote
             prefs[Keys.NOVELIA_BASE_URL] = merged.noveliaBaseUrl
+            prefs[Keys.CATALOG_CRAWL_AT] = merged.catalogCrawlAt
             merged.lastBackupAt?.let { prefs[Keys.LAST_BACKUP_AT] = it }
                 ?: prefs.remove(Keys.LAST_BACKUP_AT)
         }
@@ -99,6 +102,7 @@ class SettingsStore(
         translationCalibrationNote = this[Keys.TRANSLATION_CALIBRATION_NOTE] ?: "",
         noveliaBaseUrl = this[Keys.NOVELIA_BASE_URL] ?: "https://n.novelia.cc/api/",
         lastBackupAt = this[Keys.LAST_BACKUP_AT],
+        catalogCrawlAt = this[Keys.CATALOG_CRAWL_AT] ?: 0L,
     )
 
     private object Keys {
@@ -124,5 +128,6 @@ class SettingsStore(
         val TRANSLATION_CALIBRATION_NOTE = stringPreferencesKey("translation_calibration_note")
         val NOVELIA_BASE_URL = stringPreferencesKey("novelia_base_url")
         val LAST_BACKUP_AT = stringPreferencesKey("last_backup_at")
+        val CATALOG_CRAWL_AT = longPreferencesKey("catalog_crawl_at")
     }
 }

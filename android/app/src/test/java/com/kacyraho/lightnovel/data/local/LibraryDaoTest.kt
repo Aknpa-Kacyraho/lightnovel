@@ -47,6 +47,28 @@ class LibraryDaoTest {
     }
 
     @Test
+    fun onlineKeysExcludeLocalBooks() = runTest {
+        val db = database()
+        try {
+            val dao = db.libraryDao()
+            dao.upsertBooks(
+                listOf(
+                    book("kakuyomu-online", "online", "Online"),
+                    book("local-1", "local", "Local").copy(
+                        source = "local",
+                        sourceId = "1",
+                        local = true,
+                    ),
+                ),
+            )
+
+            assertEquals(setOf("kakuyomu/online"), dao.onlineKeys().toSet())
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun appliesImportPlanWithoutDeletingAndIsIdempotent() = runTest {
         val path = tmp.newFile("import.zip").toPath()
         SyntheticBackup.nineteenBooks(path)

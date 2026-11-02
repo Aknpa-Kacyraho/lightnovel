@@ -70,6 +70,7 @@ fun ReaderRoute(
     onOpenCatalog: (() -> Unit)? = null,
     onOpenChapter: (Int) -> Unit,
     onOpenMemory: (() -> Unit)? = null,
+    onOpenWorldlines: (() -> Unit)? = null,
 ) {
     val viewModel: ReaderViewModel = viewModel(key = "reader-$bookId-$chapterIndex") {
         ReaderViewModel(
@@ -86,12 +87,14 @@ fun ReaderRoute(
             versionStore = container.versionStore,
             onlineBookService = container.directLibraryService,
             taskRegistry = container.translationTaskRegistry,
+            worldlineService = container.worldlineService,
             bookId = bookId,
             chapterIndex = chapterIndex,
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val translationState by viewModel.translationState.collectAsStateWithLifecycle()
+    val worldlineState by viewModel.worldlineState.collectAsStateWithLifecycle()
     var autoRetryConsumed by rememberSaveable(autoRetry, bookId, chapterIndex) { mutableStateOf(false) }
 
     LaunchedEffect(autoRetry, state.loading, state.error) {
@@ -104,6 +107,7 @@ fun ReaderRoute(
     ReaderContent(
         state = state,
         translationState = translationState,
+        worldlineState = worldlineState,
         onBack = onBack,
         onOpenCatalog = onOpenCatalog,
         onOpenChapter = onOpenChapter,
@@ -114,6 +118,9 @@ fun ReaderRoute(
         onTranslate = viewModel::translateChapter,
         onPolish = viewModel::polishChapter,
         onOpenMemory = onOpenMemory,
+        onOpenWorldlines = onOpenWorldlines,
+        onCreateWorldline = viewModel::createWorldline,
+        onConsumeWorldlineResult = viewModel::consumeWorldlineResult,
         onOpenQuery = viewModel::openQuery,
         onSelectEntity = viewModel::selectEntity,
         onCloseEntity = viewModel::closeEntity,
@@ -134,6 +141,7 @@ fun ReaderRoute(
 private fun ReaderContent(
     state: ReaderUiState,
     translationState: ReaderTranslationState,
+    worldlineState: ReaderWorldlineState,
     onBack: () -> Unit,
     onOpenCatalog: (() -> Unit)?,
     onOpenChapter: (Int) -> Unit,
@@ -144,6 +152,9 @@ private fun ReaderContent(
     onTranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
+    onOpenWorldlines: (() -> Unit)?,
+    onCreateWorldline: (String, String, String, String, String) -> Unit,
+    onConsumeWorldlineResult: () -> Unit,
     onOpenQuery: () -> Unit,
     onSelectEntity: (String) -> Unit,
     onCloseEntity: () -> Unit,
@@ -165,6 +176,7 @@ private fun ReaderContent(
     var showChapterInfo by remember { mutableStateOf(false) }
     var showGlossary by remember { mutableStateOf(false) }
     var showQuery by remember { mutableStateOf(false) }
+    var showWorldline by remember { mutableStateOf(false) }
     var showParagraph by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     val currentParagraphId = if (state.readerMode == "scroll") {
@@ -193,6 +205,10 @@ private fun ReaderContent(
 
     DisposableEffect(tts) {
         onDispose { tts.shutdown() }
+    }
+
+    LaunchedEffect(state.queryMode, state.queryHint) {
+        if (state.queryMode && state.queryHint != null) showQuery = true
     }
 
     DisposableEffect(readerTheme) {
@@ -240,6 +256,7 @@ private fun ReaderContent(
             onRetranslate = onTranslate,
             onPolish = onPolish,
             onOpenMemory = onOpenMemory,
+            onOpenWorldline = { showWorldline = true },
             onOpenQuery = {
                 onOpenQuery()
                 showQuery = true
@@ -259,6 +276,31 @@ private fun ReaderContent(
             enabled = !translationState.running && !state.loading,
             onRetranslate = onTranslate,
         )
+
+        if (state.queryMode && state.queryHint != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = state.queryHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryColor,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = {
+                        onOpenQuery()
+                        showQuery = true
+                    },
+                    colors = buttonColors,
+                ) {
+                    Text("查看资料")
+                }
+            }
+        }
 
         Row(
             modifier = Modifier
@@ -495,7 +537,7 @@ private fun ReaderContent(
             )
         }
 
-        if (showChapterInfo && state.chapterInfo != null) {
+        if (showChapterInfo) {
             ChapterInfoSheet(
                 info = state.chapterInfo,
                 reasons = state.staleReasons,
@@ -519,6 +561,29 @@ private fun ReaderContent(
                     onSelectEntity(entityId)
                 },
                 onUpdate = onUpdateKnowledge,
+            )
+        }
+
+        if (showWorldline) {
+            ReaderWorldlineSheet(
+                chapterIndex = state.chapterIndex,
+                paragraphIndex = currentParagraphId,
+                contextText = currentParagraph?.translated
+                    ?: currentParagraph?.source.orEmpty(),
+                state = worldlineState,
+                theme = readerTheme,
+                onDismiss = {
+                    showWorldline = false
+                    onConsumeWorldlineResult()
+                },
+                onCreate = onCreateWorldline,
+                onOpenWorldlines = onOpenWorldlines?.let { open ->
+                    {
+                        showWorldline = false
+                        onConsumeWorldlineResult()
+                        open()
+                    }
+                },
             )
         }
 
@@ -576,6 +641,23 @@ private fun ScrollReader(
     val initial = state.scrollParagraph
         .coerceIn(0, (blocks.size - 1).coerceAtLeast(0))
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initial)
+    val textStyle = remember(
+        readerTheme,
+        state.fontSizeSp,
+        state.lineHeight,
+        state.fontFamily,
+    ) {
+        TextStyle(
+            color = readerTheme.text,
+            fontSize = state.fontSizeSp.sp,
+            fontFamily = readerFontFamily(state.fontFamily),
+            lineHeight = (state.fontSizeSp * state.lineHeight).sp,
+        )
+    }
+    val paragraphBottom = remember(state.fontSizeSp, state.paragraphSpacing) {
+        (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp
+    }
+    val names = state.queryNames
 
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
@@ -588,37 +670,36 @@ private fun ScrollReader(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = state.marginDp.dp, vertical = 12.dp),
     ) {
-        itemsIndexed(blocks) { _, block ->
-            val names = state.queryNames
-            val textStyle = TextStyle(
-                color = readerTheme.text,
-                fontSize = state.fontSizeSp.sp,
-                fontFamily = readerFontFamily(state.fontFamily),
-                lineHeight = (state.fontSizeSp * state.lineHeight).sp,
-            )
+        itemsIndexed(
+            items = blocks,
+            key = { index, _ -> index },
+            contentType = { _, _ -> "paragraph" },
+        ) { _, block ->
             if (names.isEmpty()) {
                 Text(
                     text = block,
                     style = textStyle,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp),
+                        .padding(bottom = paragraphBottom),
                 )
             } else {
-                val annotated = buildAnnotatedString {
-                    append(block)
-                    EntityHighlighter.find(block, names).forEach { match ->
-                        addStringAnnotation(
-                            tag = "entity",
-                            annotation = match.entityId,
-                            start = match.start,
-                            end = match.end,
-                        )
-                        addStyle(
-                            SpanStyle(textDecoration = TextDecoration.Underline),
-                            match.start,
-                            match.end,
-                        )
+                val annotated = remember(block, names) {
+                    buildAnnotatedString {
+                        append(block)
+                        EntityHighlighter.find(block, names).forEach { match ->
+                            addStringAnnotation(
+                                tag = "entity",
+                                annotation = match.entityId,
+                                start = match.start,
+                                end = match.end,
+                            )
+                            addStyle(
+                                SpanStyle(textDecoration = TextDecoration.Underline),
+                                match.start,
+                                match.end,
+                            )
+                        }
                     }
                 }
                 ClickableText(
@@ -626,7 +707,7 @@ private fun ScrollReader(
                     style = textStyle,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = (state.fontSizeSp * 0.4f).dp + state.paragraphSpacing.dp),
+                        .padding(bottom = paragraphBottom),
                     onClick = { offset ->
                         annotated.getStringAnnotations("entity", offset, offset)
                             .firstOrNull()

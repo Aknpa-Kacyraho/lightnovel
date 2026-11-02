@@ -23,6 +23,7 @@ class SettingsStoreTest {
         assertEquals("deepseek-flash", initial.deepSeekModel)
         assertEquals("amber", initial.appTheme)
         assertEquals("system", initial.themeMode)
+        assertEquals(0L, initial.catalogCrawlAt)
         assertNull(initial.lastBackupAt)
 
         store.update {
@@ -36,6 +37,7 @@ class SettingsStoreTest {
                 translationCalibrationKey = "endpoint|model",
                 translationCalibratedAt = "2026-11-01T00:00:00Z",
                 translationCalibrationNote = "tested 6000",
+                catalogCrawlAt = 123_456L,
                 lastBackupAt = "2026-10-28T00:00:00Z",
             )
         }
@@ -52,6 +54,7 @@ class SettingsStoreTest {
         assertEquals("endpoint|model", updated.translationCalibrationKey)
         assertEquals("2026-11-01T00:00:00Z", updated.translationCalibratedAt)
         assertEquals("tested 6000", updated.translationCalibrationNote)
+        assertEquals(123_456L, updated.catalogCrawlAt)
         assertEquals("2026-10-28T00:00:00Z", updated.lastBackupAt)
     }
 }

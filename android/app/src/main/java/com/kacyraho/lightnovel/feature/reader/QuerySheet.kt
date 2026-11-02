@@ -72,10 +72,10 @@ fun QuerySheet(
             )
             if (filtered.isEmpty()) {
                 Text(
-                    if (status?.extractionUpdating == true) {
-                        "本章资料还没抽取完，点下面更新。"
-                    } else {
-                        "本段没有可查询的词条。"
+                    when {
+                        status == null -> "本书还没有资料。先点下面更新本章资料。"
+                        status.extractionUpdating -> "本章资料还没抽取完，点下面更新。"
+                        else -> "本段没有可查询的词条。"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = theme.secondary,
@@ -109,8 +109,9 @@ fun QuerySheet(
             ) {
                 Text(
                     when {
-                        status?.translationUpdating == true -> "本章翻译中"
-                        status?.extractionUpdating == true -> "更新本章资料"
+                        status == null -> "更新本章资料"
+                        status.translationUpdating -> "本章翻译中"
+                        status.extractionUpdating -> "更新本章资料"
                         else -> "重新更新本章资料"
                     },
                 )

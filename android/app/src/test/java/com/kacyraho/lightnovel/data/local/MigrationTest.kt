@@ -89,4 +89,42 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun migration2To3CreatesCatalogTableAndIndexes() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(null)
+                .callback(
+                    object : SupportSQLiteOpenHelper.Callback(2) {
+                        override fun onCreate(db: SupportSQLiteDatabase) = Unit
+
+                        override fun onUpgrade(
+                            db: SupportSQLiteDatabase,
+                            oldVersion: Int,
+                            newVersion: Int,
+                        ) = Unit
+                    },
+                )
+                .build(),
+        )
+        val db = helper.writableDatabase
+        LightnovelDatabase.MIGRATION_2_3.migrate(db)
+
+        val columns = mutableSetOf<String>()
+        db.query("PRAGMA table_info(catalog_books)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) columns += cursor.getString(name)
+        }
+        assertTrue(columns.containsAll(setOf("provider", "source_id", "title", "last_seen_at")))
+
+        val indexes = mutableSetOf<String>()
+        db.query("PRAGMA index_list(catalog_books)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) indexes += cursor.getString(name)
+        }
+        assertTrue(indexes.contains("index_catalog_books_last_seen_at"))
+        db.close()
+    }
 }

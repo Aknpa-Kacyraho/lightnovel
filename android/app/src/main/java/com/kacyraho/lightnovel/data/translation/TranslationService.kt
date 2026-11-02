@@ -6,6 +6,7 @@ import com.kacyraho.lightnovel.core.storage.ChapterCost
 import com.kacyraho.lightnovel.core.storage.ChapterSidecar
 import com.kacyraho.lightnovel.core.storage.ChapterTokens
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
 import com.kacyraho.lightnovel.data.story.StoryMemoryStore
@@ -121,8 +122,8 @@ class TranslationService(
             ?: return TranslationOutcome.Failed("这一章没有原文文件", false)
         val zh = contentStore.readZh(book.storageDir, chapterIndex)
             ?: return TranslationOutcome.Failed("这一章还没有译文", false)
-        val rawParagraphs = raw.replace("\r\n", "\n").split("\n\n")
-        val zhParagraphs = zh.replace("\r\n", "\n").split("\n\n")
+        val rawParagraphs = Paragraphs.split(raw)
+        val zhParagraphs = Paragraphs.split(zh)
         val source = rawParagraphs.getOrNull(paragraphIndex)
             ?: return TranslationOutcome.Failed("找不到第 ${paragraphIndex + 1} 段原文", false)
         if (paragraphIndex !in zhParagraphs.indices) {
@@ -169,7 +170,12 @@ class TranslationService(
             incompleteReason = if (incomplete.isEmpty()) null else old.incompleteReason,
             glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
         )
-        return commit(book, chapterIndex, TranslationOutcome.Complete(newText, sidecar))
+        val outcome = if (sidecar.status == "partial") {
+            TranslationOutcome.Partial(newText, sidecar)
+        } else {
+            TranslationOutcome.Complete(newText, sidecar)
+        }
+        return commit(book, chapterIndex, outcome)
     }
 
     suspend fun polishChapter(
