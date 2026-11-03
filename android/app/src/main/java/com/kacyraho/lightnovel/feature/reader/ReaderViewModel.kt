@@ -143,6 +143,7 @@ class ReaderViewModel(
     private var saveJob: Job? = null
     private var scrollStateJob: Job? = null
     private var translationJob: Job? = null
+    private var extractionJob: Job? = null
     private var knowledgeStatusJob: Job? = null
     private var settingsJob: Job? = null
     private var lastKey: String? = null
@@ -524,6 +525,12 @@ class ReaderViewModel(
     }
 
     fun cancelTranslation() {
+        if (extractionJob?.isActive == true) {
+            extractionJob?.cancel()
+            extractionJob = null
+            _translationState.value = ReaderTranslationState(message = "已取消资料更新")
+            return
+        }
         taskRegistry?.cancel(bookId, chapterIndex)
         translationJob?.cancel()
         translationJob = null
@@ -592,7 +599,6 @@ class ReaderViewModel(
         val anchor = layout.pages[pageIndex].startAnchor
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
-            delay(500)
             repository.updateProgress(bookId, anchor)
         }
     }
@@ -827,6 +833,13 @@ class ReaderViewModel(
             },
             revision = _state.value.revision + 1,
         )
+        if (enabled) {
+            bookEntity?.let { book ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    knowledgeExtractionService?.pruneGenericGlossary(book)
+                }
+            }
+        }
         if (enabled && currentKnowledge?.extractedChapters?.contains(chapterIndex) != true &&
             !_translationState.value.running
         ) {
@@ -856,21 +869,26 @@ class ReaderViewModel(
         val book = bookEntity ?: return
         val service = knowledgeExtractionService ?: return
         if (_translationState.value.running) return
-        viewModelScope.launch {
-            _translationState.value = ReaderTranslationState(
-                running = true,
-                message = "正在更新本章资料…",
-            )
-            val result = service.extractChapter(book, chapterIndex)
-            result.onSuccess {
-                currentKnowledge = it
-                refreshKnowledgeStatus(it)
-                refreshQueryEntries()
-                _translationState.value = ReaderTranslationState(message = "本章资料已更新")
-            }.onFailure {
+        extractionJob?.cancel()
+        extractionJob = viewModelScope.launch {
+            try {
                 _translationState.value = ReaderTranslationState(
-                    error = "资料更新失败：${it.message}",
+                    running = true,
+                    message = "正在更新本章资料。",
                 )
+                val result = service.extractChapter(book, chapterIndex)
+                result.onSuccess {
+                    currentKnowledge = it
+                    refreshKnowledgeStatus(it)
+                    refreshQueryEntries()
+                    _translationState.value = ReaderTranslationState(message = "本章资料已更新")
+                }.onFailure {
+                    _translationState.value = ReaderTranslationState(
+                        error = "资料更新失败：${it.message}",
+                    )
+                }
+            } finally {
+                extractionJob = null
             }
         }
     }
@@ -1039,7 +1057,6 @@ class ReaderViewModel(
             scheduleKnowledgeStatusRefresh()
             saveJob?.cancel()
             saveJob = viewModelScope.launch {
-                delay(500)
                 repository.updateProgress(
                     bookId,
                     ReaderAnchor(

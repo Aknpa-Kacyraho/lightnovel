@@ -11,20 +11,21 @@
 
 ## 最新版本
 
-Android **0.9.5**（versionCode 28）：
+Android **0.9.6**（versionCode 29）：
 
-- 查询模式：修复 DeepSeek 空正文（关闭 thinking）、补全知识抽取 JSON 字段、自动抽取本章资料并回填术语表。
-- 世界线：阅读器内直接编辑本章正文，点「生成」按修改后的文本分叉，不再先填角色行动表单。
-- 大书库：标签改可搜索面板，「更多」固定可见；章节标题从源站回填；已在书架状态同步。
-- 阅读性能：滚动段落状态 120ms 防抖，实测 jank 0.13%–0.52%，90th 12ms。
-- 翻译：单换行正文按段切分，按 `maxChars` 聚合，上下文尾部扩到 1200 字；关闭 thinking 减少空返回。
-- 其他：单换行段落锚点、封面 8–30 字、长作者省略、HTML 实体解码、查询/设定文案精简。
+- 书架：移出只隐藏，保留离线正文、译文、世界线和阅读进度；「已移出」可恢复，移出后支持撤销。
+- 阅读器：顶栏精简，字号/纸色收进「更多」；查询/术语输入框跟随纸色；保存进度不再延迟 500ms。
+- 全 App：补齐表面色层级和系统栏图标，8 套主题在深/浅色下更一致；任务卡、目录预览和空态重新排版。
+- 兼容：修复任务页进入阅读器后打开目录的崩溃；支持 Python 备份 0 基章号导入；Android 9+ 本地 HTTP 端点可用。
+- 网络：翻译/世界线断网或端点不可达时显示错误，不再直接闪退。
+- 世界线：分叉章号校验、plan 对象格式兼容、生成提示词和正文解析增强。
+- 其他：删除已淘汰的 Web skill；主攻 Android App。
 
-下载：[Release v0.9.5](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.5)
+下载：[Release v0.9.6](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.6)
 
-APK：`lightnovel-0.9.5-debug.apk`
+APK：`lightnovel-0.9.6-debug.apk`
 
-自检：141 JVM tests / 0 failures / 1 skipped；lint 0 errors。
+自检：148 JVM tests / 0 failures / 1 skipped；lint 0 errors。
 
 ## 快速开始（Web）
 
@@ -97,7 +98,7 @@ Android 端每本书有独立的 `story.json`（术语表 / 人物卡 / 章节�
 ## 目录
 
 ```text
-lightnovel/        Python 翻译/书架服务、自检、skill、文档
+lightnovel/        Python 翻译/书架服务、自检、文档（Web 版，非主推）
 android/           Ka小说家 Android App
 CONTEXT.md         领域模型与术语
 icon-preview.png   图标预览

@@ -218,8 +218,13 @@ private fun TermsTab(
     var target by remember { mutableStateOf("") }
     var aliases by remember { mutableStateOf("") }
     Text(
-        "本书译名。修改后相关章节会标记过期。",
+        "术语表用于锁定人名、地名、组织、物品的译名；修改后相关章节会标记过期。",
         style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        "自动只收专有名词，普通技能和概念（如空手道）不会自动加入。",
+        style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     if (state.legacyGlossaryCount > 0) {

@@ -73,12 +73,19 @@ class DiscoverViewModel(
         loadRecommendations()
     }
 
+    fun refreshShelf() {
+        viewModelScope.launch {
+            val shelf = runCatching { library.shelfKeys() }.getOrDefault(emptySet())
+            _state.value = _state.value.copy(addedKeys = shelf)
+        }
+    }
+
     fun loadRecommendations() {
         viewModelScope.launch {
             val version = ++recommendationVersion
             val shelf = runCatching { library.shelfKeys() }.getOrDefault(emptySet())
             _state.value = _state.value.copy(
-                addedKeys = _state.value.addedKeys + shelf,
+                addedKeys = shelf,
             )
             val store = catalog
             val existing = store?.let { repo ->
@@ -193,7 +200,7 @@ class DiscoverViewModel(
             _state.value = _state.value.copy(
                 loadingRecommendations = false,
                 recommendations = recommendations,
-                addedKeys = _state.value.addedKeys + shelf,
+                addedKeys = shelf,
                 errors = _state.value.errors + errors,
             )
             runCatching { catalog?.remember(recommendations) }
@@ -219,7 +226,7 @@ class DiscoverViewModel(
     }
 
     fun onUrlChange(value: String) {
-        _state.value = _state.value.copy(urlInput = value)
+        _state.value = _state.value.copy(urlInput = value, errors = emptyList())
     }
 
     fun openLinkSheet() {

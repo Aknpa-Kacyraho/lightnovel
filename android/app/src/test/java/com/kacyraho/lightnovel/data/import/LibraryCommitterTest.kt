@@ -13,6 +13,48 @@ class LibraryCommitterTest {
     val tmp = TemporaryFolder()
 
     @Test
+    fun shiftsPythonZeroBasedChapterFilesInStaging() {
+        val staging = tmp.newFolder("staging-zero").toPath()
+        val source = staging.resolve("novels/book")
+        Files.createDirectories(source.resolve("raw"))
+        Files.createDirectories(source.resolve("chapters"))
+        Files.write(source.resolve("raw/0000.txt"), "first".toByteArray(Charsets.UTF_8))
+        Files.write(source.resolve("raw/0001.txt"), "second".toByteArray(Charsets.UTF_8))
+        Files.write(source.resolve("chapters/0000.meta.json"), "{}".toByteArray(Charsets.UTF_8))
+
+        val dataRoot = tmp.newFolder("data-zero").toPath()
+        val book = PlannedBook(
+            id = "book",
+            storageDir = "book",
+            slug = "book",
+            source = "kakuyomu",
+            sourceId = "book",
+            title = "Book",
+            shelf = null,
+            favorite = false,
+            hidden = false,
+            addedAt = null,
+            legacyJson = null,
+        )
+        val report = MigrationReport(
+            backupId = "backup-zero",
+            dirClasses = emptyMap(),
+            books = listOf(book),
+            orphanDirs = emptyList(),
+            missingDirs = emptyList(),
+            conflicts = emptyList(),
+        )
+
+        LibraryCommitter().commit(staging, dataRoot, report.backupId, report)
+
+        val dest = dataRoot.resolve("novels/book")
+        assertTrue(Files.exists(dest.resolve("raw/0001.txt")))
+        assertTrue(Files.exists(dest.resolve("raw/0002.txt")))
+        assertTrue(Files.exists(dest.resolve("chapters/0001.meta.json")))
+        assertFalse(Files.exists(dest.resolve("raw/0000.txt")))
+    }
+
+    @Test
     fun failedCommitRollsBackAlreadyMovedBooks() {
         val staging = tmp.newFolder("staging").toPath()
         val source = staging.resolve("novels/ok")

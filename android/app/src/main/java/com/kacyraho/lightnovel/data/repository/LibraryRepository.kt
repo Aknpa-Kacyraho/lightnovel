@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 data class ShelfFilter(
     val shelf: String? = null,
     val query: String = "",
+    val removedOnly: Boolean = false,
 )
 
 interface LibraryRepository {
@@ -31,6 +32,10 @@ interface LibraryRepository {
     suspend fun updateProgress(bookId: String, anchor: ReaderAnchor)
 
     suspend fun setFavorite(bookId: String, favorite: Boolean)
+
+    suspend fun removeBook(bookId: String)
+
+    suspend fun restoreBook(bookId: String)
 }
 
 class RoomLibraryRepository(
@@ -40,7 +45,7 @@ class RoomLibraryRepository(
 
     override fun observeBooks(filter: ShelfFilter): Flow<List<BookEntity>> {
         val query = filter.query.trim()
-        return dao.observeBooks(filter.shelf).map { books ->
+        return dao.observeBooks(filter.shelf, filter.removedOnly).map { books ->
             if (query.isEmpty()) {
                 books
             } else {
@@ -55,7 +60,7 @@ class RoomLibraryRepository(
 
     override fun observeLibrary(filter: ShelfFilter): Flow<List<BookWithState>> {
         val query = filter.query.trim()
-        return dao.observeLibrary(filter.shelf).map { books ->
+        return dao.observeLibrary(filter.shelf, filter.removedOnly).map { books ->
             if (query.isEmpty()) {
                 books
             } else {
@@ -126,6 +131,35 @@ class RoomLibraryRepository(
                     ),
                 )
             }
+        }
+    }
+
+    override suspend fun removeBook(bookId: String) {
+        setHidden(bookId, hidden = true)
+    }
+
+    override suspend fun restoreBook(bookId: String) {
+        setHidden(bookId, hidden = false)
+    }
+
+    private suspend fun setHidden(bookId: String, hidden: Boolean) {
+        if (dao.book(bookId) == null) return
+        val now = Instant.now().toString()
+        if (dao.updateHidden(bookId, hidden, now) == 0) {
+            dao.upsertReadStates(
+                listOf(
+                    ReadStateEntity(
+                        bookId = bookId,
+                        shelf = if (hidden) null else "reading",
+                        favorite = false,
+                        hidden = hidden,
+                        progressIdx = 0,
+                        openedAt = null,
+                        finishedAt = null,
+                        updatedAt = now,
+                    ),
+                ),
+            )
         }
     }
 }

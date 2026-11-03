@@ -17,6 +17,7 @@ import com.kacyraho.lightnovel.data.translation.ChatResult
 import com.kacyraho.lightnovel.data.translation.TranslationClient
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -128,6 +129,20 @@ class WorldlineServiceTest {
     }
 
     @Test
+    fun acceptsObjectShapedPlanBeats() = runTest {
+        val env = environment(planObject = true)
+        val result = env.service.createBranch(
+            book = env.book,
+            title = "分支",
+            forkChapter = 2,
+            forkParagraph = 0,
+            intervention = Intervention("爱丽丝", "拒绝", ""),
+        )
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrThrow().chapters.size)
+    }
+
+    @Test
     fun comparisonModeAsksForDiffButWriterNeverSeesRevealContent() = runTest {
         val env = environment(comparison = true)
         val result = env.service.createBranch(
@@ -151,6 +166,7 @@ class WorldlineServiceTest {
         forbiddenWriter: Boolean = false,
         comparison: Boolean = false,
         validatorViolation: Boolean = false,
+        planObject: Boolean = false,
     ): Env {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val settings = SettingsStore(context)
@@ -215,6 +231,7 @@ class WorldlineServiceTest {
             shortWriter = shortWriter,
             forbiddenWriter = forbiddenWriter,
             validatorViolation = validatorViolation,
+            planObject = planObject,
         )
         val service = WorldlineService(
             contentStore = content,
@@ -257,6 +274,7 @@ class WorldlineServiceTest {
         private val shortWriter: Boolean,
         private val forbiddenWriter: Boolean,
         private val validatorViolation: Boolean,
+        private val planObject: Boolean,
     ) : TranslationClient {
         val prompts = mutableListOf<String>()
         private var writerCount = 0
@@ -270,7 +288,7 @@ class WorldlineServiceTest {
             val system = messages.first().content
             prompts += messages.last().content
             val reply = when {
-                system.contains("分支剧情规划师") -> PLAN
+                system.contains("分支剧情规划师") -> if (planObject) PLAN_OBJECT else PLAN
                 system.contains("分支续写作者") -> {
                     writerCount++
                     when {
@@ -297,6 +315,9 @@ class WorldlineServiceTest {
     private companion object {
         const val PLAN =
             """{"beats":["爱丽丝拒绝同行","主角独自离开"],"characters":["爱丽丝"],"intendedDivergence":"爱丽丝没有跟随主角","futureRisks":[],"stateChanges":["关系变化"]}"""
+
+        const val PLAN_OBJECT =
+            """{"beats":[{"beat":"爱丽丝拒绝同行"},{"text":"主角独自离开"}],"characters":[{"name":"爱丽丝"}],"intendedDivergence":{"text":"爱丽丝没有跟随主角"},"futureRisks":[],"stateChanges":[{"change":"关系变化"}]}"""
 
         fun chapterJson(text: String = "分支正文。" + "正文".repeat(300)): String =
             """{"title":"分支章","text":"$text","summary":"分支梗概","state":{"time":"夜","location":"车站","summary":"局势","facts":[],"openThreads":[]},"divergence":{"type":"event","summary":"爱丽丝拒绝了主角","canonSummary":null,"causedByIntervention":true}}"""

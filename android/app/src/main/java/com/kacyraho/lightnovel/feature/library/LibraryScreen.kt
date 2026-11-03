@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +31,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,6 +76,8 @@ fun LibraryRoute(
             localDocumentImporter = container.localDocumentImporter,
             settingsStore = container.settingsStore,
             metadataService = container.metadataTranslationService,
+            downloadScheduler = container.bookDownloadScheduler,
+            taskRegistry = container.translationTaskRegistry,
         )
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -98,7 +106,10 @@ fun LibraryRoute(
         onOpenSettings = onOpenSettings,
         onShelfChange = viewModel::setShelf,
         onFavoritesOnlyChange = viewModel::setFavoritesOnly,
+        onRemovedOnlyChange = viewModel::setRemovedOnly,
         onQueryChange = viewModel::setQuery,
+        onRemoveBook = viewModel::removeBook,
+        onRestoreBook = viewModel::restoreBook,
         onImport = { launcher.launch(arrayOf("*/*")) },
         onImportDocument = {
             documentLauncher.launch(arrayOf("*/*"))
@@ -119,13 +130,19 @@ fun LibraryScreen(
     onOpenSettings: () -> Unit,
     onShelfChange: (String?) -> Unit,
     onFavoritesOnlyChange: (Boolean) -> Unit,
+    onRemovedOnlyChange: (Boolean) -> Unit,
     onQueryChange: (String) -> Unit,
+    onRemoveBook: (String) -> Unit,
+    onRestoreBook: (String) -> Unit,
     onImport: () -> Unit,
     onImportDocument: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showBackupNotice by rememberSaveable { mutableStateOf(true) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Ka小说家") },
@@ -227,10 +244,11 @@ fun LibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BrandFilterChip(
-                    selected = state.shelf == null && !state.favoritesOnly,
+                    selected = state.shelf == null && !state.favoritesOnly && !state.removedOnly,
                     onClick = {
                         onShelfChange(null)
                         onFavoritesOnlyChange(false)
+                        onRemovedOnlyChange(false)
                     },
                     label = { Text("全部") },
                 )
@@ -253,6 +271,11 @@ fun LibraryScreen(
                     selected = state.favoritesOnly,
                     onClick = { onFavoritesOnlyChange(!state.favoritesOnly) },
                     label = { Text("收藏") },
+                )
+                BrandFilterChip(
+                    selected = state.removedOnly,
+                    onClick = { onRemovedOnlyChange(!state.removedOnly) },
+                    label = { Text("已移出") },
                 )
             }
 
@@ -288,22 +311,27 @@ fun LibraryScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("还没有书", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (state.removedOnly) "没有已移出的书" else "还没有书",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            if (state.query.isNotBlank() || state.favoritesOnly) {
-                                "没有匹配的书；清除搜索或筛选后再试。"
-                            } else {
-                                "导入备份，或去发现找一本日文轻小说。"
+                            when {
+                                state.removedOnly -> "移出书架的书会保留在这里，阅读进度和离线译文都不会丢。"
+                                state.query.isNotBlank() || state.favoritesOnly || state.shelf != null ->
+                                    "没有匹配的书；清除搜索或筛选后再试。"
+                                else -> "导入备份，或去发现找一本日文轻小说。"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(16.dp))
-                        if (state.query.isNotBlank() || state.favoritesOnly) {
+                        if (state.query.isNotBlank() || state.favoritesOnly || state.removedOnly || state.shelf != null) {
                             Button(onClick = {
                                 onQueryChange("")
                                 onFavoritesOnlyChange(false)
+                                onRemovedOnlyChange(false)
                                 onShelfChange(null)
                             }) {
                                 Text("清除筛选")
@@ -328,6 +356,21 @@ fun LibraryScreen(
                         BookRow(
                             item = item,
                             onClick = { onOpenBook(item.book.id) },
+                            onRemove = {
+                                val id = item.book.id
+                                val title = item.book.titleZh ?: item.book.title
+                                onRemoveBook(id)
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "已移出《$title》，阅读进度已保留",
+                                        actionLabel = "撤销",
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        onRestoreBook(id)
+                                    }
+                                }
+                            },
+                            onRestore = { onRestoreBook(item.book.id) },
                         )
                     }
                 }
@@ -378,14 +421,19 @@ private fun ContinueCard(
 private fun BookRow(
     item: BookWithState,
     onClick: () -> Unit,
+    onRemove: () -> Unit,
+    onRestore: () -> Unit,
 ) {
+    val removed = item.state?.hidden == true
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BookCover(
@@ -405,7 +453,7 @@ private fun BookRow(
                 Text(
                     text = listOfNotNull(
                         item.book.author,
-                        shelfLabel(item.state?.shelf),
+                        if (removed) "已移出" else shelfLabel(item.state?.shelf),
                         item.state?.progressIdx?.takeIf { it > 0 }?.let { "读到第 $it 话" },
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
@@ -422,7 +470,47 @@ private fun BookRow(
                     )
                 }
             }
+            Box {
+                TextButton(
+                    onClick = { menuOpen = true },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text("⋮", style = MaterialTheme.typography.titleLarge)
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (removed) "移回书架" else "移出书架") },
+                        onClick = {
+                            menuOpen = false
+                            if (removed) onRestore() else confirmRemove = true
+                        },
+                    )
+                }
+            }
         }
+    }
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text("移出《${item.book.titleZh ?: item.book.title}》？") },
+            text = { Text("只移出书架，离线正文、译文、世界线和阅读进度都会保留，之后可在「已移出」移回。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmRemove = false
+                        onRemove()
+                    },
+                ) {
+                    Text("移出")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = false }) { Text("取消") }
+            },
+        )
     }
 }
 

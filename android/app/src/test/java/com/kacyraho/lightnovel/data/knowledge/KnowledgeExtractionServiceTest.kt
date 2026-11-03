@@ -6,7 +6,10 @@ import com.kacyraho.lightnovel.core.settings.InMemoryApiKeyStore
 import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.FileContentStore
+import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.local.BookEntity
+import com.kacyraho.lightnovel.data.story.StoryMemory
+import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.ChatMessage
 import com.kacyraho.lightnovel.data.translation.ChatResult
 import com.kacyraho.lightnovel.data.translation.TranslationClient
@@ -106,7 +109,42 @@ class KnowledgeExtractionServiceTest {
         assertEquals(old.id, newer.supersedes)
     }
 
-    private fun environment(reply: String? = null): Env {
+    @Test
+    fun pruneGenericGlossaryRemovesSkillTermsButKeepsNames() = runTest {
+        val env = environment(withStoryStore = true)
+        val storyStore = env.storyStore!!
+        storyStore.save(
+            "book",
+            StoryMemory(
+                workId = "book-1",
+                title = "Book",
+                glossary = listOf(
+                    GlossaryEntry(id = "空手", source = "空手", target = "空手道"),
+                    GlossaryEntry(id = "アリス", source = "アリス", target = "爱丽丝"),
+                ),
+            ),
+        )
+        env.store.save(
+            "book",
+            env.store.load("book", "book-1").copy(
+                entities = listOf(
+                    Entity(id = "skill", type = "skill", canonicalName = "空手道", aliases = listOf("空手")),
+                    Entity(id = "char", type = "character", canonicalName = "爱丽丝", aliases = listOf("アリス")),
+                ),
+            ),
+        )
+
+        env.service.pruneGenericGlossary(env.book)
+
+        val glossary = storyStore.load("book", "book-1").glossary
+        assertTrue(glossary.none { it.source == "空手" })
+        assertTrue(glossary.any { it.source == "アリス" })
+    }
+
+    private fun environment(
+        reply: String? = null,
+        withStoryStore: Boolean = false,
+    ): Env {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val settings = SettingsStore(context)
         kotlinx.coroutines.runBlocking {
@@ -118,12 +156,14 @@ class KnowledgeExtractionServiceTest {
         content.writeRawAtomic("book", 1, "アリスは「おはよう」と言った。\n\n今日はいい天気ですね。")
         content.writeZhAtomic("book", 1, "爱丽丝说「早上好」。\n\n今天天气真好。")
         val store = KnowledgeStore(content)
+        val storyStore = if (withStoryStore) StoryMemoryStore(content) else null
         val client = FakeClient(reply ?: DEFAULT_REPLY)
         val service = KnowledgeExtractionService(
             contentStore = content,
             knowledgeStore = store,
             settingsStore = settings,
             apiKeyStore = InMemoryApiKeyStore(""),
+            storyMemoryStore = storyStore,
             clientFactory = { _, _ -> client },
         )
         val book = BookEntity(
@@ -142,7 +182,7 @@ class KnowledgeExtractionServiceTest {
             createdAt = null,
             legacyJson = null,
         )
-        return Env(content, store, service, client, book)
+        return Env(content, store, service, client, book, storyStore)
     }
 
     private data class Env(
@@ -151,6 +191,7 @@ class KnowledgeExtractionServiceTest {
         val service: KnowledgeExtractionService,
         val client: FakeClient,
         val book: BookEntity,
+        val storyStore: StoryMemoryStore?,
     )
 
     private class FakeClient(var reply: String) : TranslationClient {

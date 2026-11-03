@@ -91,6 +91,7 @@ fun GlossaryCorrectionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("原文 / 日文") },
                 singleLine = true,
+                colors = readerOutlinedFieldColors(theme),
             )
             OutlinedTextField(
                 value = target,
@@ -98,6 +99,7 @@ fun GlossaryCorrectionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("目标译名 / 中文") },
                 singleLine = true,
+                colors = readerOutlinedFieldColors(theme),
             )
             OutlinedTextField(
                 value = aliases,
@@ -105,6 +107,7 @@ fun GlossaryCorrectionSheet(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("别名，用逗号分隔") },
                 singleLine = true,
+                colors = readerOutlinedFieldColors(theme),
             )
             val entry = GlossaryEntry(
                 id = source.trim(),

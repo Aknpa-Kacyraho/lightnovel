@@ -82,7 +82,16 @@ class DeepSeekClient(
             )
             .build()
 
-        http.newCall(request).execute().use { response ->
+        val response = try {
+            http.newCall(request).execute()
+        } catch (error: IOException) {
+            throw TranslationException(
+                statusCode = 0,
+                message = "无法连接翻译 API：${error.message ?: error.javaClass.simpleName}",
+                retryable = true,
+            )
+        }
+        response.use {
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 val retryable = response.code == 429 || response.code >= 500

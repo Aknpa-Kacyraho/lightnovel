@@ -54,10 +54,24 @@ class LibraryDaoTest {
             dao.upsertBooks(
                 listOf(
                     book("kakuyomu-online", "online", "Online"),
+                    book("kakuyomu-hidden", "hidden", "Hidden"),
                     book("local-1", "local", "Local").copy(
                         source = "local",
                         sourceId = "1",
                         local = true,
+                    ),
+                ),
+            )
+            dao.upsertReadStates(
+                listOf(
+                    ReadStateEntity(
+                        bookId = "kakuyomu-hidden",
+                        shelf = "reading",
+                        favorite = false,
+                        hidden = true,
+                        progressIdx = 3,
+                        openedAt = null,
+                        finishedAt = null,
                     ),
                 ),
             )

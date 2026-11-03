@@ -37,6 +37,7 @@ class LibraryCommitter {
                 if (!Files.isDirectory(source)) {
                     error("staging 缺少书目录：${book.storageDir}")
                 }
+                normalizePythonChapterFiles(source)
                 val dest = novelsRoot.resolve(book.storageDir)
                 if (Files.exists(dest)) {
                     if (sameTree(source, dest)) {
@@ -117,6 +118,27 @@ class LibraryCommitter {
             n++
         }
         return candidate
+    }
+
+    private fun normalizePythonChapterFiles(bookDir: Path) {
+        val pattern = Regex("""^(\d{4})(\.txt|\.meta\.json)$""")
+        for (sub in listOf("raw", "chapters")) {
+            val dir = bookDir.resolve(sub)
+            if (!Files.isDirectory(dir)) continue
+            val files = Files.list(dir).use { stream ->
+                stream.filter(Files::isRegularFile)
+                    .collect(java.util.stream.Collectors.toList())
+            }
+            val numbered = files.mapNotNull { path ->
+                val match = pattern.matchEntire(path.fileName.toString()) ?: return@mapNotNull null
+                Triple(path, match.groupValues[1].toInt(), match.groupValues[2])
+            }
+            if (numbered.none { it.second == 0 }) continue
+            numbered.sortedByDescending { it.second }.forEach { (path, index, suffix) ->
+                val target = dir.resolve((index + 1).toString().padStart(4, '0') + suffix)
+                Files.move(path, target, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
     }
 
     private fun sameTree(a: Path, b: Path): Boolean {

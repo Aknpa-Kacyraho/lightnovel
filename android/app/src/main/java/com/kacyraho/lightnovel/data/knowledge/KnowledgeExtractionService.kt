@@ -85,7 +85,10 @@ class KnowledgeExtractionService(
         }
         return runCatching {
             merge(book, chapterIndex, raw, zh, current, output)
-                .also { seedGlossary(book, output) }
+                .also {
+                    seedGlossary(book, output)
+                    pruneGenericGlossary(book)
+                }
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { Result.failure(it) },
@@ -111,6 +114,24 @@ class KnowledgeExtractionService(
             Result.failure(IllegalStateException("没有章节抽取成功"))
         } else {
             Result.success(done)
+        }
+    }
+
+    fun pruneGenericGlossary(book: BookEntity) {
+        val store = storyMemoryStore ?: return
+        val knowledge = knowledgeStore.load(book.storageDir, book.id, book.title)
+        val genericTargets = knowledge.entities
+            .filterNot { KnowledgeEntityPolicy.isGlossaryTerm(it.type) }
+            .flatMap { entity -> entity.names().map { name -> name.trim() to entity.canonicalName.trim() } }
+            .toMap()
+        if (genericTargets.isEmpty()) return
+        val memory = store.load(book.storageDir, book.id, book.title)
+        val cleaned = memory.glossary.filterNot { entry ->
+            val expected = genericTargets[entry.source.trim()]
+            expected != null && entry.target.trim() == expected
+        }
+        if (cleaned.size != memory.glossary.size) {
+            store.save(book.storageDir, memory.copy(glossary = cleaned))
         }
     }
 
@@ -410,6 +431,7 @@ class KnowledgeExtractionService(
         val entries = memory.glossary.toMutableList()
         var changed = false
         for (item in output.entities) {
+            if (!KnowledgeEntityPolicy.isGlossaryTerm(item.type)) continue
             val source = item.source.trim()
             val target = item.canonicalName.trim().ifBlank {
                 item.aliases.firstOrNull { it.trim().isNotBlank() }.orEmpty().trim()
@@ -595,6 +617,9 @@ class KnowledgeExtractionService(
         const val SYSTEM_PROMPT =
             "你从日文轻小说原文和中文译文中抽取可查询的设定事实。" +
                 "只抽取本章明确出现或确认的信息，不推测后文。" +
+                "实体只收专有名词：人名、地名、组织、物品、作品内独特技能/设定名。" +
+                "普通技能、运动、日常物品和泛称（如空手道、手机、学校）不要输出为实体；" +
+                "普通技能/概念即使出现，也不要自动加入术语表。" +
                 "每条事实必须附原文短句 sourceQuote；sourceQuote 必须逐字复制【本章原文】中的日文子串，" +
                 "禁止使用中文译文、改写或概括；找不到可逐字复制的原文就留空。" +
                 "区分 readerKnown（读者是否已看到）与 knownBy（哪些角色知道）；" +

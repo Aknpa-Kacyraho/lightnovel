@@ -8,9 +8,11 @@ import com.kacyraho.lightnovel.core.storage.SafStager
 import com.kacyraho.lightnovel.data.import.ImportCoordinator
 import com.kacyraho.lightnovel.data.import.LocalDocumentImporter
 import com.kacyraho.lightnovel.data.local.BookWithState
+import com.kacyraho.lightnovel.data.download.BookDownloadScheduler
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.repository.ShelfFilter
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
+import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +30,7 @@ data class LibraryUiState(
     val shelf: String? = null,
     val query: String = "",
     val favoritesOnly: Boolean = false,
+    val removedOnly: Boolean = false,
     val error: String? = null,
 )
 
@@ -41,6 +44,7 @@ private data class LibraryFilter(
     val shelf: String? = null,
     val query: String = "",
     val favoritesOnly: Boolean = false,
+    val removedOnly: Boolean = false,
 )
 
 class LibraryViewModel(
@@ -50,6 +54,8 @@ class LibraryViewModel(
     private val localDocumentImporter: LocalDocumentImporter,
     settingsStore: SettingsStore,
     private val metadataService: MetadataTranslationService? = null,
+    private val downloadScheduler: BookDownloadScheduler? = null,
+    private val taskRegistry: TranslationTaskRegistry? = null,
 ) : ViewModel() {
     private val filter = MutableStateFlow(LibraryFilter())
 
@@ -67,7 +73,11 @@ class LibraryViewModel(
     val state = filter
         .flatMapLatest { current ->
             repository.observeLibrary(
-                ShelfFilter(shelf = current.shelf, query = current.query),
+                ShelfFilter(
+                    shelf = current.shelf,
+                    query = current.query,
+                    removedOnly = current.removedOnly,
+                ),
             ).map { books ->
                 val visible = if (current.favoritesOnly) {
                     books.filter { it.state?.favorite == true }
@@ -80,6 +90,7 @@ class LibraryViewModel(
                     shelf = current.shelf,
                     query = current.query,
                     favoritesOnly = current.favoritesOnly,
+                    removedOnly = current.removedOnly,
                 )
             }
         }
@@ -108,11 +119,19 @@ class LibraryViewModel(
         )
 
     fun setShelf(shelf: String?) {
-        filter.value = filter.value.copy(shelf = shelf)
+        filter.value = filter.value.copy(shelf = shelf, removedOnly = false)
     }
 
     fun setFavoritesOnly(enabled: Boolean) {
-        filter.value = filter.value.copy(favoritesOnly = enabled)
+        filter.value = filter.value.copy(favoritesOnly = enabled, removedOnly = false)
+    }
+
+    fun setRemovedOnly(enabled: Boolean) {
+        filter.value = filter.value.copy(
+            removedOnly = enabled,
+            shelf = null,
+            favoritesOnly = false,
+        )
     }
 
     fun setQuery(query: String) {
@@ -122,6 +141,20 @@ class LibraryViewModel(
     fun toggleFavorite(bookId: String, current: Boolean) {
         viewModelScope.launch {
             repository.setFavorite(bookId, !current)
+        }
+    }
+
+    fun removeBook(bookId: String) {
+        viewModelScope.launch {
+            downloadScheduler?.cancel(bookId)
+            taskRegistry?.cancelBook(bookId)
+            repository.removeBook(bookId)
+        }
+    }
+
+    fun restoreBook(bookId: String) {
+        viewModelScope.launch {
+            repository.restoreBook(bookId)
         }
     }
 

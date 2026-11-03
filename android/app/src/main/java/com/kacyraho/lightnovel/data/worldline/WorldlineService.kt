@@ -18,6 +18,11 @@ import java.time.Instant
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 class WorldlineService(
     private val contentStore: ContentStore,
@@ -47,6 +52,11 @@ class WorldlineService(
         mode: String = "exploration",
         forkText: String = "",
     ): Result<WorldlineFile> {
+        if (forkChapter < 1 || (book.episodes > 0 && forkChapter > book.episodes)) {
+            return Result.failure(
+                IllegalArgumentException("分叉章超出范围：本书共 ${book.episodes} 章"),
+            )
+        }
         val edited = forkText.trim().take(12_000)
         if ((intervention.character.isBlank() || intervention.action.isBlank()) &&
             edited.isBlank()
@@ -137,9 +147,15 @@ class WorldlineService(
         }
         val planText = buildString {
             appendLine(plan.intendedDivergence)
+            if (plan.characters.isNotEmpty()) {
+                appendLine("涉及角色：${plan.characters.joinToString("、")}")
+            }
             plan.beats.forEachIndexed { index, beat -> appendLine("${index + 1}. $beat") }
             if (plan.stateChanges.isNotEmpty()) {
                 appendLine("状态变化：${plan.stateChanges.joinToString("；")}")
+            }
+            if (plan.futureRisks.isNotEmpty()) {
+                appendLine("后续风险：${plan.futureRisks.joinToString("；")}")
             }
         }
 
@@ -245,28 +261,75 @@ class WorldlineService(
         context: String,
         chapterIndex: Int,
     ): Result<PlanOutput> {
-        val reply = try {
-            model.client.complete(
-                messages = listOf(
-                    ChatMessage("system", PLANNER_PROMPT),
-                    ChatMessage(
-                        "user",
-                        "$context\n【任务】写第 $chapterIndex 章的分支 plan，只输出 JSON。",
+        var lastError: Throwable? = null
+        repeat(2) { attempt ->
+            val correction = if (attempt == 0) "" else
+                "\n【格式纠正】上一次输出无法解析。beats 必须是字符串数组，" +
+                    "每个元素只能是字符串，不能是 {\"beat\": ...} 对象。" +
+                    "不要 Markdown，只输出一个合法 JSON 对象。"
+            val reply = try {
+                model.client.complete(
+                    messages = listOf(
+                        ChatMessage("system", PLANNER_PROMPT),
+                        ChatMessage(
+                            "user",
+                            "$context$correction\n【任务】写第 $chapterIndex 章的分支 plan，只输出 JSON。",
+                        ),
                     ),
-                ),
-                model = model.model,
-                maxTokens = 2_048,
-                temperature = 0.7,
-            )
-        } catch (error: TranslationException) {
-            return Result.failure(error)
+                    model = model.model,
+                    maxTokens = 2_048,
+                    temperature = if (attempt == 0) 0.7 else 0.2,
+                )
+            } catch (error: TranslationException) {
+                return Result.failure(error)
+            }
+            val parsed = parsePlan(reply.content)
+            if (parsed.isSuccess) return parsed
+            lastError = parsed.exceptionOrNull()
         }
-        return runCatching {
-            json.decodeFromString(PlanOutput.serializer(), cleanJson(reply.content))
-        }.fold(
-            onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(IllegalStateException("plan 解析失败：${it.message}")) },
+        return Result.failure(
+            IllegalStateException(
+                "plan 解析失败：${lastError?.message?.take(160) ?: "模型没有返回合法 JSON"}",
+            ),
         )
+    }
+
+    private fun parsePlan(raw: String): Result<PlanOutput> = runCatching {
+        val root = json.parseToJsonElement(cleanJson(raw))
+        val objectRoot = (root as? JsonObject)?.let {
+            (it["plan"] as? JsonObject) ?: it
+        } ?: error("plan 不是 JSON 对象")
+        PlanOutput(
+            beats = objectRoot["beats"]?.textList().orEmpty(),
+            characters = objectRoot["characters"]?.textList().orEmpty(),
+            intendedDivergence = objectRoot["intendedDivergence"]?.textValue().orEmpty(),
+            futureRisks = objectRoot["futureRisks"]?.textList().orEmpty(),
+            stateChanges = objectRoot["stateChanges"]?.textList().orEmpty(),
+        ).also {
+            if (it.beats.isEmpty()) error("beats 没有可用内容")
+        }
+    }
+
+    private fun JsonElement.textList(): List<String> = when (this) {
+        is JsonPrimitive -> listOfNotNull(contentOrNull?.trim()?.takeIf(String::isNotBlank))
+        is JsonArray -> flatMap { it.textList() }
+        is JsonObject -> {
+            val preferred = listOf(
+                "beat", "text", "summary", "event", "description",
+                "content", "action", "goal", "name",
+            )
+            preferred.firstNotNullOfOrNull { key -> this[key]?.textList()?.firstOrNull() }
+                ?.let(::listOf)
+                ?: entries.flatMap { it.value.textList() }
+        }
+    }
+
+    private fun JsonElement.textValue(): String? = when (this) {
+        is JsonPrimitive -> contentOrNull?.trim()?.takeIf(String::isNotBlank)
+        is JsonArray -> textList().joinToString(" ").takeIf(String::isNotBlank)
+        is JsonObject -> listOf("text", "summary", "description", "value")
+            .firstNotNullOfOrNull { this[it]?.textValue() }
+            ?: textList().joinToString(" ").takeIf(String::isNotBlank)
     }
 
     private suspend fun writer(
@@ -293,11 +356,46 @@ class WorldlineService(
         } catch (error: TranslationException) {
             return Result.failure(error)
         }
-        return runCatching {
-            json.decodeFromString(ChapterOutput.serializer(), cleanJson(reply.content))
-        }.fold(
-            onSuccess = { Result.success(it) },
-            onFailure = { Result.failure(IllegalStateException("正文解析失败：${it.message}")) },
+        return parseChapter(reply.content)
+    }
+
+    private fun parseChapter(raw: String): Result<ChapterOutput> = runCatching {
+        val root = json.parseToJsonElement(cleanJson(raw))
+        val objectRoot = (root as? JsonObject)?.let {
+            (it["chapter"] as? JsonObject) ?: it
+        } ?: error("正文不是 JSON 对象")
+        val text = objectRoot["text"]?.textValue().orEmpty()
+        if (text.isBlank()) error("正文为空")
+        ChapterOutput(
+            title = objectRoot["title"]?.textValue().orEmpty(),
+            text = text,
+            summary = objectRoot["summary"]?.textValue().orEmpty(),
+            state = objectRoot["state"].asBranchState(),
+            divergence = objectRoot["divergence"].asDivergence(),
+        )
+    }
+
+    private fun JsonElement?.asBranchState(): BranchState {
+        val obj = this as? JsonObject ?: return BranchState()
+        return BranchState(
+            time = obj["time"]?.textValue().orEmpty(),
+            location = obj["location"]?.textValue().orEmpty(),
+            summary = obj["summary"]?.textValue().orEmpty(),
+            facts = obj["facts"]?.textList().orEmpty(),
+            openThreads = obj["openThreads"]?.textList().orEmpty(),
+        )
+    }
+
+    private fun JsonElement?.asDivergence(): Divergence {
+        val obj = this as? JsonObject ?: return Divergence()
+        return Divergence(
+            type = obj["type"]?.textValue()?.ifBlank { "event" } ?: "event",
+            summary = obj["summary"]?.textValue().orEmpty(),
+            canonSummary = obj["canonSummary"]?.textValue(),
+            causedByIntervention = (obj["causedByIntervention"] as? JsonPrimitive)
+                ?.contentOrNull
+                ?.toBooleanStrictOrNull()
+                ?: true,
         )
     }
 
@@ -494,13 +592,22 @@ class WorldlineService(
         const val PLANNER_PROMPT =
             "你是轻小说分支剧情规划师。只使用给定的分叉前知识、分支状态和用户介入。" +
                 "不得使用分叉点之后的 canon 事件，不得提前揭示秘密。" +
-                "输出 3-5 个 beats、涉及角色、预期偏离、状态变化。只输出 JSON。"
+                "若用户修改了分叉正文，把修改后的文本视为已经发生的 canon，从它的末尾继续，不重写它。" +
+                "输出 4-6 个有因果链的 beats，每个 beat 写清谁做了什么、地点或时间推进、造成什么后果；" +
+                "同时给出涉及角色、预期偏离、未来风险和状态变化。" +
+                "beats 必须是字符串数组，每个元素只能是一句字符串，不能是对象；不要 Markdown。" +
+                "只输出 JSON，格式：" +
+                "{\"beats\":[\"第一句剧情节点\",\"第二句剧情节点\"]," +
+                "\"characters\":[\"角色名\"],\"intendedDivergence\":\"一句话说明偏离\"," +
+                "\"futureRisks\":[\"未来风险\"],\"stateChanges\":[\"状态变化\"]}。"
 
         const val WRITER_PROMPT =
             "你是轻小说分支续写作者。只写用户介入后的分支下一章，不写元叙述。" +
                 "必须遵守 plan、用户介入和约束，保持角色声音、称呼、锁定译名和已有设定。" +
+                "用户修改后的分叉正文已经发生，不要重写它，只从它之后续写。" +
                 "不得引用分叉点之后的 canon 事件，不得提前揭示秘密，不得新增原文没有的世界规则。" +
-                "正文用简体中文，500-12000 字，保留段落空行；只输出 JSON。"
+                "正文用简体中文，目标 1500-4000 字；写完整的场景、动作、对白和情绪推进，" +
+                "不要写剧情梗概或总结；保留段落空行；只输出 JSON。"
 
         const val VALIDATOR_PROMPT =
             "你是分支一致性校对员。检查正文是否让角色知道了角色未知的信息、" +

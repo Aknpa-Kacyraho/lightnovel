@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
+import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
 import com.kacyraho.lightnovel.reader.ReaderPageView
 import com.kacyraho.lightnovel.reader.engine.ReaderTheme
@@ -569,9 +570,10 @@ private fun ReaderContent(
 
         if (showWorldline) {
             ReaderWorldlineSheet(
-                chapterIndex = state.chapterIndex,
-                initialText = state.chapterText,
-                state = worldlineState,
+                  chapterIndex = state.chapterIndex,
+                  initialText = state.chapterText,
+                  initialOffset = Paragraphs.startOffset(state.chapterText, currentParagraphId),
+                  state = worldlineState,
                 theme = readerTheme,
                 onDismiss = {
                     showWorldline = false

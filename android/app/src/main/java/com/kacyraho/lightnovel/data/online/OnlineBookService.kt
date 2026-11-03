@@ -44,7 +44,7 @@ class OnlineBookService(
             source = outline.providerId,
             sourceId = outline.novelId,
             title = detail.titleJp.ifBlank { outline.titleJp },
-            titleZh = detail.titleZh ?: outline.titleZh,
+            titleZh = detail.titleZh ?: outline.titleZh ?: existing?.titleZh,
             author = detail.authorNames.takeUnless { it == "未知" },
             tagsJson = BookTags.encode((detail.attentions + detail.keywords).distinct()),
             genre = detail.type.takeIf { it.isNotBlank() },
@@ -76,7 +76,8 @@ class OnlineBookService(
         }
 
         dao.upsertBooks(listOf(book))
-        if (dao.readState(id) == null) {
+        val state = dao.readState(id)
+        if (state == null) {
             dao.upsertReadStates(
                 listOf(
                     ReadStateEntity(
@@ -91,6 +92,8 @@ class OnlineBookService(
                     ),
                 ),
             )
+        } else if (state.hidden) {
+            dao.updateHidden(id, hidden = false, updatedAt = now)
         }
         dao.upsertChapters(chapterRows)
         return book

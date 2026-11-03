@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -558,6 +559,7 @@ private fun CatalogPreviewSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -598,6 +600,8 @@ private fun CatalogPreviewSheet(
                 TextSanitizer.decode(book.synopsisZh ?: book.synopsis.orEmpty())
                     .ifBlank { "暂无简介" },
                 style = MaterialTheme.typography.bodyMedium,
+                maxLines = 8,
+                overflow = TextOverflow.Ellipsis,
             )
             Button(
                 onClick = onAdd,

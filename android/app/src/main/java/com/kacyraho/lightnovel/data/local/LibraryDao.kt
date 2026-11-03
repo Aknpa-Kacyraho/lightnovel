@@ -26,34 +26,64 @@ interface LibraryDao {
     @Query("SELECT * FROM books ORDER BY title")
     suspend fun books(): List<BookEntity>
 
-    @Query("SELECT source || '/' || source_id FROM books WHERE local = 0")
+    @Query(
+        """
+        SELECT b.source || '/' || b.source_id
+        FROM books b
+        LEFT JOIN read_state r ON r.book_id = b.id
+        WHERE b.local = 0 AND COALESCE(r.hidden, 0) = 0
+        """,
+    )
     suspend fun onlineKeys(): List<String>
 
     @Query("SELECT * FROM books WHERE id = :bookId")
     suspend fun book(bookId: String): BookEntity?
 
+    @Query("SELECT * FROM books WHERE source = :source AND source_id = :sourceId LIMIT 1")
+    suspend fun bookBySource(source: String, sourceId: String): BookEntity?
+
+    @Query(
+        """
+        UPDATE read_state
+        SET hidden = :hidden,
+            shelf = CASE
+                WHEN :hidden = 0 AND shelf IS NULL THEN 'reading'
+                ELSE shelf
+            END,
+            updated_at = :updatedAt
+        WHERE book_id = :bookId
+        """,
+    )
+    suspend fun updateHidden(bookId: String, hidden: Boolean, updatedAt: String): Int
+
     @Query(
         """
         SELECT b.* FROM books b
         LEFT JOIN read_state r ON r.book_id = b.id
-        WHERE COALESCE(r.hidden, 0) = 0
+        WHERE (
+            (:removedOnly = 0 AND COALESCE(r.hidden, 0) = 0) OR
+            (:removedOnly = 1 AND COALESCE(r.hidden, 0) = 1)
+        )
           AND (:shelf IS NULL OR r.shelf = :shelf)
         ORDER BY b.title
         """,
     )
-    fun observeBooks(shelf: String?): Flow<List<BookEntity>>
+    fun observeBooks(shelf: String?, removedOnly: Boolean): Flow<List<BookEntity>>
 
     @Transaction
     @Query(
         """
         SELECT b.* FROM books b
         LEFT JOIN read_state r ON r.book_id = b.id
-        WHERE COALESCE(r.hidden, 0) = 0
+        WHERE (
+            (:removedOnly = 0 AND COALESCE(r.hidden, 0) = 0) OR
+            (:removedOnly = 1 AND COALESCE(r.hidden, 0) = 1)
+        )
           AND (:shelf IS NULL OR r.shelf = :shelf)
         ORDER BY b.title
         """,
     )
-    fun observeLibrary(shelf: String?): Flow<List<BookWithState>>
+    fun observeLibrary(shelf: String?, removedOnly: Boolean): Flow<List<BookWithState>>
 
     @Query("UPDATE books SET title_zh = :titleZh WHERE id = :bookId")
     suspend fun updateBookTitle(bookId: String, titleZh: String)
@@ -139,7 +169,9 @@ interface LibraryDao {
                c.updated_at AS updated_at
         FROM chapters c
         JOIN books b ON b.id = c.book_id
-        WHERE c.status IN ('translating', 'failed', 'partial')
+        LEFT JOIN read_state r ON r.book_id = c.book_id
+        WHERE COALESCE(r.hidden, 0) = 0
+          AND c.status IN ('translating', 'failed', 'partial')
         ORDER BY c.updated_at DESC
         LIMIT 100
         """,

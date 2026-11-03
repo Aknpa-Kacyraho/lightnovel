@@ -1,6 +1,10 @@
 package com.kacyraho.lightnovel.ui.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -42,6 +46,15 @@ private fun Palette.toScheme(dark: Boolean): ColorScheme {
     val tertiaryContainer = lerp(surface, tertiary, if (dark) 0.30f else 0.14f)
     val errorContainer = lerp(surface, error, if (dark) 0.30f else 0.14f)
     val outlineVariant = lerp(surface, outline, 0.45f)
+    val surfaceContainerLowest = if (dark) background else surface
+    val surfaceContainerLow = if (dark) lerp(background, surface, 0.55f) else
+        lerp(surface, background, 0.10f)
+    val surfaceContainer = if (dark) lerp(background, surface, 0.70f) else
+        lerp(surface, background, 0.22f)
+    val surfaceContainerHigh = if (dark) lerp(background, surface, 0.82f) else
+        lerp(surface, background, 0.34f)
+    val surfaceContainerHighest = if (dark) lerp(background, surface, 0.92f) else
+        lerp(surface, background, 0.46f)
     return if (dark) {
         darkColorScheme(
             primary = primary,
@@ -51,23 +64,35 @@ private fun Palette.toScheme(dark: Boolean): ColorScheme {
             secondary = secondary,
             onSecondary = onSecondary,
             secondaryContainer = secondaryContainer,
-            onSecondaryContainer = secondary,
+            onSecondaryContainer = onSurface,
             tertiary = tertiary,
             onTertiary = onTertiary,
             tertiaryContainer = tertiaryContainer,
-            onTertiaryContainer = tertiary,
+            onTertiaryContainer = onSurface,
             background = background,
             onBackground = onSurface,
             surface = surface,
             onSurface = onSurface,
             surfaceVariant = surfaceVariant,
             onSurfaceVariant = onSurfaceVariant,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            surfaceDim = if (dark) background else surfaceContainerHigh,
+            surfaceBright = surface,
+            inverseSurface = onSurface,
+            inverseOnSurface = surface,
+            inversePrimary = primaryContainer,
+            scrim = Color.Black,
+            surfaceTint = primary,
             outline = outline,
             outlineVariant = outlineVariant,
             error = error,
             onError = onError,
             errorContainer = errorContainer,
-            onErrorContainer = error,
+            onErrorContainer = onSurface,
         )
     } else {
         lightColorScheme(
@@ -78,23 +103,35 @@ private fun Palette.toScheme(dark: Boolean): ColorScheme {
             secondary = secondary,
             onSecondary = onSecondary,
             secondaryContainer = secondaryContainer,
-            onSecondaryContainer = secondary,
+            onSecondaryContainer = onSurface,
             tertiary = tertiary,
             onTertiary = onTertiary,
             tertiaryContainer = tertiaryContainer,
-            onTertiaryContainer = tertiary,
+            onTertiaryContainer = onSurface,
             background = background,
             onBackground = onSurface,
             surface = surface,
             onSurface = onSurface,
             surfaceVariant = surfaceVariant,
             onSurfaceVariant = onSurfaceVariant,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            surfaceDim = if (dark) background else surfaceContainerHigh,
+            surfaceBright = surface,
+            inverseSurface = onSurface,
+            inverseOnSurface = surface,
+            inversePrimary = primaryContainer,
+            scrim = Color.Black,
+            surfaceTint = primary,
             outline = outline,
             outlineVariant = outlineVariant,
             error = error,
             onError = onError,
             errorContainer = errorContainer,
-            onErrorContainer = error,
+            onErrorContainer = onSurface,
         )
     }
 }
@@ -351,6 +388,16 @@ fun LightnovelTheme(
 ) {
     val colors = colorSchemeFor(AppTheme.fromId(themeId), darkTheme)
     val extended = LnExtendedColors.from(colors)
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
     CompositionLocalProvider(LocalLnColors provides extended) {
         MaterialTheme(
             colorScheme = colors,

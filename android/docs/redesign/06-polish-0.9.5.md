@@ -21,7 +21,7 @@
 
 ## 验证
 
-- `141 tests / 0 failures / 1 skipped`
+- `141 tests / 0 failures / 1 skipped`（发布时；后续返修后为 148）
 - lint `0 errors / 25 warnings / 2 hints`
 - 真机：本书知识库 10 个实体、29 条资料；术语表 9 条；查询模式出现下划线。
 - 滚动实测：查询模式关 0.52% janky，开 0.13%，90th 12ms。

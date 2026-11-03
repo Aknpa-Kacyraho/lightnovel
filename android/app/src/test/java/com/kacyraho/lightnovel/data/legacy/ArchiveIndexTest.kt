@@ -32,6 +32,22 @@ class ArchiveIndexTest {
     }
 
     @Test
+    fun shiftsPythonZeroBasedChapterNumbers() {
+        val manifest = ZipFixture()
+            .add("novels/kakuyomu-1/raw/0000.txt", "first")
+            .add("novels/kakuyomu-1/raw/0001.txt", "second")
+            .add("novels/kakuyomu-1/chapters/0000.meta.json", "{}")
+            .manifest()
+
+        val book = ArchiveIndex.from(manifest).books.getValue("kakuyomu-1")
+
+        assertEquals(setOf(1, 2), book.chapters.keys)
+        assertEquals(1, book.chapters.getValue(1).idx)
+        assertEquals("novels/kakuyomu-1/raw/0000.txt", book.chapters.getValue(1).rawPath)
+        assertEquals(2, book.chapters.getValue(2).idx)
+    }
+
+    @Test
     fun ignoresUnrelatedAndMalformedEntries() {
         val manifest = ZipFixture()
             .add("novels/kakuyomu-1/raw/not-a-number.txt", "x")

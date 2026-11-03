@@ -23,6 +23,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -110,7 +111,10 @@ fun LightnovelNavHost(container: AppContainer) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 0.dp,
+                ) {
                     topLevelDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = selectedTab == destination.route,
@@ -227,29 +231,11 @@ fun LightnovelNavHost(container: AppContainer) {
                             },
                         )
                     }
-                    composable(
-                        route = "memory/{bookId}",
-                        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
-                    ) { entry ->
-                        val bookId = entry.arguments?.getString("bookId") ?: return@composable
-                        StoryMemoryRoute(
-                            container = container,
-                            bookId = bookId,
-                            onBack = { tasksNav.popBackStack() },
-                        )
-                    }
-                    composable(
-                        route = "worldlines/{bookId}",
-                        arguments = listOf(navArgument("bookId") { type = NavType.StringType }),
-                    ) { entry ->
-                        val bookId = entry.arguments?.getString("bookId") ?: return@composable
-                        WorldlineRoute(
-                            container = container,
-                            bookId = bookId,
-                            onBack = { tasksNav.popBackStack() },
-                        )
-                    }
-                    readerRoute(tasksNav, container)
+                    bookRoutes(
+                        nav = tasksNav,
+                        container = container,
+                        onDiscoverSearch = ::openDiscover,
+                    )
                 }
             }
 

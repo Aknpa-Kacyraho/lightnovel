@@ -23,8 +23,15 @@ class ParagraphsTest {
     @Test
     fun normalizesWindowsNewlines() {
         assertEquals(
-            listOf("甲", "乙"),
-            Paragraphs.split("甲\r\n乙\r\n"),
+            listOf("第一段", "第二段"),
+            Paragraphs.split("第一段\r\n第二段\r\n"),
         )
+    }
+
+    @Test
+    fun findsStartOfDuplicateParagraph() {
+        val text = "开头\n\n重复段落\n\n重复段落\n\n结尾"
+        assertEquals(text.indexOf("重复段落", text.indexOf("重复段落") + 1), Paragraphs.startOffset(text, 2))
+        assertEquals(text.indexOf("结尾"), Paragraphs.startOffset(text, 3))
     }
 }

@@ -5,15 +5,18 @@ import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.BookTags
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
+import com.kacyraho.lightnovel.data.local.LightnovelDatabase
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import androidx.room.withTransaction
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class DirectLibraryService(
     sources: List<WebSource>,
     private val dao: LibraryDao,
+    private val database: LightnovelDatabase,
     private val contentStore: ContentStore,
 ) : ChapterFetcher {
     val sources: List<WebSource> = sources
@@ -39,28 +42,30 @@ class DirectLibraryService(
         val chapters = detail.chapters
         require(chapters.isNotEmpty()) { "这本书没有可阅读章节" }
 
-        val bookId = "${book.provider}-${book.id}".replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val generatedId = "${book.provider}-${book.id}".replace(Regex("[^A-Za-z0-9._-]"), "_")
         val now = Instant.now().toString()
-        val old = dao.book(bookId)
+        val old = dao.book(generatedId) ?: dao.bookBySource(book.provider, book.id)
         if (old?.local == true) {
             return old
         }
+        val bookId = old?.id ?: generatedId
+        val storageDir = old?.storageDir ?: generatedId
         val oldChapters = dao.chapters(bookId).associateBy { it.idx }
         val entity = BookEntity(
             id = bookId,
-            storageDir = bookId,
-            slug = bookId,
+            storageDir = storageDir,
+            slug = old?.slug ?: bookId,
             source = book.provider,
             sourceId = book.id,
             title = detail.book.title.ifBlank { book.title },
-            titleZh = null,
+            titleZh = old?.titleZh,
             author = detail.book.author.ifBlank { book.author }.takeIf { it.isNotBlank() },
             tagsJson = BookTags.encode(detail.book.tags),
-            genre = null,
+            genre = old?.genre,
             episodes = chapters.size,
             local = false,
             createdAt = old?.createdAt ?: now,
-            legacyJson = null,
+            legacyJson = old?.legacyJson,
         )
         val rows = chapters.mapIndexed { index, chapter ->
             val idx = index + 1
@@ -81,24 +86,29 @@ class DirectLibraryService(
                 updatedAt = now,
             )
         }
-        dao.upsertBooks(listOf(entity))
-        if (dao.readState(bookId) == null) {
-            dao.upsertReadStates(
-                listOf(
-                    ReadStateEntity(
-                        bookId = bookId,
-                        shelf = "reading",
-                        favorite = false,
-                        hidden = false,
-                        progressIdx = 0,
-                        openedAt = null,
-                        finishedAt = null,
-                        updatedAt = now,
+        database.withTransaction {
+            dao.upsertBooks(listOf(entity))
+            val state = dao.readState(bookId)
+            if (state == null) {
+                dao.upsertReadStates(
+                    listOf(
+                        ReadStateEntity(
+                            bookId = bookId,
+                            shelf = "reading",
+                            favorite = false,
+                            hidden = false,
+                            progressIdx = 0,
+                            openedAt = null,
+                            finishedAt = null,
+                            updatedAt = now,
+                        ),
                     ),
-                ),
-            )
+                )
+            } else if (state.hidden) {
+                dao.updateHidden(bookId, hidden = false, updatedAt = now)
+            }
+            dao.upsertChapters(rows)
         }
-        dao.upsertChapters(rows)
         return entity
     }
 

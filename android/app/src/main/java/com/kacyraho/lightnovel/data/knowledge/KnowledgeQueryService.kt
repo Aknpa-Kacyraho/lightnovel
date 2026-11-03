@@ -25,7 +25,8 @@ class KnowledgeQueryService(
     ): List<KnowledgeItemView> {
         val items = mutableListOf<KnowledgeItemView>()
         knowledge.entities.filter {
-            it.readerKnown && visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
+            KnowledgeEntityPolicy.isQueryable(it) && it.readerKnown &&
+                visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
         }.forEach {
             items += KnowledgeItemView(
                 id = it.id,
@@ -39,7 +40,8 @@ class KnowledgeQueryService(
             )
         }
         activeFacts(knowledge.facts).filter {
-            it.readerKnown && factVisible(it, readAnchor, knowledge)
+            it.readerKnown && isQueryableEntity(knowledge, it.entityId) &&
+                factVisible(it, readAnchor, knowledge)
         }.forEach {
             items += KnowledgeItemView(
                 id = it.id,
@@ -54,7 +56,9 @@ class KnowledgeQueryService(
             )
         }
         knowledge.relations.filter {
-            it.readerKnown && relationVisible(it, readAnchor, knowledge)
+            it.readerKnown && isQueryableEntity(knowledge, it.fromEntityId) &&
+                isQueryableEntity(knowledge, it.toEntityId) &&
+                relationVisible(it, readAnchor, knowledge)
         }.forEach {
             items += KnowledgeItemView(
                 id = it.id,
@@ -70,7 +74,8 @@ class KnowledgeQueryService(
             )
         }
         knowledge.voiceFacts.filter {
-            it.readerKnown && visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
+            it.readerKnown && isQueryableEntity(knowledge, it.entityId) &&
+                visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
         }.forEach {
             items += KnowledgeItemView(
                 id = it.id,
@@ -93,7 +98,8 @@ class KnowledgeQueryService(
     ): Map<String, String> {
         val names = linkedMapOf<String, String>()
         knowledge.entities.filter {
-            it.readerKnown && visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
+            KnowledgeEntityPolicy.isQueryable(it) && it.readerKnown &&
+                visible(it.sourceAnchor, readAnchor, it.firstSeenChapter, knowledge)
         }.forEach { entity ->
             entity.names().forEach { name ->
                 if (name.isNotBlank()) names.putIfAbsent(name, entity.id)
@@ -114,6 +120,7 @@ class KnowledgeQueryService(
             .groupingBy { it.entityId }
             .eachCount()
         return knowledge.entities.mapNotNull { entity ->
+            if (!KnowledgeEntityPolicy.isQueryable(entity)) return@mapNotNull null
             val hits = entity.names().sumOf { name -> occurrences(body, name) }
             if (hits == 0) return@mapNotNull null
             val count = counts[entity.id] ?: 0
@@ -145,7 +152,7 @@ class KnowledgeQueryService(
         status: KnowledgeStatus,
     ): EntityCard? {
         val entity = knowledge.entity(entityId) ?: return null
-        if (!entity.readerKnown) return null
+        if (!entity.readerKnown || !KnowledgeEntityPolicy.isQueryable(entity)) return null
         val facts = activeFacts(knowledge.facts)
             .filter {
                 it.entityId == entityId && it.readerKnown &&
@@ -177,6 +184,9 @@ class KnowledgeQueryService(
 
     private fun activeFacts(facts: List<Fact>): List<Fact> =
         facts.filter { it.status != "source_stale" && it.status != "low_confidence" }
+
+    private fun isQueryableEntity(knowledge: KnowledgeFile, entityId: String): Boolean =
+        knowledge.entity(entityId)?.let(KnowledgeEntityPolicy::isQueryable) == true
 
     private fun factVisible(
         fact: Fact,

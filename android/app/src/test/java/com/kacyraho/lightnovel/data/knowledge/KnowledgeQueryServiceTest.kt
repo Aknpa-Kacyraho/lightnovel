@@ -31,6 +31,15 @@ class KnowledgeQueryServiceTest {
         sourceAnchor = FactAnchor(10, 0, 0, ""),
         firstSeenChapter = 10,
     )
+    private val karate = Entity(
+        id = "ent-karate",
+        type = "skill",
+        canonicalName = "空手道",
+        aliases = listOf("空手道"),
+        readerKnown = true,
+        sourceAnchor = FactAnchor(3, 0, 0, ""),
+        firstSeenChapter = 3,
+    )
 
     private val fact3 = Fact(
         id = "f3",
@@ -93,11 +102,22 @@ class KnowledgeQueryServiceTest {
         lastConfirmedChapter = 10,
         readerKnown = true,
     )
+    private val karateFact = Fact(
+        id = "fk",
+        entityId = karate.id,
+        kind = "persona",
+        factKey = "skill",
+        text = "空手道",
+        sourceAnchor = FactAnchor(3, 0, 0, ""),
+        firstSeenChapter = 3,
+        lastConfirmedChapter = 3,
+        readerKnown = true,
+    )
 
     private val knowledge = KnowledgeFile(
         workId = "book",
-        entities = listOf(alice, bob, carol),
-        facts = listOf(fact3, fact5a, fact5b, fact10, carolFact),
+        entities = listOf(alice, bob, carol, karate),
+        facts = listOf(fact3, fact5a, fact5b, fact10, carolFact, karateFact),
         extractedChapters = (1..10).toList(),
         canonExtractedThrough = 10,
     )
@@ -168,6 +188,20 @@ class KnowledgeQueryServiceTest {
         assertTrue(aliceEntry != null)
         assertTrue(aliceEntry!!.visibleFactCount >= 2)
         assertTrue(bobEntry == null)
+    }
+
+    @Test
+    fun genericSkillEntitiesAreNotQueryable() {
+        val anchor = FactAnchor(5, 1, Int.MAX_VALUE, "")
+        assertFalse(service.visibleNames(knowledge, anchor).containsKey("空手道"))
+        assertTrue(
+            service.queryEntries(knowledge, anchor, listOf("空手道"))
+                .none { it.entityId == karate.id },
+        )
+        assertTrue(
+            service.readerItems(knowledge, anchor)
+                .none { it.entityId == karate.id },
+        )
     }
 
     @Test

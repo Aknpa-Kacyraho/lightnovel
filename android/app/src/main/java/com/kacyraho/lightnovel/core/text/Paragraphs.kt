@@ -15,4 +15,18 @@ object Paragraphs {
             .filter(String::isNotEmpty)
             .ifEmpty { listOf(normalized.trim()) }
     }
+
+    fun startOffset(text: String, paragraphIndex: Int): Int {
+        if (paragraphIndex <= 0 || text.isEmpty()) return 0
+        val parts = split(text)
+        var cursor = 0
+        for (index in 0 until minOf(paragraphIndex, parts.size)) {
+            val part = parts[index]
+            val found = text.indexOf(part, cursor)
+            if (found < 0) return cursor.coerceIn(0, text.length)
+            cursor = found + part.length
+        }
+        val target = parts.getOrNull(paragraphIndex) ?: return cursor.coerceIn(0, text.length)
+        return text.indexOf(target, cursor).takeIf { it >= 0 } ?: cursor.coerceIn(0, text.length)
+    }
 }

@@ -13,8 +13,16 @@ class TranslationTaskRegistry {
 
     fun register(bookId: String, chapterIndex: Int, job: Job): Boolean {
         val key = key(bookId, chapterIndex)
-        val previous = jobs.putIfAbsent(key, job)
-        if (previous != null && previous.isActive) {
+        var accepted = false
+        jobs.compute(key) { _, previous ->
+            if (previous?.isActive == true) {
+                previous
+            } else {
+                accepted = true
+                job
+            }
+        }
+        if (!accepted) {
             job.cancel()
             return false
         }
@@ -32,6 +40,16 @@ class TranslationTaskRegistry {
 
     fun isRunning(bookId: String, chapterIndex: Int): Boolean =
         jobs.containsKey(key(bookId, chapterIndex))
+
+    fun cancelBook(bookId: String) {
+        jobs.keys
+            .filter { it.startsWith("$bookId/") }
+            .forEach { key ->
+                val job = jobs.remove(key) ?: return@forEach
+                _cancelled.tryEmit(key)
+                job.cancel()
+            }
+    }
 
     private fun key(bookId: String, chapterIndex: Int): String = "$bookId/$chapterIndex"
 }

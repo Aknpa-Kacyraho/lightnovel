@@ -48,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
@@ -89,6 +91,7 @@ fun DiscoverRoute(
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshShelf() }
     val visibleResults = remember(
         state.results,
         state.sourceFilter,
@@ -138,6 +141,7 @@ fun DiscoverRoute(
     if (state.linkSheetOpen) {
         LinkSheet(
             value = state.urlInput,
+            error = state.errors.lastOrNull(),
             adding = state.addingId != null,
             onValueChange = viewModel::onUrlChange,
             onDismiss = viewModel::closeLinkSheet,
@@ -801,6 +805,7 @@ private fun BookPreviewSheet(
 @Composable
 private fun LinkSheet(
     value: String,
+    error: String?,
     adding: Boolean,
     onValueChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -826,7 +831,15 @@ private fun LinkSheet(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("作品链接 / 数字 ID") },
                 singleLine = true,
+                isError = error != null,
             )
+            error?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             Button(
                 onClick = onAdd,
                 enabled = value.isNotBlank() && !adding,

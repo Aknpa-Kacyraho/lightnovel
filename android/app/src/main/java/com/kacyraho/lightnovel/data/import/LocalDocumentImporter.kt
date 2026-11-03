@@ -30,12 +30,12 @@ class LocalDocumentImporter(
         onProgress: (String) -> Unit = {},
     ): BookEntity = withContext(Dispatchers.IO) {
         val name = displayName(resolver, uri) ?: "本地书籍"
+        displaySize(resolver, uri)?.let { size ->
+            require(size <= MAX_BYTES) { "文件超过 80 MB" }
+        }
         onProgress("读取文件")
-        val bytes = resolver.openInputStream(uri)?.use { input ->
-            val data = input.readBytes()
-            require(data.size <= MAX_BYTES) { "文件超过 80 MB" }
-            data
-        } ?: error("无法读取文件")
+        val bytes = resolver.openInputStream(uri)?.use(::readLimited)
+            ?: error("无法读取文件")
         require(bytes.isNotEmpty()) { "文件是空的" }
 
         val extension = name.substringAfterLast('.', "").lowercase()
@@ -140,7 +140,7 @@ class LocalDocumentImporter(
             val read = input.read(buffer)
             if (read < 0) break
             total += read
-            require(total <= MAX_BYTES) { "???? 80 MB" }
+            require(total <= MAX_BYTES) { "文件超过 80 MB" }
             output.write(buffer, 0, read)
         }
         return output.toByteArray()

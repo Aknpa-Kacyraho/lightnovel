@@ -4,14 +4,20 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kacyraho.lightnovel.core.model.ReaderAnchor
+import com.kacyraho.lightnovel.core.storage.FileContentStore
 import com.kacyraho.lightnovel.data.local.BookEntity
+import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LightnovelDatabase
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
+import java.nio.file.Files
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -19,6 +25,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class LibraryRepositoryTest {
+    @get:Rule
+    val tmp = TemporaryFolder()
     private fun database(): LightnovelDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()
         return Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
@@ -80,6 +88,66 @@ class LibraryRepositoryTest {
             assertEquals(4, updated?.progressIdx)
             assertEquals(2, updated?.progressBlock)
             assertEquals(5, updated?.progressChar)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun removeBookHidesItAndRestoreKeepsProgressAndFiles() = runTest {
+        val db = database()
+        val store = FileContentStore(tmp.newFolder("data").toPath())
+        try {
+            val dao = db.libraryDao()
+            val entity = book("b1", "1", "Alpha", "作者")
+            dao.upsertBooks(listOf(entity))
+            dao.upsertReadStates(
+                listOf(
+                    state("b1", "reading", hidden = false).copy(
+                        progressIdx = 7,
+                        progressBlock = 3,
+                    ),
+                ),
+            )
+            dao.upsertChapters(
+                listOf(
+                    ChapterEntity(
+                        bookId = "b1",
+                        idx = 1,
+                        title = "第一章",
+                        titleZh = "第一章",
+                        rawPath = null,
+                        zhPath = null,
+                        status = "complete",
+                        tokenIn = 0,
+                        tokenOut = 0,
+                        model = null,
+                        updatedAt = null,
+                    ),
+                ),
+            )
+            store.writeZhAtomic("b1", 1, "译文")
+
+            val repo = RoomLibraryRepository(db)
+            repo.removeBook("b1")
+
+            assertNotNull(dao.book("b1"))
+            assertEquals(true, dao.readState("b1")?.hidden)
+            assertEquals(1, dao.chapters("b1").size)
+            assertTrue(Files.exists(store.paths("b1").bookDir))
+            assertTrue(repo.observeLibrary().first().isEmpty())
+            assertEquals(
+                listOf("b1"),
+                repo.observeLibrary(ShelfFilter(removedOnly = true)).first().map { it.book.id },
+            )
+
+            repo.restoreBook("b1")
+
+            val restored = dao.readState("b1")
+            assertEquals(false, restored?.hidden)
+            assertEquals(7, restored?.progressIdx)
+            assertEquals(3, restored?.progressBlock)
+            assertEquals(listOf("b1"), repo.observeLibrary().first().map { it.book.id })
         } finally {
             db.close()
         }

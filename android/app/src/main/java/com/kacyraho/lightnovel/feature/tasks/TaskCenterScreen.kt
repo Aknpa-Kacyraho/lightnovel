@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -160,47 +161,52 @@ private fun TaskCard(
 ) {
     val canRetry = task.status == "failed" || task.status == "partial"
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                val rawTitle = task.chapterTitleZh ?: task.chapterTitle.orEmpty()
-                val title = rawTitle.replaceFirst(
-                    Regex("^第\\s*${task.idx}\\s*[话話]\\s*"),
-                    "",
-                ).ifBlank { rawTitle }
-                Text(
-                    text = "第 ${task.idx} 话" + if (title.isNotBlank()) " · $title" else "",
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        Column(modifier = Modifier.padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    val rawTitle = task.chapterTitleZh ?: task.chapterTitle.orEmpty()
+                    val title = rawTitle.replaceFirst(
+                        Regex("^第\\s*${task.idx}\\s*[话話]\\s*"),
+                        "",
+                    ).ifBlank { rawTitle }
+                    Text(
+                        text = "第 ${task.idx} 话" + if (title.isNotBlank()) " · $title" else "",
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = when (task.status) {
+                            "translating" -> "正在翻译"
+                            "partial" -> "未译全，可重试"
+                            "failed" -> "翻译失败，可重试"
+                            else -> task.status.orEmpty()
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                StatusBadge(
+                    text = statusLabel(task.status),
+                    tone = statusTone(task.status),
                 )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = when (task.status) {
-                        "translating" -> "正在翻译"
-                        "partial" -> "未译全，可重试"
-                        "failed" -> "翻译失败，可重试"
-                        else -> task.status.orEmpty()
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
-            StatusBadge(
-                text = statusLabel(task.status),
-                tone = statusTone(task.status),
-            )
-            TextButton(onClick = onOpen) { Text("查看") }
-            if (canRetry) {
-                TextButton(onClick = onRetry) { Text("重试") }
-            }
-            if (task.status == "translating") {
-                TextButton(onClick = onCancel) { Text("取消") }
-            }
-            if (canRetry) {
-                TextButton(onClick = onIgnore) { Text("忽略") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onOpen) { Text("查看") }
+                if (canRetry) {
+                    TextButton(onClick = onRetry) { Text("重试") }
+                }
+                if (task.status == "translating") {
+                    TextButton(onClick = onCancel) { Text("取消") }
+                }
+                if (canRetry) {
+                    TextButton(onClick = onIgnore) { Text("忽略") }
+                }
             }
         }
     }

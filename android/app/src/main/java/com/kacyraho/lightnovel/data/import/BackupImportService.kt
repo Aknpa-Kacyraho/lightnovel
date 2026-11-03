@@ -77,6 +77,7 @@ class BackupImportService(
     }
 
     suspend fun apply(plan: ImportPlan, dao: LibraryDao): ImportApplyResult {
+        val chapterCounts = plan.chapters.groupingBy { it.bookId }.eachCount()
         val books = plan.report.books.map { book ->
             BookEntity(
                 id = book.id,
@@ -89,7 +90,7 @@ class BackupImportService(
                 author = book.author,
                 tagsJson = BookTags.encode(book.tags),
                 genre = null,
-                episodes = book.episodes,
+                episodes = maxOf(book.episodes, chapterCounts[book.id] ?: 0),
                 local = book.source == "local",
                 createdAt = book.addedAt,
                 legacyJson = book.legacyJson,

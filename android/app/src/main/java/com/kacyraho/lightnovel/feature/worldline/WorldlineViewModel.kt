@@ -90,6 +90,10 @@ class WorldlineViewModel(
             _state.value = current.copy(error = "角色和行动不能为空")
             return
         }
+        if (forkChapter < 1 || (book.episodes > 0 && forkChapter > book.episodes)) {
+            _state.value = current.copy(error = "分叉章超出范围：本书共 ${book.episodes} 章")
+            return
+        }
         viewModelScope.launch {
             _state.value = _state.value.copy(
                 busy = true,

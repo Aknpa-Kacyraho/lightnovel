@@ -16,12 +16,15 @@ class BookDownloadWorker(
         val dao = container.database.libraryDao()
         val book = dao.book(bookId) ?: return Result.failure()
         if (book.local) return Result.failure()
+        if (dao.readState(bookId)?.hidden == true) return Result.success()
         val chapters = dao.chapters(bookId)
         if (chapters.isEmpty()) return Result.success()
         var done = 0
         var failed = 0
         for (chapter in chapters) {
             if (isStopped) return Result.retry()
+            if (dao.book(bookId) == null) return Result.success()
+            if (dao.readState(bookId)?.hidden == true) return Result.success()
             val ok = runCatching {
                 container.directLibraryService.ensureChapter(book, chapter.idx)
             }.getOrDefault(false)

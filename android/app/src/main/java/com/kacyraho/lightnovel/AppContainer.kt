@@ -80,6 +80,7 @@ class AppContainer(
     val directLibraryService: DirectLibraryService = DirectLibraryService(
         sources = listOf(KakuyomuSource(), SyosetuSource()),
         dao = database.libraryDao(),
+        database = database,
         contentStore = contentStore,
     )
 

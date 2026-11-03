@@ -126,6 +126,11 @@ class BackupExporter(
                             put("source", kotlinx.serialization.json.JsonPrimitive(book.source))
                             put("source_id", kotlinx.serialization.json.JsonPrimitive(book.sourceId))
                             put("title", kotlinx.serialization.json.JsonPrimitive(book.title))
+                            put("episodes", kotlinx.serialization.json.JsonPrimitive(book.episodes))
+                            book.createdAt?.let {
+                                put("created_at", kotlinx.serialization.json.JsonPrimitive(it))
+                                put("added_at", kotlinx.serialization.json.JsonPrimitive(it))
+                            }
                             book.titleZh?.let { put("title_zh", kotlinx.serialization.json.JsonPrimitive(it)) }
                             book.author?.let { put("author", kotlinx.serialization.json.JsonPrimitive(it)) }
                             val tags = BookTags.decode(book.tagsJson)

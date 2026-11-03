@@ -39,7 +39,7 @@ data class ArchiveIndex(
                 val isSidecar = parts[2] == "chapters" && parts[3].endsWith(".meta.json")
                 if (!isRaw && !isZh && !isSidecar) continue
                 val idx = parts[3].substringBefore('.').toIntOrNull() ?: continue
-                if (idx <= 0) continue
+                if (idx < 0) continue
                 val chapter = book.chapters.getOrPut(idx) { ArchiveChapterEntry(idx) }
                 book.chapters[idx] = when {
                     isRaw -> chapter.copy(rawPath = entry.path)
@@ -53,7 +53,7 @@ data class ArchiveIndex(
                     ArchiveBookIndex(
                         storageDir = value.storageDir,
                         metaPath = value.metaPath,
-                        chapters = value.chapters.toSortedMap(),
+                        chapters = normalizeChapters(value.chapters),
                     )
                 },
             )
@@ -65,4 +65,17 @@ data class ArchiveIndex(
         var metaPath: String? = null,
         val chapters: MutableMap<Int, ArchiveChapterEntry> = linkedMapOf(),
     )
+}
+
+private fun normalizeChapters(
+    chapters: Map<Int, ArchiveChapterEntry>,
+): java.util.SortedMap<Int, ArchiveChapterEntry> {
+    val shifted = if (chapters.containsKey(0)) {
+        chapters.entries.associate { (idx, entry) ->
+            (idx + 1) to entry.copy(idx = idx + 1)
+        }
+    } else {
+        chapters
+    }
+    return java.util.TreeMap(shifted)
 }

@@ -267,21 +267,12 @@ fun ReaderTopBar(
                 maxLines = 1,
             )
         }
-        TextButton(onClick = { onFontSizeChange(fontSizeSp - 1f) }, colors = buttonColors) {
-            Text("A-")
-        }
-        Text(
-            text = fontSizeSp.toInt().toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = textColor,
-        )
-        TextButton(onClick = { onFontSizeChange(fontSizeSp + 1f) }, colors = buttonColors) {
-            Text("A+")
-        }
-        TextButton(onClick = onThemeChange, colors = buttonColors) { Text("主题") }
         TranslationMenu(
             enabled = !translationRunning,
             textColor = textColor,
+            fontSizeSp = fontSizeSp,
+            onFontSizeChange = onFontSizeChange,
+            onThemeChange = onThemeChange,
             onRetranslate = onRetranslate,
             onPolish = onPolish,
             onOpenMemory = onOpenMemory,
@@ -382,6 +373,9 @@ fun LanguageModeMenu(
 private fun TranslationMenu(
     enabled: Boolean,
     textColor: Color,
+    fontSizeSp: Float,
+    onFontSizeChange: (Float) -> Unit,
+    onThemeChange: () -> Unit,
     onRetranslate: () -> Unit,
     onPolish: () -> Unit,
     onOpenMemory: (() -> Unit)?,
@@ -406,6 +400,27 @@ private fun TranslationMenu(
             Text("更多")
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("字号 ${fontSizeSp.toInt()} · 减小") },
+                onClick = {
+                    expanded = false
+                    onFontSizeChange(fontSizeSp - 1f)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("字号 ${fontSizeSp.toInt()} · 增大") },
+                onClick = {
+                    expanded = false
+                    onFontSizeChange(fontSizeSp + 1f)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("切换纸色") },
+                onClick = {
+                    expanded = false
+                    onThemeChange()
+                },
+            )
             DropdownMenuItem(
                 text = { Text("重译本章") },
                 enabled = enabled,
@@ -439,7 +454,7 @@ private fun TranslationMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text("本页词条") },
+                text = { Text("附近词条") },
                 onClick = {
                     expanded = false
                     onOpenQuery()

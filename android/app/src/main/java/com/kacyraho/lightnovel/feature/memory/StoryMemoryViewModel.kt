@@ -57,6 +57,7 @@ class StoryMemoryViewModel(
             _state.value = _state.value.copy(loading = false, error = "书不存在")
             return
         }
+        knowledgeExtractionService?.pruneGenericGlossary(book)
         val chapters = repository.observeChapters(bookId).first()
         val memory = storyStore.load(book.storageDir, book.id, book.title)
         val legacy = legacyGlossaryStore?.load()?.entries.orEmpty()
