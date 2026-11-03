@@ -123,6 +123,44 @@ class WorldlineContextBuilderTest {
     }
 
     @Test
+    fun forkTextContextStopsAtTheSelectedParagraph() {
+        val builder = WorldlineContextBuilder(
+            KnowledgeStore(FileContentStore(tmp.newFolder("data").toPath())),
+            null,
+        )
+        val book = BookEntity(
+            id = "book-1",
+            storageDir = "book",
+            slug = "book",
+            source = "local",
+            sourceId = "book-1",
+            title = "Book",
+            titleZh = null,
+            author = null,
+            tagsJson = null,
+            genre = null,
+            episodes = 3,
+            local = true,
+            createdAt = null,
+            legacyJson = null,
+        )
+        val branch = WorldlineFile(
+            id = "wl-forktext",
+            bookId = "book-1",
+            forkChapter = 2,
+            forkParagraph = 1,
+            forkText = "第一段\n\n第二段\n\n第三段",
+            intervention = Intervention("爱丽丝", "拒绝", ""),
+        )
+        val writer = builder.writerContext(book, 2, 1, branch, null, "plan", "", "")
+        assertTrue(writer.contains("第一段"))
+        assertTrue(writer.contains("第二段"))
+        assertFalse(writer.contains("第三段"))
+        val planner = builder.plannerContext(book, 2, false, branch, null)
+        assertFalse(planner.contains("第三段"))
+    }
+
+    @Test
     fun branchHistoryKeepsOlderSummariesAndRecentProse() {
         val builder = WorldlineContextBuilder(
             KnowledgeStore(FileContentStore(tmp.newFolder("data").toPath())),

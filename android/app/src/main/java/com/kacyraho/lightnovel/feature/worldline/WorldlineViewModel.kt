@@ -9,6 +9,9 @@ import com.kacyraho.lightnovel.data.worldline.WorldlineFile
 import com.kacyraho.lightnovel.data.worldline.WorldlineGeneration
 import com.kacyraho.lightnovel.data.worldline.WorldlineService
 import com.kacyraho.lightnovel.data.worldline.WorldlineStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +44,7 @@ class WorldlineViewModel(
     private val bookId: String,
 ) : ViewModel() {
     private val _state = MutableStateFlow(WorldlineUiState())
+    private var operationJob: Job? = null
     val state: StateFlow<WorldlineUiState> = _state.asStateFlow()
 
     init {
@@ -127,7 +131,7 @@ class WorldlineViewModel(
             _state.value = current.copy(error = "分叉章超出范围：本书共 ${book.episodes} 章")
             return
         }
-        viewModelScope.launch {
+        operationJob = viewModelScope.launch {
             _state.value = _state.value.copy(
                 busy = true,
                 message = "正在生成分支第一章…",
@@ -168,7 +172,7 @@ class WorldlineViewModel(
         val current = _state.value
         if (current.busy) return
         val count = current.continueCount.coerceIn(1, 5)
-        viewModelScope.launch {
+        operationJob = viewModelScope.launch {
             _state.value = current.copy(
                 busy = true,
                 message = if (count == 1) {
@@ -217,7 +221,7 @@ class WorldlineViewModel(
         val selected = _state.value.selected ?: return
         val current = _state.value
         if (current.busy || selected.chapters.isEmpty()) return
-        viewModelScope.launch {
+        operationJob = viewModelScope.launch {
             _state.value = current.copy(
                 busy = true,
                 message = "正在重写第 ${selected.chapters.last().index} 章…",
@@ -245,10 +249,21 @@ class WorldlineViewModel(
         }
     }
 
+    fun cancelOperation() {
+        operationJob?.cancel()
+        operationJob = null
+        _state.value = _state.value.copy(
+            busy = false,
+            message = "已取消生成",
+            error = null,
+        )
+        viewModelScope.launch { reload() }
+    }
+
     fun delete(id: String) {
         val book = _state.value.book ?: return
         viewModelScope.launch {
-            val ok = worldlineStore.delete(book.storageDir, id)
+            val ok = withContext(Dispatchers.IO) { worldlineStore.delete(book.storageDir, id) }
             reload()
             _state.value = _state.value.copy(
                 message = if (ok) "分支已删除" else "分支不存在",
@@ -281,7 +296,7 @@ class WorldlineViewModel(
 
     private suspend fun reload(selectedId: String? = _state.value.selected?.id) {
         val book = _state.value.book ?: return
-        val branches = worldlineStore.list(book.storageDir)
+        val branches = withContext(Dispatchers.IO) { worldlineStore.list(book.storageDir) }
         _state.value = _state.value.copy(
             branches = branches,
             selected = selectedId?.let { id -> branches.firstOrNull { it.id == id } },

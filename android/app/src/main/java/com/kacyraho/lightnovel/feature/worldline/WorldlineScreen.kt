@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -91,6 +92,7 @@ fun WorldlineRoute(
         onRegenerate = viewModel::regenerateLastChapter,
         onDelete = viewModel::delete,
         onRefresh = viewModel::refresh,
+        onCancel = viewModel::cancelOperation,
     )
 }
 
@@ -117,15 +119,29 @@ fun WorldlineScreen(
     onRegenerate: () -> Unit,
     onDelete: (String) -> Unit,
     onRefresh: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     var deleteId by remember { mutableStateOf<String?>(null) }
     var confirmRegenerate by remember { mutableStateOf(false) }
+    var lastSelectedId by remember { mutableStateOf<String?>(null) }
+    var lastCursor by remember { mutableIntStateOf(0) }
     val scrollState = rememberScrollState()
     LaunchedEffect(state.selected?.id, state.selected?.branchCursor) {
-        if (state.selected != null) {
+        val selected = state.selected
+        if (selected == null) {
+            lastSelectedId = null
+            lastCursor = 0
+            scrollState.scrollTo(0)
+            return@LaunchedEffect
+        }
+        if (lastSelectedId == selected.id && selected.branchCursor > lastCursor) {
             kotlinx.coroutines.delay(120)
             scrollState.animateScrollTo(scrollState.maxValue)
+        } else if (lastSelectedId != selected.id) {
+            scrollState.scrollTo(0)
         }
+        lastSelectedId = selected.id
+        lastCursor = selected.branchCursor
     }
     Scaffold(
         topBar = {
@@ -146,33 +162,42 @@ fun WorldlineScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onRefresh, enabled = !state.busy) { Text("刷新") }
+                    if (state.busy) {
+                        TextButton(onClick = onCancel) { Text("取消生成") }
+                    } else {
+                        TextButton(onClick = onRefresh) { Text("刷新") }
+                    }
                 },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = Modifier.testTag("worldline-screen"),
     ) { padding ->
-        if (state.busy) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(padding))
-            state.message?.let { message ->
-                Text(
-                    message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
-        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(padding),
         ) {
+            if (state.busy) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                state.message?.let { message ->
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .imePadding()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
             if (state.selected == null) {
                 CreateForm(
                     state = state,
@@ -216,6 +241,7 @@ fun WorldlineScreen(
                     onDelete = { deleteId = state.selected?.id },
                 )
             }
+        }
         }
     }
 
@@ -426,6 +452,11 @@ private fun WorldlineSettingsCard(
                 maxLines = 5,
                 enabled = !busy,
                 supportingText = { Text("${directive.length}/2000") },
+            )
+            Text(
+                "设置会在下一次续写或重写时保存。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (showContinueCount) {
                 Text("连续续写", style = MaterialTheme.typography.labelMedium)

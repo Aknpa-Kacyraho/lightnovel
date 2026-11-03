@@ -17,6 +17,7 @@ import com.kacyraho.lightnovel.data.translation.translationKeyScope
 import com.kacyraho.lightnovel.data.translation.translationRequiresKey
 import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
@@ -173,15 +174,20 @@ class WorldlineService(
         val oldKnowledge = worldlineStore.loadKnowledge(book.storageDir, id)
         worldlineStore.removeKnowledgeChapter(book.storageDir, id, target.index)
         val previous = previousChapters.lastOrNull()
-        val generated = generateChapter(
-            book = book,
-            worldline = trimmed,
-            chapterIndex = target.index,
-            previousSummary = previous?.summary.orEmpty(),
-            previousTail = previous?.text?.takeLast(600).orEmpty(),
-        ).getOrElse {
-            oldKnowledge?.let { worldlineStore.saveKnowledge(book.storageDir, it) }
-            return Result.failure(it)
+        val generated = try {
+            generateChapter(
+                book = book,
+                worldline = trimmed,
+                chapterIndex = target.index,
+                previousSummary = previous?.summary.orEmpty(),
+                previousTail = previous?.text?.takeLast(600).orEmpty(),
+            ).getOrElse {
+                oldKnowledge?.let { knowledge -> worldlineStore.saveKnowledge(book.storageDir, knowledge) }
+                return Result.failure(it)
+            }
+        } catch (error: CancellationException) {
+            oldKnowledge?.let { knowledge -> worldlineStore.saveKnowledge(book.storageDir, knowledge) }
+            throw error
         }
         val updated = trimmed.copy(
             chapters = previousChapters + generated.chapter,
@@ -244,9 +250,6 @@ class WorldlineService(
             plan.beats.forEachIndexed { index, beat -> appendLine("${index + 1}. $beat") }
             if (plan.stateChanges.isNotEmpty()) {
                 appendLine("状态变化：${plan.stateChanges.joinToString("；")}")
-            }
-            if (plan.futureRisks.isNotEmpty()) {
-                appendLine("后续风险：${plan.futureRisks.joinToString("；")}")
             }
         }
 
@@ -351,7 +354,7 @@ class WorldlineService(
                 book = book,
                 worldline = worldline,
                 chapter = chapter,
-                canonReference = contexts.canonReference(book, worldline.forkChapter, true),
+                canonReference = contexts.canonReference(book, worldline.forkChapter, true, worldline.forkParagraph),
             )
         } else {
             null
@@ -631,7 +634,7 @@ class WorldlineService(
             forkParagraph = worldline.forkParagraph,
             branchKnowledge = branchKnowledge,
         )
-        val canonReference = contexts.canonReference(book, worldline.forkChapter, comparison)
+        val canonReference = contexts.canonReference(book, worldline.forkChapter, comparison, worldline.forkParagraph)
         val prompt = buildString {
             appendLine("【角色已知信息（只能使用这些）】")
             appendLine(characterView)
@@ -658,6 +661,9 @@ class WorldlineService(
         val output = runCatching {
             json.decodeFromString(ValidationOutput.serializer(), cleanJson(reply.content))
         }.getOrNull() ?: return emptyList()
+        if (!output.canProceed && output.violations.isEmpty()) {
+            return listOf(Violation("canon", "", "校验器要求重写本章"))
+        }
         return output.violations
     }
 

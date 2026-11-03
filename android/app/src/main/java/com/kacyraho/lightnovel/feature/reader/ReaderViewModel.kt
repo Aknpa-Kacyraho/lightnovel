@@ -146,6 +146,7 @@ class ReaderViewModel(
     private var extractionJob: Job? = null
     private var knowledgeStatusJob: Job? = null
     private var settingsJob: Job? = null
+    private var worldlineJob: Job? = null
     private var lastKey: String? = null
     private var currentConfigHash: String? = null
     private var currentLegacyConfigHash: String? = null
@@ -563,7 +564,7 @@ class ReaderViewModel(
             running = true,
             message = "正在按修改生成…",
         )
-        viewModelScope.launch {
+        worldlineJob = viewModelScope.launch {
             service.createBranch(
                 book = book,
                 title = "",
@@ -583,6 +584,14 @@ class ReaderViewModel(
                     error = it.message?.take(240) ?: "生成失败",
                 )
             }
+        }
+    }
+
+    fun cancelWorldline() {
+        worldlineJob?.cancel()
+        worldlineJob = null
+        if (_worldlineState.value.running) {
+            _worldlineState.value = ReaderWorldlineState(error = "已取消生成")
         }
     }
 
@@ -800,10 +809,33 @@ class ReaderViewModel(
 
     private fun currentParagraphIndex(): Int {
         val state = _state.value
-        if (state.readerMode == "scroll") return state.scrollParagraph
+        if (state.readerMode == "scroll") {
+            return paragraphIndexForScrollLine(state, state.scrollParagraph)
+        }
         return state.layout?.pages?.getOrNull(state.pageIndex)
             ?.startAnchor?.paragraphId
             ?: state.scrollParagraph
+    }
+
+    private fun paragraphIndexForScrollLine(state: ReaderUiState, line: Int): Int {
+        if (state.paragraphs.isEmpty()) return 0
+        val safeLine = line.coerceAtLeast(0)
+        var cursor = 0
+        state.paragraphs.forEachIndexed { index, paragraph ->
+            val text = when (state.displayMode) {
+                "raw" -> paragraph.source
+                "bilingual" -> listOfNotNull(
+                    paragraph.source.takeIf(String::isNotBlank),
+                    paragraph.translated?.takeIf(String::isNotBlank),
+                ).joinToString("\n")
+                else -> paragraph.translated ?: paragraph.source
+            }
+            val lines = text.split("\n").size.coerceAtLeast(1)
+            if (safeLine < cursor + lines) return index
+            cursor += lines
+            if (index < state.paragraphs.lastIndex) cursor += 1
+        }
+        return state.paragraphs.lastIndex
     }
 
     fun openQuery() {

@@ -40,6 +40,7 @@ class WorldlineStoreTest {
         assertTrue(store.delete("book", "wl-a"))
         assertEquals(1, store.list("book").size)
         assertTrue(!store.delete("book", "missing"))
+        assertTrue(!store.delete("book", ".."))
     }
 
     @Test

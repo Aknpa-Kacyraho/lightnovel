@@ -45,6 +45,7 @@ fun ReaderWorldlineSheet(
     theme: ReaderTheme,
     onDismiss: () -> Unit,
     onGenerate: (String) -> Unit,
+    onCancelGenerate: () -> Unit,
     onOpenWorldlines: (() -> Unit)?,
 ) {
     var value by remember(initialText, initialOffset) {
@@ -94,15 +95,17 @@ fun ReaderWorldlineSheet(
                         Text("取消", color = theme.text)
                     }
                     Button(
-                        onClick = { onGenerate(value.text) },
-                        enabled = !state.running && value.text.isNotBlank(),
+                        onClick = {
+                            if (state.running) onCancelGenerate() else onGenerate(value.text)
+                        },
+                        enabled = state.running || value.text.isNotBlank(),
                         colors = buttonColors,
                     ) {
-                        Text(if (state.running) "生成中…" else "生成")
+                        Text(if (state.running) "停止生成" else "生成")
                     }
                 }
                 Text(
-                    "第 $chapterIndex 章 · 已定位到当前段落；修改会作为世界线起点",
+                    "第 $chapterIndex 章 · 已定位到当前段落；只把当前段及之前作为分叉前正文",
                     style = MaterialTheme.typography.bodySmall,
                     color = theme.secondary,
                 )
@@ -131,7 +134,11 @@ fun ReaderWorldlineSheet(
                     ),
                 )
                 if (state.running) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = theme.text,
+                        trackColor = theme.secondary.copy(alpha = 0.2f),
+                    )
                 }
                 state.message?.let {
                     Text(

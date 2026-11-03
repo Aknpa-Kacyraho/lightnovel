@@ -42,11 +42,22 @@ class WorldlineStore(
         val path = path(storageDir, id)
         if (!Files.isRegularFile(path)) return null
         return runCatching {
-            json.decodeFromString(
-                WorldlineFile.serializer(),
-                Files.readAllBytes(path).toString(Charsets.UTF_8),
+            normalize(
+                json.decodeFromString(
+                    WorldlineFile.serializer(),
+                    Files.readAllBytes(path).toString(Charsets.UTF_8),
+                ),
             )
         }.getOrNull()
+    }
+
+    private fun normalize(worldline: WorldlineFile): WorldlineFile {
+        if (worldline.chapterStates.size == worldline.chapters.size) return worldline
+        val states = MutableList(worldline.chapters.size) { worldline.chapterStates.getOrNull(it) ?: BranchState() }
+        if (worldline.chapters.isNotEmpty() && worldline.chapterStates.isEmpty()) {
+            states[states.lastIndex] = worldline.state
+        }
+        return worldline.copy(chapterStates = states)
     }
 
     @Synchronized
@@ -143,7 +154,7 @@ class WorldlineStore(
 
     @Synchronized
     fun delete(storageDir: String, id: String): Boolean {
-        if (id.isBlank() || id.contains('/') || id.contains('\\')) return false
+        if (!safeId(id)) return false
         val dir = root(storageDir).resolve(id)
         if (!Files.isDirectory(dir)) return false
         Files.walk(dir).use { stream ->
@@ -167,9 +178,21 @@ class WorldlineStore(
     private fun root(storageDir: String) =
         contentStore.paths(storageDir).bookDir.resolve("worldlines")
 
-    private fun path(storageDir: String, id: String) =
-        root(storageDir).resolve(id).resolve("worldline.json")
+    private fun safeId(id: String): Boolean =
+        id.isNotBlank() &&
+            id == id.trim() &&
+            id != "." &&
+            id != ".." &&
+            !id.contains('/') &&
+            !id.contains('\\')
 
-    private fun knowledgePath(storageDir: String, id: String) =
-        root(storageDir).resolve(id).resolve("knowledge.json")
+    private fun path(storageDir: String, id: String): java.nio.file.Path {
+        require(safeId(id)) { "invalid worldline id" }
+        return root(storageDir).resolve(id).resolve("worldline.json")
+    }
+
+    private fun knowledgePath(storageDir: String, id: String): java.nio.file.Path {
+        require(safeId(id)) { "invalid worldline id" }
+        return root(storageDir).resolve(id).resolve("knowledge.json")
+    }
 }

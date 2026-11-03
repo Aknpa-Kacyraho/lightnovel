@@ -121,6 +121,7 @@ fun ReaderRoute(
         onOpenMemory = onOpenMemory,
         onOpenWorldlines = onOpenWorldlines,
         onCreateWorldline = viewModel::createWorldline,
+        onCancelWorldline = viewModel::cancelWorldline,
         onConsumeWorldlineResult = viewModel::consumeWorldlineResult,
         onOpenQuery = viewModel::openQuery,
         onSelectEntity = viewModel::selectEntity,
@@ -155,6 +156,7 @@ private fun ReaderContent(
     onOpenMemory: (() -> Unit)?,
     onOpenWorldlines: (() -> Unit)?,
     onCreateWorldline: (String) -> Unit,
+    onCancelWorldline: () -> Unit,
     onConsumeWorldlineResult: () -> Unit,
     onOpenQuery: () -> Unit,
     onSelectEntity: (String) -> Unit,
@@ -580,6 +582,7 @@ private fun ReaderContent(
                     onConsumeWorldlineResult()
                 },
                 onGenerate = onCreateWorldline,
+                onCancelGenerate = onCancelWorldline,
                 onOpenWorldlines = onOpenWorldlines?.let { open ->
                     {
                         showWorldline = false
@@ -730,10 +733,19 @@ private fun readerFontFamily(id: String): FontFamily = when (id) {
 
 private fun paragraphIdForLine(state: ReaderUiState, line: Int): Int {
     if (state.paragraphs.isEmpty()) return 0
+    val safeLine = line.coerceAtLeast(0)
     var cursor = 0
     state.paragraphs.forEachIndexed { index, paragraph ->
-        val lines = paragraph.source.split("\n").size.coerceAtLeast(1)
-        if (line < cursor + lines) return index
+        val text = when (state.displayMode) {
+            "raw" -> paragraph.source
+            "bilingual" -> listOfNotNull(
+                paragraph.source.takeIf(String::isNotBlank),
+                paragraph.translated?.takeIf(String::isNotBlank),
+            ).joinToString("\n")
+            else -> paragraph.translated ?: paragraph.source
+        }
+        val lines = text.split("\n").size.coerceAtLeast(1)
+        if (safeLine < cursor + lines) return index
         cursor += lines
         if (index < state.paragraphs.lastIndex) cursor += 1
     }

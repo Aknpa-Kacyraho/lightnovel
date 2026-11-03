@@ -36,14 +36,14 @@ class WorldlineContextBuilder(
         return buildString {
             if (facts.isNotEmpty()) {
                 appendLine("【分叉点前已知事实】")
-                facts.take(60).forEach {
+                facts.sortedByDescending { it.sourceAnchor }.take(60).forEach {
                     val name = knowledge.entity(it.entityId)?.canonicalName ?: "?"
                     appendLine("$name/${it.kind}/${it.factKey}: ${it.text}")
                 }
             }
             if (relations.isNotEmpty()) {
                 appendLine("【分叉点前关系】")
-                relations.take(30).forEach {
+                relations.sortedByDescending { it.sourceAnchor }.take(30).forEach {
                     val from = knowledge.entity(it.fromEntityId)?.canonicalName ?: "?"
                     val to = knowledge.entity(it.toEntityId)?.canonicalName ?: "?"
                     appendLine("$from → $to：${it.label}")
@@ -51,7 +51,7 @@ class WorldlineContextBuilder(
             }
             if (voices.isNotEmpty()) {
                 appendLine("【分叉点前角色声音】")
-                voices.take(30).forEach {
+                voices.sortedByDescending { it.sourceAnchor }.take(30).forEach {
                     val name = knowledge.entity(it.entityId)?.canonicalName ?: "?"
                     appendLine("$name/${it.dimension}：${it.text}")
                 }
@@ -79,11 +79,14 @@ class WorldlineContextBuilder(
             val current = store.readZh(book.storageDir, forkChapter)
                 ?: store.readRaw(book.storageDir, forkChapter)
             if (!current.isNullOrBlank()) {
-                val offset = Paragraphs.startOffset(current, forkParagraph)
-                    .coerceIn(0, current.length)
-                val prefix = current.take(offset).trim()
-                if (prefix.isNotBlank()) {
-                    blocks += "【第 $forkChapter 章分叉前】\n$prefix"
+                val paragraphCount = Paragraphs.split(current).size
+                if (forkParagraph <= paragraphCount) {
+                    val offset = Paragraphs.startOffset(current, forkParagraph)
+                        .coerceIn(0, current.length)
+                    val prefix = current.take(offset).trim()
+                    if (prefix.isNotBlank()) {
+                        blocks += "【第 $forkChapter 章分叉前】\n$prefix"
+                    }
                 }
             }
         }
@@ -95,9 +98,10 @@ class WorldlineContextBuilder(
         book: BookEntity,
         forkChapter: Int,
         comparison: Boolean,
+        forkParagraph: Int = 0,
     ): String {
         val knowledge = knowledgeStore.load(book.storageDir, book.id, book.title)
-        val fork = fork(forkChapter, 0)
+        val fork = fork(forkChapter, forkParagraph)
         val facts = knowledge.facts.filter {
             !FactAnchorMapper.visible(it.sourceAnchor, fork) &&
                 it.status != "source_stale" && it.status != "low_confidence" &&
@@ -144,7 +148,17 @@ class WorldlineContextBuilder(
                 }
             }
         return if (lines.isEmpty()) "（没有明确记录的角色已知信息）"
-        else lines.distinct().take(80).joinToString("\n")
+        else lines.distinct().takeLast(80).joinToString("\n")
+    }
+
+    private fun forkTextThrough(branch: WorldlineFile): String {
+        val text = branch.forkText
+        if (text.isBlank()) return ""
+        val parts = Paragraphs.split(text)
+        if (parts.size <= 1) return text
+        val last = branch.forkParagraph.coerceIn(0, parts.lastIndex)
+        val end = Paragraphs.startOffset(text, last + 1)
+        return if (end > 0) text.take(end) else text
     }
 
     fun branchHistory(branch: WorldlineFile, maxChars: Int = 7_000): String {
@@ -191,16 +205,17 @@ class WorldlineContextBuilder(
             appendLine("【分叉前原文节选（只读到分叉点）】")
             appendLine(excerpt)
         }
-        if (branch.forkText.isNotBlank()) {
-            appendLine("【用户修改后的分叉正文（以此为准）】")
-            appendLine(branch.forkText.take(8_000))
+        val forkText = forkTextThrough(branch)
+        if (forkText.isNotBlank()) {
+            appendLine("【用户修改后的分叉正文（以此为准，截止到分叉段）】")
+            appendLine(forkText.take(8_000))
         }
         val history = branchHistory(branch, 6_000)
         if (history.isNotBlank()) {
             appendLine("【本分支前文】")
             appendLine(history)
         }
-        appendLine(canonReference(book, forkChapter, comparison))
+        appendLine(canonReference(book, forkChapter, comparison, branch.forkParagraph))
         appendLine("【当前分支状态】")
         appendLine("时间：${branch.state.time}；地点：${branch.state.location}")
         appendLine(branch.state.summary)
@@ -257,6 +272,7 @@ class WorldlineContextBuilder(
             appendLine("【本分支已知事实】")
             branchKnowledge.facts
                 .filter { it.kind != "reveal_content" }
+                .sortedByDescending { it.sourceAnchor }
                 .take(60)
                 .forEach { appendLine("${it.kind}/${it.factKey}: ${it.text}") }
         }
@@ -280,9 +296,10 @@ class WorldlineContextBuilder(
         if (branch.intervention.constraint.isNotBlank()) {
             appendLine("约束：${branch.intervention.constraint}")
         }
-        if (branch.forkText.isNotBlank()) {
-            appendLine("【用户修改后的分叉正文（必须以此为准）】")
-            appendLine(branch.forkText.take(10_000))
+        val forkText = forkTextThrough(branch)
+        if (forkText.isNotBlank()) {
+            appendLine("【用户修改后的分叉正文（必须以此为准，截止到分叉段）】")
+            appendLine(forkText.take(10_000))
         }
         if (previousSummary.isNotBlank()) appendLine("【上一章梗概】$previousSummary")
         if (previousTail.isNotBlank()) appendLine("【上一章结尾】$previousTail")
@@ -322,12 +339,15 @@ class WorldlineContextBuilder(
             }
     }
 
-    private fun fork(chapter: Int, paragraph: Int) = FactAnchor(
-        chapter = chapter,
-        paragraph = paragraph,
-        charOffset = Int.MAX_VALUE,
-        quoteHash = "",
-    )
+    private fun fork(chapter: Int, paragraph: Int): FactAnchor {
+        val beforeParagraph = paragraph > 0
+        return FactAnchor(
+            chapter = chapter,
+            paragraph = if (beforeParagraph) paragraph - 1 else -1,
+            charOffset = if (beforeParagraph) Int.MAX_VALUE else -1,
+            quoteHash = "",
+        )
+    }
 
     private fun BranchKnowledgeFile.entityName(id: String): String? =
         entities.firstOrNull { it.id == id }?.canonicalName
