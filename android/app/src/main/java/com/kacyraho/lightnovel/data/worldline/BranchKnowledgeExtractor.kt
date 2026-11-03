@@ -12,13 +12,16 @@ import com.kacyraho.lightnovel.data.knowledge.Secret
 import com.kacyraho.lightnovel.data.knowledge.VoiceFact
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.translation.ChatMessage
+import com.kacyraho.lightnovel.data.translation.ChatResult
 import com.kacyraho.lightnovel.data.translation.DeepSeekClient
 import com.kacyraho.lightnovel.data.translation.Hashes
 import com.kacyraho.lightnovel.data.translation.TranslationClient
 import com.kacyraho.lightnovel.data.translation.TranslationException
 import com.kacyraho.lightnovel.data.translation.translationKeyScope
 import com.kacyraho.lightnovel.data.translation.translationRequiresKey
+import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -56,7 +59,9 @@ class BranchKnowledgeExtractor(
         }
         val client = clientFactory(settings.deepSeekBaseUrl, key)
         val reply = try {
-            client.complete(
+            completeWithRetry(
+                client = client,
+                model = settings.deepSeekModel,
                 messages = listOf(
                     ChatMessage("system", SYSTEM_PROMPT),
                     ChatMessage(
@@ -67,7 +72,6 @@ class BranchKnowledgeExtractor(
                         ),
                     ),
                 ),
-                model = settings.deepSeekModel,
                 maxTokens = 8_192,
                 temperature = 0.1,
             )
@@ -295,6 +299,40 @@ class BranchKnowledgeExtractor(
                 extractedChapters = chapters,
             ),
         )
+    }
+
+    private suspend fun completeWithRetry(
+        client: TranslationClient,
+        model: String,
+        messages: List<ChatMessage>,
+        maxTokens: Int,
+        temperature: Double,
+    ): ChatResult {
+        var lastError: TranslationException? = null
+        repeat(3) { attempt ->
+            try {
+                return client.complete(
+                    messages = messages,
+                    model = model,
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                )
+            } catch (error: TranslationException) {
+                lastError = error
+                if (!error.retryable || attempt == 2) throw error
+                delay(2_000L * (attempt + 1))
+            } catch (error: IOException) {
+                val wrapped = TranslationException(
+                    statusCode = 0,
+                    message = "调用 API 失败：${error.message ?: error.javaClass.simpleName}",
+                    retryable = true,
+                )
+                lastError = wrapped
+                if (attempt == 2) throw wrapped
+                delay(2_000L * (attempt + 1))
+            }
+        }
+        throw lastError ?: TranslationException(0, "调用 API 失败", true)
     }
 
     private fun userPrompt(text: String, entities: List<Entity>): String = buildString {

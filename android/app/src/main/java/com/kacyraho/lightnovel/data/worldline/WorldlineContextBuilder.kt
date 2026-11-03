@@ -1,5 +1,7 @@
 package com.kacyraho.lightnovel.data.worldline
 
+import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.knowledge.Fact
 import com.kacyraho.lightnovel.data.knowledge.FactAnchor
 import com.kacyraho.lightnovel.data.knowledge.FactAnchorMapper
@@ -11,6 +13,7 @@ import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 class WorldlineContextBuilder(
     private val knowledgeStore: KnowledgeStore,
     private val storyMemoryStore: StoryMemoryStore?,
+    private val contentStore: ContentStore? = null,
 ) {
     fun canonKnown(book: BookEntity, forkChapter: Int, forkParagraph: Int): String {
         val knowledge = knowledgeStore.load(book.storageDir, book.id, book.title)
@@ -54,6 +57,38 @@ class WorldlineContextBuilder(
                 }
             }
         }
+    }
+
+    fun canonExcerpt(
+        book: BookEntity,
+        forkChapter: Int,
+        forkParagraph: Int,
+        maxChars: Int = 8_000,
+    ): String {
+        val store = contentStore ?: return ""
+        val blocks = mutableListOf<String>()
+        for (chapter in maxOf(1, forkChapter - 2) until forkChapter) {
+            val text = store.readZh(book.storageDir, chapter)
+                ?: store.readRaw(book.storageDir, chapter)
+                ?: continue
+            if (text.isNotBlank()) {
+                blocks += "【第 $chapter 章】\n${text.trim()}"
+            }
+        }
+        if (forkParagraph > 0) {
+            val current = store.readZh(book.storageDir, forkChapter)
+                ?: store.readRaw(book.storageDir, forkChapter)
+            if (!current.isNullOrBlank()) {
+                val offset = Paragraphs.startOffset(current, forkParagraph)
+                    .coerceIn(0, current.length)
+                val prefix = current.take(offset).trim()
+                if (prefix.isNotBlank()) {
+                    blocks += "【第 $forkChapter 章分叉前】\n$prefix"
+                }
+            }
+        }
+        if (blocks.isEmpty()) return ""
+        return blocks.joinToString("\n\n").takeLast(maxChars.coerceAtLeast(1_000))
     }
 
     fun canonReference(
@@ -112,6 +147,27 @@ class WorldlineContextBuilder(
         else lines.distinct().take(80).joinToString("\n")
     }
 
+    fun branchHistory(branch: WorldlineFile, maxChars: Int = 7_000): String {
+        if (branch.chapters.isEmpty()) return ""
+        val recent = branch.chapters.takeLast(2)
+        val older = branch.chapters.dropLast(2).takeLast(12)
+        return buildString {
+            if (older.isNotEmpty()) {
+                appendLine("【前情摘要】")
+                older.forEach { chapter ->
+                    val summary = chapter.summary.ifBlank {
+                        chapter.text.take(220).replace('\n', ' ')
+                    }
+                    appendLine("第 ${chapter.index} 章：$summary")
+                }
+            }
+            recent.forEach { chapter ->
+                appendLine("【最近章节：第 ${chapter.index} 章】")
+                appendLine(chapter.text.take(3_000))
+            }
+        }.take(maxChars.coerceAtLeast(1_000))
+    }
+
     fun plannerContext(
         book: BookEntity,
         forkChapter: Int,
@@ -120,14 +176,29 @@ class WorldlineContextBuilder(
         branchKnowledge: BranchKnowledgeFile?,
     ): String = buildString {
         appendLine("【作品】${book.titleZh ?: book.title}")
-        appendLine("【分叉点】第 $forkChapter 章")
+        appendLine("【分叉点】第 $forkChapter 章第 ${branch.forkParagraph} 段")
+        if (branch.directive.isNotBlank()) {
+            appendLine("【作者备注（长期有效）】")
+            appendLine(branch.directive.take(2_000))
+        }
+        appendLine(canonKnown(book, forkChapter, branch.forkParagraph))
         appendLine("【用户介入】${branch.intervention.character}：${branch.intervention.action}")
         if (branch.intervention.constraint.isNotBlank()) {
             appendLine("约束：${branch.intervention.constraint}")
         }
+        val excerpt = canonExcerpt(book, forkChapter, branch.forkParagraph, 6_000)
+        if (excerpt.isNotBlank()) {
+            appendLine("【分叉前原文节选（只读到分叉点）】")
+            appendLine(excerpt)
+        }
         if (branch.forkText.isNotBlank()) {
             appendLine("【用户修改后的分叉正文（以此为准）】")
             appendLine(branch.forkText.take(8_000))
+        }
+        val history = branchHistory(branch, 6_000)
+        if (history.isNotBlank()) {
+            appendLine("【本分支前文】")
+            appendLine(history)
         }
         appendLine(canonReference(book, forkChapter, comparison))
         appendLine("【当前分支状态】")
@@ -154,6 +225,15 @@ class WorldlineContextBuilder(
     ): String = buildString {
         appendLine("【作品】${book.titleZh ?: book.title}")
         appendLine("【分叉点】第 $forkChapter 章第 $forkParagraph 段")
+        if (branch.directive.isNotBlank()) {
+            appendLine("【作者备注（长期有效，优先遵守）】")
+            appendLine(branch.directive.take(2_000))
+        }
+        val excerpt = canonExcerpt(book, forkChapter, forkParagraph, 8_000)
+        if (excerpt.isNotBlank()) {
+            appendLine("【分叉前原文节选（只读到分叉点，不要续写其中已发生的内容）】")
+            appendLine(excerpt)
+        }
         appendLine(canonKnown(book, forkChapter, forkParagraph))
         val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
         if (memory?.glossary?.isNotEmpty() == true) {
@@ -179,6 +259,16 @@ class WorldlineContextBuilder(
                 .filter { it.kind != "reveal_content" }
                 .take(60)
                 .forEach { appendLine("${it.kind}/${it.factKey}: ${it.text}") }
+        }
+        val roleView = characterView(book, forkChapter, forkParagraph, branchKnowledge)
+        if (!roleView.startsWith("（没有")) {
+            appendLine("【角色知情边界】")
+            appendLine(roleView.take(3_500))
+        }
+        val history = branchHistory(branch, 7_000)
+        if (history.isNotBlank()) {
+            appendLine("【本分支前文】")
+            appendLine(history)
         }
         appendLine("【当前分支状态】")
         appendLine("时间：${branch.state.time}；地点：${branch.state.location}")

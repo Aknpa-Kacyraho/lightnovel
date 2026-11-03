@@ -8,13 +8,16 @@ import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.ChatMessage
+import com.kacyraho.lightnovel.data.translation.ChatResult
 import com.kacyraho.lightnovel.data.translation.DeepSeekClient
 import com.kacyraho.lightnovel.data.translation.TranslationClient
 import com.kacyraho.lightnovel.data.translation.TranslationException
 import com.kacyraho.lightnovel.data.translation.TranslationValidators
 import com.kacyraho.lightnovel.data.translation.translationKeyScope
 import com.kacyraho.lightnovel.data.translation.translationRequiresKey
+import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -41,7 +44,7 @@ class WorldlineService(
         isLenient = true
         explicitNulls = false
     }
-    private val contexts = WorldlineContextBuilder(knowledgeStore, storyMemoryStore)
+    private val contexts = WorldlineContextBuilder(knowledgeStore, storyMemoryStore, contentStore)
 
     suspend fun createBranch(
         book: BookEntity,
@@ -51,6 +54,9 @@ class WorldlineService(
         intervention: Intervention,
         mode: String = "exploration",
         forkText: String = "",
+        lengthMode: String = "standard",
+        creativity: String = "balanced",
+        directive: String = "",
     ): Result<WorldlineFile> {
         if (forkChapter < 1 || (book.episodes > 0 && forkChapter > book.episodes)) {
             return Result.failure(
@@ -76,6 +82,9 @@ class WorldlineService(
             forkText = edited,
             intervention = intervention,
             mode = if (mode == "comparison") "comparison" else "exploration",
+            lengthMode = WorldlineGeneration.normalizeLength(lengthMode),
+            creativity = WorldlineGeneration.normalizeCreativity(creativity),
+            directive = WorldlineGeneration.normalizeDirective(directive),
             createdAt = now,
             updatedAt = now,
         )
@@ -83,6 +92,7 @@ class WorldlineService(
             .getOrElse { return Result.failure(it) }
         val updated = worldline.copy(
             chapters = listOf(generated.chapter),
+            chapterStates = listOf(generated.state),
             state = generated.state,
             divergences = listOf(generated.divergence),
             diffReports = listOfNotNull(generated.diffReport),
@@ -93,30 +103,110 @@ class WorldlineService(
         return Result.success(worldlineStore.save(book.storageDir, updated))
     }
 
-    suspend fun continueBranch(book: BookEntity, id: String): Result<WorldlineFile> {
-        val current = worldlineStore.load(book.storageDir, id)
+    suspend fun continueBranch(
+        book: BookEntity,
+        id: String,
+        count: Int = 1,
+        lengthMode: String? = null,
+        creativity: String? = null,
+        directive: String? = null,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<WorldlineFile> {
+        val loaded = worldlineStore.load(book.storageDir, id)
             ?: return Result.failure(IllegalStateException("分支不存在"))
-        val previous = current.chapters.lastOrNull()
+        var current = applyOptions(loaded, lengthMode, creativity, directive)
+        if (current != loaded) {
+            current = worldlineStore.save(book.storageDir, current)
+        }
+        val total = count.coerceIn(1, 5)
+        repeat(total) { index ->
+            onProgress(index, total)
+            val previous = current.chapters.lastOrNull()
+            val generated = generateChapter(
+                book = book,
+                worldline = current,
+                chapterIndex = current.chapters.size + 1,
+                previousSummary = previous?.summary.orEmpty(),
+                previousTail = previous?.text?.takeLast(600).orEmpty(),
+            ).getOrElse { return Result.failure(it) }
+            val updated = current.copy(
+                chapters = current.chapters + generated.chapter,
+                chapterStates = current.chapterStates + generated.state,
+                state = generated.state,
+                divergences = current.divergences + generated.divergence,
+                diffReports = current.diffReports + listOfNotNull(generated.diffReport),
+                branchExtractedThrough = generated.knowledge?.branchExtractedThrough
+                    ?: current.branchExtractedThrough,
+                knowledgeStatus = generated.knowledgeStatus,
+                updatedAt = Instant.now().toString(),
+            )
+            current = worldlineStore.save(book.storageDir, updated)
+            onProgress(index + 1, total)
+        }
+        return Result.success(current)
+    }
+
+    suspend fun regenerateLastChapter(
+        book: BookEntity,
+        id: String,
+        lengthMode: String? = null,
+        creativity: String? = null,
+        directive: String? = null,
+    ): Result<WorldlineFile> {
+        val loaded = worldlineStore.load(book.storageDir, id)
+            ?: return Result.failure(IllegalStateException("分支不存在"))
+        val target = loaded.chapters.lastOrNull()
+            ?: return Result.failure(IllegalStateException("分支还没有章节"))
+        var current = applyOptions(loaded, lengthMode, creativity, directive)
+        if (current != loaded) {
+            current = worldlineStore.save(book.storageDir, current)
+        }
+        val previousChapters = current.chapters.dropLast(1)
+        val previousStates = current.chapterStates.take(previousChapters.size)
+        val trimmed = current.copy(
+            chapters = previousChapters,
+            chapterStates = previousStates,
+            state = previousStates.lastOrNull() ?: BranchState(),
+            divergences = current.divergences.dropLast(1),
+            diffReports = current.diffReports.filterNot { it.chapter == target.index },
+        )
+        val oldKnowledge = worldlineStore.loadKnowledge(book.storageDir, id)
+        worldlineStore.removeKnowledgeChapter(book.storageDir, id, target.index)
+        val previous = previousChapters.lastOrNull()
         val generated = generateChapter(
             book = book,
-            worldline = current,
-            chapterIndex = current.chapters.size + 1,
+            worldline = trimmed,
+            chapterIndex = target.index,
             previousSummary = previous?.summary.orEmpty(),
             previousTail = previous?.text?.takeLast(600).orEmpty(),
-        ).getOrElse { return Result.failure(it) }
-        val now = Instant.now().toString()
-        val updated = current.copy(
-            chapters = current.chapters + generated.chapter,
+        ).getOrElse {
+            oldKnowledge?.let { worldlineStore.saveKnowledge(book.storageDir, it) }
+            return Result.failure(it)
+        }
+        val updated = trimmed.copy(
+            chapters = previousChapters + generated.chapter,
+            chapterStates = previousStates + generated.state,
             state = generated.state,
-            divergences = current.divergences + generated.divergence,
-            diffReports = current.diffReports + listOfNotNull(generated.diffReport),
+            divergences = trimmed.divergences + generated.divergence,
+            diffReports = trimmed.diffReports + listOfNotNull(generated.diffReport),
             branchExtractedThrough = generated.knowledge?.branchExtractedThrough
-                ?: current.branchExtractedThrough,
+                ?: trimmed.branchExtractedThrough,
             knowledgeStatus = generated.knowledgeStatus,
-            updatedAt = now,
+            updatedAt = Instant.now().toString(),
         )
         return Result.success(worldlineStore.save(book.storageDir, updated))
     }
+
+    private fun applyOptions(
+        current: WorldlineFile,
+        lengthMode: String?,
+        creativity: String?,
+        directive: String?,
+    ): WorldlineFile = current.copy(
+        lengthMode = WorldlineGeneration.normalizeLength(lengthMode ?: current.lengthMode),
+        creativity = WorldlineGeneration.normalizeCreativity(creativity ?: current.creativity),
+        directive = WorldlineGeneration.normalizeDirective(directive ?: current.directive),
+    )
 
     private suspend fun generateChapter(
         book: BookEntity,
@@ -127,6 +217,8 @@ class WorldlineService(
     ): Result<GeneratedChapter> {
         val model = client() ?: return Result.failure(IllegalStateException("未配置翻译 API Key"))
         val branchKnowledge = worldlineStore.loadKnowledge(book.storageDir, worldline.id)
+        val profile = WorldlineGeneration.length(worldline.lengthMode)
+        val creativity = WorldlineGeneration.creativity(worldline.creativity)
         val comparison = worldline.mode == "comparison"
         val forbidden = contexts.forbiddenTerms(book, worldline.forkChapter)
         val futureTerms = contexts.futureOnlyTerms(book, worldline.forkChapter)
@@ -141,10 +233,9 @@ class WorldlineService(
                 branchKnowledge = branchKnowledge,
             ),
             chapterIndex = chapterIndex,
+            futureTerms = futureTerms,
+            forbidden = forbidden,
         ).getOrElse { return Result.failure(it) }
-        validatePlan(plan, futureTerms, forbidden)?.let {
-            return Result.failure(IllegalStateException("plan 校验失败：$it"))
-        }
         val planText = buildString {
             appendLine(plan.intendedDivergence)
             if (plan.characters.isNotEmpty()) {
@@ -173,6 +264,8 @@ class WorldlineService(
             ),
             chapterIndex = chapterIndex,
             repairNotes = emptyList(),
+            profile = profile,
+            temperature = creativity.temperature,
         ).getOrElse { return Result.failure(it) }
 
         var violations = validateProse(
@@ -183,6 +276,8 @@ class WorldlineService(
             draft = draft,
             comparison = comparison,
             forbidden = forbidden,
+            futureTerms = futureTerms,
+            profile = profile,
         )
         if (violations.isNotEmpty()) {
             draft = writer(
@@ -199,6 +294,8 @@ class WorldlineService(
                 ),
                 chapterIndex = chapterIndex,
                 repairNotes = violations.map { it.reason },
+                profile = profile,
+                temperature = creativity.temperature,
             ).getOrElse { return Result.failure(it) }
             violations = validateProse(
                 model = model,
@@ -208,6 +305,8 @@ class WorldlineService(
                 draft = draft,
                 comparison = comparison,
                 forbidden = forbidden,
+                futureTerms = futureTerms,
+                profile = profile,
             )
             if (violations.isNotEmpty()) {
                 return Result.failure(
@@ -225,6 +324,19 @@ class WorldlineService(
             summary = draft.summary,
             createdAt = Instant.now().toString(),
         )
+        val state = if (draft.state.summary.isBlank()) {
+            draft.state.copy(summary = draft.summary)
+        } else {
+            draft.state
+        }
+        val divergence = if (draft.divergence.summary.isBlank()) {
+            draft.divergence.copy(
+                summary = plan.intendedDivergence.ifBlank { draft.summary },
+                causedByIntervention = true,
+            )
+        } else {
+            draft.divergence
+        }
         val temp = worldline.copy(chapters = worldline.chapters + chapter)
         val knowledgeResult = branchKnowledgeExtractor?.extract(book, temp, chapterIndex)
         val knowledge = knowledgeResult?.getOrNull()
@@ -247,8 +359,8 @@ class WorldlineService(
         return Result.success(
             GeneratedChapter(
                 chapter = chapter,
-                state = draft.state,
-                divergence = draft.divergence,
+                state = state,
+                divergence = divergence,
                 knowledge = knowledge,
                 knowledgeStatus = knowledgeStatus,
                 diffReport = diff,
@@ -260,15 +372,22 @@ class WorldlineService(
         model: ModelClient,
         context: String,
         chapterIndex: Int,
+        futureTerms: List<String>,
+        forbidden: List<String>,
     ): Result<PlanOutput> {
-        var lastError: Throwable? = null
-        repeat(2) { attempt ->
-            val correction = if (attempt == 0) "" else
-                "\n【格式纠正】上一次输出无法解析。beats 必须是字符串数组，" +
-                    "每个元素只能是字符串，不能是 {\"beat\": ...} 对象。" +
+        var lastError = ""
+        repeat(3) { attempt ->
+            val correction = if (attempt == 0) {
+                ""
+            } else {
+                "\n【上一次输出有问题，必须修复】" +
+                    lastError.take(240) +
+                    "\nbeats 必须是字符串数组；不要使用分叉点之后才出现的实体或禁用词；" +
                     "不要 Markdown，只输出一个合法 JSON 对象。"
+            }
             val reply = try {
-                model.client.complete(
+                completeWithRetry(
+                    model = model,
                     messages = listOf(
                         ChatMessage("system", PLANNER_PROMPT),
                         ChatMessage(
@@ -276,39 +395,69 @@ class WorldlineService(
                             "$context$correction\n【任务】写第 $chapterIndex 章的分支 plan，只输出 JSON。",
                         ),
                     ),
-                    model = model.model,
-                    maxTokens = 2_048,
-                    temperature = if (attempt == 0) 0.7 else 0.2,
+                    maxTokens = 4_096,
+                    temperature = when (attempt) {
+                        0 -> 0.7
+                        1 -> 0.3
+                        else -> 0.1
+                    },
                 )
             } catch (error: TranslationException) {
                 return Result.failure(error)
             }
             val parsed = parsePlan(reply.content)
-            if (parsed.isSuccess) return parsed
-            lastError = parsed.exceptionOrNull()
+            if (parsed.isFailure) {
+                lastError = "plan JSON 解析失败：" + (
+                    parsed.exceptionOrNull()?.message.orEmpty().take(160)
+                    )
+                return@repeat
+            }
+            val plan = parsed.getOrThrow()
+            val invalid = validatePlan(plan, futureTerms, forbidden)
+            if (invalid == null) return Result.success(plan)
+            lastError = invalid
         }
         return Result.failure(
             IllegalStateException(
-                "plan 解析失败：${lastError?.message?.take(160) ?: "模型没有返回合法 JSON"}",
+                "plan 生成失败：" + lastError.ifBlank { "模型没有返回可用的 plan" },
             ),
         )
     }
 
     private fun parsePlan(raw: String): Result<PlanOutput> = runCatching {
         val root = json.parseToJsonElement(cleanJson(raw))
+        if (root is JsonArray) {
+            return@runCatching PlanOutput(beats = normalizeBeats(root.textList()))
+        }
         val objectRoot = (root as? JsonObject)?.let {
             (it["plan"] as? JsonObject) ?: it
         } ?: error("plan 不是 JSON 对象")
+        val beats = objectRoot["beats"]
+            ?: objectRoot["plot"]
+            ?: objectRoot["outline"]
+            ?: objectRoot["scenes"]
         PlanOutput(
-            beats = objectRoot["beats"]?.textList().orEmpty(),
+            beats = normalizeBeats(beats?.textList().orEmpty()),
             characters = objectRoot["characters"]?.textList().orEmpty(),
-            intendedDivergence = objectRoot["intendedDivergence"]?.textValue().orEmpty(),
+            intendedDivergence = (
+                objectRoot["intendedDivergence"]
+                    ?: objectRoot["divergence"]
+                    ?: objectRoot["summary"]
+                )?.textValue().orEmpty(),
             futureRisks = objectRoot["futureRisks"]?.textList().orEmpty(),
             stateChanges = objectRoot["stateChanges"]?.textList().orEmpty(),
         ).also {
             if (it.beats.isEmpty()) error("beats 没有可用内容")
         }
     }
+
+    private fun normalizeBeats(values: List<String>): List<String> = values
+        .flatMap { value -> value.split('\n') }
+        .map { line ->
+            line.trim().replace(Regex("^\\s*(?:[-*•]|\\d+[.、)])\\s*"), "")
+        }
+        .filter(String::isNotBlank)
+        .distinct()
 
     private fun JsonElement.textList(): List<String> = when (this) {
         is JsonPrimitive -> listOfNotNull(contentOrNull?.trim()?.takeIf(String::isNotBlank))
@@ -326,10 +475,10 @@ class WorldlineService(
 
     private fun JsonElement.textValue(): String? = when (this) {
         is JsonPrimitive -> contentOrNull?.trim()?.takeIf(String::isNotBlank)
-        is JsonArray -> textList().joinToString(" ").takeIf(String::isNotBlank)
+        is JsonArray -> textList().joinToString("\n\n").takeIf(String::isNotBlank)
         is JsonObject -> listOf("text", "summary", "description", "value")
             .firstNotNullOfOrNull { this[it]?.textValue() }
-            ?: textList().joinToString(" ").takeIf(String::isNotBlank)
+            ?: textList().joinToString("\n\n").takeIf(String::isNotBlank)
     }
 
     private suspend fun writer(
@@ -337,39 +486,86 @@ class WorldlineService(
         context: String,
         chapterIndex: Int,
         repairNotes: List<String>,
+        profile: WorldlineLengthOption,
+        temperature: Double,
     ): Result<ChapterOutput> {
-        val repair = if (repairNotes.isEmpty()) "" else
-            "\n【上一次校验问题，必须修复】\n" + repairNotes.joinToString("\n")
-        val reply = try {
-            model.client.complete(
-                messages = listOf(
-                    ChatMessage("system", WRITER_PROMPT),
-                    ChatMessage(
-                        "user",
-                        "$context$repair\n【任务】写分支第 $chapterIndex 章，只输出 JSON。",
+        var lastError = ""
+        repeat(3) { attempt ->
+            val repair = buildString {
+                if (repairNotes.isNotEmpty()) {
+                    appendLine("【上一次校验问题，必须修复】")
+                    repairNotes.forEach(::appendLine)
+                }
+                if (attempt > 0) {
+                    appendLine("【格式纠正】上一次输出无法解析或缺少正文。")
+                    appendLine("text 必须是完整字符串；state/divergence 必须是对象。")
+                    appendLine("不要 Markdown，只输出一个合法 JSON 对象。")
+                }
+                appendLine(
+                    "【本章长度】目标 ${profile.targetChars} 字，通常 " +
+                        "${profile.promptMin}–${profile.promptMax} 字。",
+                )
+                appendLine("【续写要求】从本分支前文最后一段之后继续，不复述、不总结；" +
+                    "写完整场景、动作、对白和情绪推进，结尾留自然钩子。")
+            }
+            val reply = try {
+                completeWithRetry(
+                    model = model,
+                    messages = listOf(
+                        ChatMessage("system", WRITER_PROMPT),
+                        ChatMessage(
+                            "user",
+                            "$context$repair\n【任务】写分支第 $chapterIndex 章，只输出 JSON。",
+                        ),
                     ),
-                ),
-                model = model.model,
-                maxTokens = 8_192,
-                temperature = 0.8,
-            )
-        } catch (error: TranslationException) {
-            return Result.failure(error)
+                    maxTokens = profile.maxTokens,
+                    temperature = if (attempt == 0) {
+                        temperature
+                    } else {
+                        (temperature * 0.45).coerceAtLeast(0.2)
+                    },
+                )
+            } catch (error: TranslationException) {
+                return Result.failure(error)
+            }
+            val parsed = parseChapter(reply.content, chapterIndex)
+            if (parsed.isSuccess) return parsed
+            lastError = parsed.exceptionOrNull()?.message.orEmpty().take(200)
         }
-        return parseChapter(reply.content)
+        return Result.failure(
+            IllegalStateException(
+                "正文生成失败：" + lastError.ifBlank { "模型没有返回可用的正文" },
+            ),
+        )
     }
 
-    private fun parseChapter(raw: String): Result<ChapterOutput> = runCatching {
+    private fun parseChapter(raw: String, chapterIndex: Int): Result<ChapterOutput> = runCatching {
         val root = json.parseToJsonElement(cleanJson(raw))
+        if (root is JsonArray) {
+            val text = root.textValue().orEmpty()
+            if (text.isBlank()) error("正文为空")
+            return@runCatching ChapterOutput(
+                title = "分支第 $chapterIndex 章",
+                text = text,
+                summary = text.take(180).replace('\n', ' '),
+            )
+        }
         val objectRoot = (root as? JsonObject)?.let {
             (it["chapter"] as? JsonObject) ?: it
         } ?: error("正文不是 JSON 对象")
-        val text = objectRoot["text"]?.textValue().orEmpty()
+        val text = (
+            objectRoot["text"]
+                ?: objectRoot["content"]
+                ?: objectRoot["body"]
+                ?: objectRoot["chapterText"]
+            )?.textValue().orEmpty()
         if (text.isBlank()) error("正文为空")
         ChapterOutput(
-            title = objectRoot["title"]?.textValue().orEmpty(),
+            title = objectRoot["title"]?.textValue().orEmpty()
+                .ifBlank { "分支第 $chapterIndex 章" },
             text = text,
-            summary = objectRoot["summary"]?.textValue().orEmpty(),
+            summary = objectRoot["summary"]?.textValue().orEmpty()
+                .ifBlank { text.take(180).replace('\n', ' ') },
             state = objectRoot["state"].asBranchState(),
             divergence = objectRoot["divergence"].asDivergence(),
         )
@@ -407,18 +603,25 @@ class WorldlineService(
         draft: ChapterOutput,
         comparison: Boolean,
         forbidden: List<String>,
+        futureTerms: List<String>,
+        profile: WorldlineLengthOption,
     ): List<Violation> {
         val deterministic = mutableListOf<Violation>()
-        if (draft.title.isBlank()) deterministic += Violation("length", "", "标题为空")
-        if (draft.summary.isBlank()) deterministic += Violation("length", "", "梗概为空")
-        if (draft.text.length < 500 || draft.text.length > 12_000) {
-            deterministic += Violation("length", "", "正文长度异常")
+        if (draft.text.length < profile.minChars || draft.text.length > profile.maxChars) {
+            deterministic += Violation(
+                "length",
+                "",
+                "正文长度 ${draft.text.length} 字，要求 ${profile.rangeLabel}",
+            )
         }
         if (!TranslationValidators.detectChinese(draft.text)) {
             deterministic += Violation("length", "", "正文不是中文")
         }
         forbidden.firstOrNull { it.isNotBlank() && it in draft.text }?.let {
             deterministic += Violation("term", it, "正文提前出现禁用词：$it")
+        }
+        futureTerms.firstOrNull { it.isNotBlank() && it in draft.text }?.let {
+            deterministic += Violation("term", it, "正文提前出现未来实体：$it")
         }
         if (deterministic.isNotEmpty()) return deterministic
 
@@ -440,23 +643,21 @@ class WorldlineService(
             appendLine("只输出 JSON：{\"violations\":[{\"type\":\"knowledge|canon|voice|term|length\",\"quote\":\"\",\"reason\":\"\"}],\"canProceed\":true}")
         }
         val reply = try {
-            model.client.complete(
+            completeWithRetry(
+                model = model,
                 messages = listOf(
                     ChatMessage("system", VALIDATOR_PROMPT),
                     ChatMessage("user", prompt),
                 ),
-                model = model.model,
                 maxTokens = 2_048,
                 temperature = 0.1,
             )
-        } catch (error: TranslationException) {
-            return listOf(Violation("canon", "", "校验器调用失败：${error.message}"))
+        } catch (_: TranslationException) {
+            return emptyList()
         }
         val output = runCatching {
             json.decodeFromString(ValidationOutput.serializer(), cleanJson(reply.content))
-        }.getOrElse {
-            return listOf(Violation("canon", "", "校验器返回无法解析"))
-        }
+        }.getOrNull() ?: return emptyList()
         return output.violations
     }
 
@@ -476,12 +677,12 @@ class WorldlineService(
             appendLine("只输出 JSON：{\"items\":[{\"type\":\"event|relationship|secret|timeline\",\"branchEvent\":\"\",\"canonReference\":\"\",\"impact\":\"\",\"causedByIntervention\":true}]}")
         }
         val reply = runCatching {
-            model.client.complete(
+            completeWithRetry(
+                model = model,
                 messages = listOf(
                     ChatMessage("system", DIFF_PROMPT),
                     ChatMessage("user", prompt),
                 ),
-                model = model.model,
                 maxTokens = 2_048,
                 temperature = 0.2,
             )
@@ -497,6 +698,39 @@ class WorldlineService(
             items = output.items,
             createdAt = Instant.now().toString(),
         )
+    }
+
+    private suspend fun completeWithRetry(
+        model: ModelClient,
+        messages: List<ChatMessage>,
+        maxTokens: Int,
+        temperature: Double,
+    ): ChatResult {
+        var lastError: TranslationException? = null
+        repeat(3) { attempt ->
+            try {
+                return model.client.complete(
+                    messages = messages,
+                    model = model.model,
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                )
+            } catch (error: TranslationException) {
+                lastError = error
+                if (!error.retryable || attempt == 2) throw error
+                delay(2_000L * (attempt + 1))
+            } catch (error: IOException) {
+                val wrapped = TranslationException(
+                    statusCode = 0,
+                    message = "调用 API 失败：${error.message ?: error.javaClass.simpleName}",
+                    retryable = true,
+                )
+                lastError = wrapped
+                if (attempt == 2) throw wrapped
+                delay(2_000L * (attempt + 1))
+            }
+        }
+        throw lastError ?: TranslationException(0, "调用 API 失败", true)
     }
 
     private suspend fun client(): ModelClient? {
@@ -515,8 +749,13 @@ class WorldlineService(
         forbidden: List<String>,
     ): String? {
         if (plan.beats.isEmpty()) return "beats 为空"
-        val text = (plan.beats + plan.intendedDivergence + plan.stateChanges)
-            .joinToString("\n")
+        val text = (
+            plan.beats +
+                plan.characters +
+                plan.intendedDivergence +
+                plan.stateChanges +
+                plan.futureRisks
+            ).joinToString("\n")
         futureTerms.firstOrNull { it.isNotBlank() && it in text }?.let {
             return "提前使用未来实体：$it"
         }
@@ -528,12 +767,24 @@ class WorldlineService(
 
     private fun cleanJson(raw: String): String {
         var text = raw.replace("\r\n", "\n").trim()
+        val fenced = Regex("(?s)```(?:json)?\\s*(.*?)```").find(text)
+        if (fenced != null) text = fenced.groupValues[1].trim()
         if (text.startsWith("```")) {
             text = text.removePrefix("```json").removePrefix("```")
                 .removeSuffix("```").trim()
         }
-        val start = text.indexOf('{')
-        val end = text.lastIndexOf('}')
+        val objectStart = text.indexOf('{')
+        val arrayStart = text.indexOf('[')
+        val start = when {
+            objectStart >= 0 -> objectStart
+            arrayStart >= 0 -> arrayStart
+            else -> -1
+        }
+        val end = if (start >= 0 && text[start] == '{') {
+            text.lastIndexOf('}')
+        } else {
+            text.lastIndexOf(']')
+        }
         if (start >= 0 && end > start) text = text.substring(start, end + 1)
         return text
     }
@@ -590,8 +841,9 @@ class WorldlineService(
 
     private companion object {
         const val PLANNER_PROMPT =
-            "你是轻小说分支剧情规划师。只使用给定的分叉前知识、分支状态和用户介入。" +
+            "你是轻小说分支剧情规划师。只使用给定的分叉前知识、分支前文、分支状态、作者备注和用户介入。" +
                 "不得使用分叉点之后的 canon 事件，不得提前揭示秘密。" +
+                "作者备注是长期导演指令，不能违背 canon 安全边界。" +
                 "若用户修改了分叉正文，把修改后的文本视为已经发生的 canon，从它的末尾继续，不重写它。" +
                 "输出 4-6 个有因果链的 beats，每个 beat 写清谁做了什么、地点或时间推进、造成什么后果；" +
                 "同时给出涉及角色、预期偏离、未来风险和状态变化。" +
@@ -602,12 +854,15 @@ class WorldlineService(
                 "\"futureRisks\":[\"未来风险\"],\"stateChanges\":[\"状态变化\"]}。"
 
         const val WRITER_PROMPT =
-            "你是轻小说分支续写作者。只写用户介入后的分支下一章，不写元叙述。" +
-                "必须遵守 plan、用户介入和约束，保持角色声音、称呼、锁定译名和已有设定。" +
+            "你是轻小说分支续写作者，像角色扮演主持人一样写下一章。只写分支正文，不写元叙述。" +
+                "必须遵守 plan、作者备注、用户介入和约束，保持角色声音、称呼、关系、锁定译名和已有设定。" +
+                "作者备注是长期导演指令，优先级高于 plan 的文学风格，但不能违背 canon 安全。" +
+                "从本分支前文最后一段之后继续，不要复述、总结或重写前文；" +
+                "优先写介入角色的行动、对白、感知和情绪，对白要像角色本人。" +
                 "用户修改后的分叉正文已经发生，不要重写它，只从它之后续写。" +
                 "不得引用分叉点之后的 canon 事件，不得提前揭示秘密，不得新增原文没有的世界规则。" +
-                "正文用简体中文，目标 1500-4000 字；写完整的场景、动作、对白和情绪推进，" +
-                "不要写剧情梗概或总结；保留段落空行；只输出 JSON。"
+                "正文用简体中文，写完整场景、动作、对白和情绪推进，保留段落空行；" +
+                "只输出 JSON，text/content 字段放完整正文，不要 Markdown。"
 
         const val VALIDATOR_PROMPT =
             "你是分支一致性校对员。检查正文是否让角色知道了角色未知的信息、" +

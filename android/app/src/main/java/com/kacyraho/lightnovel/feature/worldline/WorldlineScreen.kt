@@ -3,11 +3,16 @@ package com.kacyraho.lightnovel.feature.worldline
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,9 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
-import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 import com.kacyraho.lightnovel.data.worldline.BranchChapter
 import com.kacyraho.lightnovel.data.worldline.WorldlineFile
+import com.kacyraho.lightnovel.data.worldline.WorldlineGeneration
+import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,16 +80,21 @@ fun WorldlineRoute(
         onCharacterChange = viewModel::setCharacter,
         onActionChange = viewModel::setAction,
         onConstraintChange = viewModel::setConstraint,
+        onLengthChange = viewModel::setLength,
+        onCreativityChange = viewModel::setCreativity,
+        onDirectiveChange = viewModel::setDirective,
+        onContinueCountChange = viewModel::setContinueCount,
         onCreate = viewModel::create,
         onSelect = viewModel::select,
         onBackToList = viewModel::backToList,
         onContinue = viewModel::continueBranch,
+        onRegenerate = viewModel::regenerateLastChapter,
         onDelete = viewModel::delete,
         onRefresh = viewModel::refresh,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WorldlineScreen(
     state: WorldlineUiState,
@@ -95,14 +106,27 @@ fun WorldlineScreen(
     onCharacterChange: (String) -> Unit,
     onActionChange: (String) -> Unit,
     onConstraintChange: (String) -> Unit,
+    onLengthChange: (String) -> Unit,
+    onCreativityChange: (String) -> Unit,
+    onDirectiveChange: (String) -> Unit,
+    onContinueCountChange: (Int) -> Unit,
     onCreate: () -> Unit,
     onSelect: (String) -> Unit,
     onBackToList: () -> Unit,
     onContinue: () -> Unit,
+    onRegenerate: () -> Unit,
     onDelete: (String) -> Unit,
     onRefresh: () -> Unit,
 ) {
     var deleteId by remember { mutableStateOf<String?>(null) }
+    var confirmRegenerate by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(state.selected?.id, state.selected?.branchCursor) {
+        if (state.selected != null) {
+            kotlinx.coroutines.delay(120)
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -136,7 +160,8 @@ fun WorldlineScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -149,13 +174,16 @@ fun WorldlineScreen(
                     onCharacterChange = onCharacterChange,
                     onActionChange = onActionChange,
                     onConstraintChange = onConstraintChange,
+                    onLengthChange = onLengthChange,
+                    onCreativityChange = onCreativityChange,
+                    onDirectiveChange = onDirectiveChange,
                     onCreate = onCreate,
                 )
                 HorizontalDivider()
                 Text("已有分支", style = MaterialTheme.typography.titleMedium)
                 if (state.branches.isEmpty()) {
                     Text(
-                        "还没有分支。输入一个角色行动，从当前进度开始改写。",
+                        "还没有分支。填好角色和行动，或从阅读器里选中一段正文开始改写。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -170,8 +198,13 @@ fun WorldlineScreen(
             } else {
                 BranchDetail(
                     branch = state.selected,
-                    busy = state.busy,
+                    state = state,
+                    onLengthChange = onLengthChange,
+                    onCreativityChange = onCreativityChange,
+                    onDirectiveChange = onDirectiveChange,
+                    onContinueCountChange = onContinueCountChange,
                     onContinue = onContinue,
+                    onRegenerate = { confirmRegenerate = true },
                     onDelete = { deleteId = state.selected?.id },
                 )
             }
@@ -181,8 +214,8 @@ fun WorldlineScreen(
     deleteId?.let { id ->
         AlertDialog(
             onDismissRequest = { deleteId = null },
-            title = { Text("删除这条世界线？") },
-            text = { Text("只删除分支，不影响原书和别的世界线。") },
+            title = { Text("删除这个分支？") },
+            text = { Text("只删除这条世界线，不影响原书、译文和书架。") },
             confirmButton = {
                 TextButton(onClick = {
                     onDelete(id)
@@ -194,8 +227,27 @@ fun WorldlineScreen(
             },
         )
     }
+
+    if (confirmRegenerate && state.selected != null) {
+        val number = state.selected.chapters.lastOrNull()?.index ?: 1
+        AlertDialog(
+            onDismissRequest = { confirmRegenerate = false },
+            title = { Text("重写第 $number 章？") },
+            text = { Text("会删除当前最后一章及其分支知识，再按现在的设置重新生成；前面的章节不变。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRegenerate = false
+                    onRegenerate()
+                }) { Text("重写") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRegenerate = false }) { Text("取消") }
+            },
+        )
+    }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CreateForm(
     state: WorldlineUiState,
@@ -205,11 +257,14 @@ private fun CreateForm(
     onCharacterChange: (String) -> Unit,
     onActionChange: (String) -> Unit,
     onConstraintChange: (String) -> Unit,
+    onLengthChange: (String) -> Unit,
+    onCreativityChange: (String) -> Unit,
+    onDirectiveChange: (String) -> Unit,
     onCreate: () -> Unit,
 ) {
-    Text("新建分支", style = MaterialTheme.typography.titleMedium)
+    Text("新建分支", style = MaterialTheme.typography.titleLarge)
     Text(
-        "推荐在阅读器里编辑正文生成；这里按角色行动分叉。",
+        "从指定章节分叉，写一条属于你的世界线。长度、创作强度和作者备注会保存在分支里。",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -227,8 +282,11 @@ private fun CreateForm(
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
-    Text("模式", style = MaterialTheme.typography.titleSmall)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text("模式", style = MaterialTheme.typography.labelLarge)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         BrandFilterChip(
             selected = state.modeInput == "exploration",
             onClick = { onModeChange("exploration") },
@@ -241,11 +299,7 @@ private fun CreateForm(
         )
     }
     Text(
-        if (state.modeInput == "comparison") {
-            "对照型：额外生成差异报告"
-        } else {
-            "探索型：只写分支"
-        },
+        if (state.modeInput == "comparison") "对照型：同时生成 canon 差异报告" else "探索型：只写分支",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -268,6 +322,18 @@ private fun CreateForm(
         label = { Text("约束（可选）") },
         modifier = Modifier.fillMaxWidth(),
     )
+    WorldlineSettingsCard(
+        lengthMode = state.lengthInput,
+        creativity = state.creativityInput,
+        directive = state.directiveInput,
+        continueCount = state.continueCount,
+        showContinueCount = false,
+        busy = state.busy,
+        onLengthChange = onLengthChange,
+        onCreativityChange = onCreativityChange,
+        onDirectiveChange = onDirectiveChange,
+        onContinueCountChange = {},
+    )
     Button(
         onClick = onCreate,
         enabled = !state.busy &&
@@ -276,6 +342,96 @@ private fun CreateForm(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(if (state.busy) "生成中…" else "生成分支第一章")
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WorldlineSettingsCard(
+    lengthMode: String,
+    creativity: String,
+    directive: String,
+    continueCount: Int,
+    showContinueCount: Boolean,
+    busy: Boolean,
+    onLengthChange: (String) -> Unit,
+    onCreativityChange: (String) -> Unit,
+    onDirectiveChange: (String) -> Unit,
+    onContinueCountChange: (Int) -> Unit,
+) {
+    val length = WorldlineGeneration.length(lengthMode)
+    val style = WorldlineGeneration.creativity(creativity)
+    Card(Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("续写设置", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    length.rangeLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text("每章长度", style = MaterialTheme.typography.labelMedium)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                WorldlineGeneration.lengthOptions.forEach { option ->
+                    BrandFilterChip(
+                        selected = option.id == length.id,
+                        onClick = { if (!busy) onLengthChange(option.id) },
+                        label = { Text(option.label) },
+                    )
+                }
+            }
+            Text("创作强度", style = MaterialTheme.typography.labelMedium)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                WorldlineGeneration.creativityOptions.forEach { option ->
+                    BrandFilterChip(
+                        selected = option.id == style.id,
+                        onClick = { if (!busy) onCreativityChange(option.id) },
+                        label = { Text(option.label) },
+                    )
+                }
+            }
+            Text(
+                style.hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = directive,
+                onValueChange = onDirectiveChange,
+                label = { Text("作者备注（长期生效）") },
+                placeholder = {
+                    Text("例如：保持林晚视角；不要急着揭秘；每章结尾留钩子。")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 5,
+                enabled = !busy,
+                supportingText = { Text("${directive.length}/2000") },
+            )
+            if (showContinueCount) {
+                Text("连续续写", style = MaterialTheme.typography.labelMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1, 3, 5).forEach { count ->
+                        BrandFilterChip(
+                            selected = continueCount == count,
+                            onClick = { if (!busy) onContinueCountChange(count) },
+                            label = { Text("$count 章") },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -293,7 +449,9 @@ private fun BranchCard(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(branch.title, style = MaterialTheme.typography.titleSmall)
             Text(
-                "分叉：第 ${branch.forkChapter} 章 · 已写 ${branch.branchCursor} 章",
+                "分叉：第 ${branch.forkChapter} 章 · 已写 ${branch.branchCursor} 章 · " +
+                    "${WorldlineGeneration.length(branch.lengthMode).label} / " +
+                    WorldlineGeneration.creativity(branch.creativity).label,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -308,26 +466,34 @@ private fun BranchCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BranchDetail(
     branch: WorldlineFile,
-    busy: Boolean,
+    state: WorldlineUiState,
+    onLengthChange: (String) -> Unit,
+    onCreativityChange: (String) -> Unit,
+    onDirectiveChange: (String) -> Unit,
+    onContinueCountChange: (Int) -> Unit,
     onContinue: () -> Unit,
+    onRegenerate: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Text(branch.title, style = MaterialTheme.typography.titleLarge)
     Text(
-        "分叉：第 ${branch.forkChapter} 章 · 已写 ${branch.branchCursor} 章",
+        "分叉：第 ${branch.forkChapter} 章 · 已写 ${branch.branchCursor} 章 · " +
+            "${branch.chapters.sumOf { it.text.length }} 字",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-        "资料：${if (branch.knowledgeStatus == "ready") "已抽取" else "待抽取"} · 到第 ${branch.branchExtractedThrough} 章",
+        "资料：${if (branch.knowledgeStatus == "ready") "已抽取" else "未抽取"} · " +
+            "已覆盖到第 ${branch.branchExtractedThrough} 章",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-        "介入：${branch.intervention.character} → ${branch.intervention.action}",
+        "介入：${branch.intervention.character} · ${branch.intervention.action}",
         style = MaterialTheme.typography.bodyMedium,
     )
     if (branch.intervention.constraint.isNotBlank()) {
@@ -337,7 +503,51 @@ private fun BranchDetail(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    WorldlineSettingsCard(
+        lengthMode = state.lengthInput,
+        creativity = state.creativityInput,
+        directive = state.directiveInput,
+        continueCount = state.continueCount,
+        showContinueCount = true,
+        busy = state.busy,
+        onLengthChange = onLengthChange,
+        onCreativityChange = onCreativityChange,
+        onDirectiveChange = onDirectiveChange,
+        onContinueCountChange = onContinueCountChange,
+    )
+    Button(
+        onClick = onContinue,
+        enabled = !state.busy,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            if (state.busy) {
+                "生成中…"
+            } else if (state.continueCount == 1) {
+                "续写下一章"
+            } else {
+                "连续续写 ${state.continueCount} 章"
+            },
+        )
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = onRegenerate,
+            enabled = !state.busy && branch.chapters.isNotEmpty(),
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("重写本章")
+        }
+        OutlinedButton(
+            onClick = onDelete,
+            enabled = !state.busy,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("删除分支")
+        }
+    }
     if (branch.divergences.isNotEmpty()) {
+        HorizontalDivider()
         Text("偏离点", style = MaterialTheme.typography.titleSmall)
         branch.divergences.forEach { divergence ->
             Text(
@@ -348,9 +558,10 @@ private fun BranchDetail(
         }
     }
     if (branch.diffReports.isNotEmpty()) {
+        HorizontalDivider()
         Text("差异报告（对照型）", style = MaterialTheme.typography.titleSmall)
         Text(
-            "含原作走向参照，可能剧透。",
+            "给原著读者的参照，不会反向透露给角色。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.tertiary,
         )
@@ -363,7 +574,7 @@ private fun BranchDetail(
                 )
                 item.canonReference?.takeIf(String::isNotBlank)?.let {
                     Text(
-                        "  原作参照：$it",
+                        "  原著参照：$it",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -371,22 +582,10 @@ private fun BranchDetail(
             }
         }
     }
+    HorizontalDivider()
+    Text("正文", style = MaterialTheme.typography.titleSmall)
     branch.chapters.forEach { chapter ->
         ChapterBlock(chapter)
-    }
-    Button(
-        onClick = onContinue,
-        enabled = !busy,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(if (busy) "生成中…" else "续写下一章")
-    }
-    OutlinedButton(
-        onClick = onDelete,
-        enabled = !busy,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("删除这条世界线")
     }
 }
 
@@ -394,8 +593,13 @@ private fun BranchDetail(
 private fun ChapterBlock(chapter: BranchChapter) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("第 ${chapter.index} 章 · ${chapter.title}", style = MaterialTheme.typography.titleSmall)
-            Text(chapter.text, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "第 ${chapter.index} 章 · ${chapter.title}",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            SelectionContainer {
+                Text(chapter.text, style = MaterialTheme.typography.bodyMedium)
+            }
             if (chapter.summary.isNotBlank()) {
                 Text(
                     "梗概：${chapter.summary}",

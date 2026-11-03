@@ -580,7 +580,7 @@ class ReaderViewModel(
                 )
             }.onFailure {
                 _worldlineState.value = ReaderWorldlineState(
-                    error = it.message ?: "生成失败",
+                    error = it.message?.take(240) ?: "生成失败",
                 )
             }
         }

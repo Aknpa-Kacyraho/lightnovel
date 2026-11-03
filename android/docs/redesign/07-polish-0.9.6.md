@@ -34,7 +34,16 @@
 
 ## 验证
 
-- `148 JVM tests / 0 failures / 1 skipped`
+- `154 JVM tests / 0 failures / 1 skipped`
 - lint `0 errors`
 - `assembleDebug` 通过；真机覆盖安装
 - 真实 LLM 世界线/翻译未跑（会消耗 token）
+
+## 世界线返修（2026-11-03 晚）
+
+- 真实模型不会总把正文放在 `text`：实测 `deepseek-v4.1-flash` 返回 `{"title": "...", "content": "..."}`，旧解析只认 `text`，会报「正文为空」。现在兼容 `text/content/body/chapterText`，并自动补标题和梗概。
+- 网络错误由世界线重试：规划、写作、校对、差异分析、分支知识抽取遇 503/超时按退避重试；校验器不可用时不再误杀已生成正文。
+- plan 解析兼容根数组、`beats` 对象数组、`plot/outline/scenes` 别名；未来实体 plan 会带着纠正重试，而不是直接失败。
+- 分叉前原文节选进入 Planner/Writer：只读分叉点前的已翻译章节/当前章前缀，避免没有知识库时凭空续写。
+- 真实模型实测通过：DeepSeek 官方 `deepseek-flash` 生成 2713 字分支成功；OpenCode Go `deepseek-v4.1-flash` 生成 3915 字分支成功。两者分别验证了官方端点和强推理端点的 JSON 形状。
+- 分支知识抽取在强推理模型上仍可能因 `finish=length` 显示「未抽取」；分支正文不会丢，可稍后手动更新资料。

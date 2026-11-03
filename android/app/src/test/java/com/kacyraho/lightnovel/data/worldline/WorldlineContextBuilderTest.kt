@@ -121,4 +121,75 @@ class WorldlineContextBuilderTest {
         assertTrue(builder.futureOnlyTerms(book, 2).contains("卡萝尔"))
         assertTrue(builder.forbiddenTerms(book, 2).contains("妹妹"))
     }
+
+    @Test
+    fun branchHistoryKeepsOlderSummariesAndRecentProse() {
+        val builder = WorldlineContextBuilder(
+            KnowledgeStore(FileContentStore(tmp.newFolder("data").toPath())),
+            null,
+        )
+        val branch = WorldlineFile(
+            id = "wl-history",
+            bookId = "book-1",
+            chapters = listOf(
+                BranchChapter(1, "一", "第一章正文", "第一章摘要"),
+                BranchChapter(2, "二", "第二章正文", "第二章摘要"),
+                BranchChapter(3, "三", "第三章正文", "第三章摘要"),
+            ),
+        )
+        val history = builder.branchHistory(branch, 5_000)
+        assertTrue(history.contains("前情摘要"))
+        assertTrue(history.contains("第一章摘要"))
+        assertFalse(history.contains("第一章正文"))
+        assertTrue(history.contains("最近章节：第 2 章"))
+        assertTrue(history.contains("最近章节：第 3 章"))
+        assertTrue(history.contains("第二章正文"))
+        assertTrue(history.contains("第三章正文"))
+    }
+
+    @Test
+    fun canonExcerptStopsAtForkPointAndExcludesFutureChapters() {
+        val content = FileContentStore(tmp.newFolder("data").toPath())
+        content.writeZhAtomic("book", 1, "第一章正文。")
+        content.writeZhAtomic("book", 2, "分叉前第一段。\n\n分叉后第二段。")
+        content.writeZhAtomic("book", 3, "未来章节。")
+        val builder = WorldlineContextBuilder(
+            KnowledgeStore(content),
+            null,
+            content,
+        )
+        val book = BookEntity(
+            id = "book-1",
+            storageDir = "book",
+            slug = "book",
+            source = "local",
+            sourceId = "book-1",
+            title = "Book",
+            titleZh = null,
+            author = null,
+            tagsJson = null,
+            genre = null,
+            episodes = 3,
+            local = true,
+            createdAt = null,
+            legacyJson = null,
+        )
+        val excerpt = builder.canonExcerpt(book, 2, 1, 5_000)
+        assertTrue(excerpt.contains("第一章正文"))
+        assertTrue(excerpt.contains("分叉前第一段"))
+        assertFalse(excerpt.contains("分叉后第二段"))
+        assertFalse(excerpt.contains("未来章节"))
+
+        val branch = WorldlineFile(
+            id = "wl-2",
+            bookId = "book-1",
+            forkChapter = 2,
+            forkParagraph = 1,
+            intervention = Intervention("爱丽丝", "拒绝", ""),
+        )
+        val planner = builder.plannerContext(book, 2, false, branch, null)
+        assertTrue(planner.contains("分叉前第一段"))
+        assertFalse(planner.contains("分叉后第二段"))
+        assertFalse(planner.contains("未来章节"))
+    }
 }

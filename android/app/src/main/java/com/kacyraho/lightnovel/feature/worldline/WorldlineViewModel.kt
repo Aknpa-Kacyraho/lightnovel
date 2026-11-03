@@ -6,6 +6,7 @@ import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.worldline.Intervention
 import com.kacyraho.lightnovel.data.worldline.WorldlineFile
+import com.kacyraho.lightnovel.data.worldline.WorldlineGeneration
 import com.kacyraho.lightnovel.data.worldline.WorldlineService
 import com.kacyraho.lightnovel.data.worldline.WorldlineStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,10 @@ data class WorldlineUiState(
     val characterInput: String = "",
     val actionInput: String = "",
     val constraintInput: String = "",
+    val lengthInput: String = "standard",
+    val creativityInput: String = "balanced",
+    val directiveInput: String = "",
+    val continueCount: Int = 1,
 )
 
 class WorldlineViewModel(
@@ -68,9 +73,37 @@ class WorldlineViewModel(
         _state.value = _state.value.copy(constraintInput = value)
     }
 
+    fun setLength(value: String) {
+        _state.value = _state.value.copy(
+            lengthInput = WorldlineGeneration.normalizeLength(value),
+        )
+    }
+
+    fun setCreativity(value: String) {
+        _state.value = _state.value.copy(
+            creativityInput = WorldlineGeneration.normalizeCreativity(value),
+        )
+    }
+
+    fun setDirective(value: String) {
+        _state.value = _state.value.copy(directiveInput = value.take(2_000))
+    }
+
+    fun setContinueCount(value: Int) {
+        _state.value = _state.value.copy(continueCount = value.coerceIn(1, 5))
+    }
+
     fun select(id: String) {
         val branch = _state.value.branches.firstOrNull { it.id == id } ?: return
-        _state.value = _state.value.copy(selected = branch, message = null, error = null)
+        _state.value = _state.value.copy(
+            selected = branch,
+            lengthInput = WorldlineGeneration.normalizeLength(branch.lengthMode),
+            creativityInput = WorldlineGeneration.normalizeCreativity(branch.creativity),
+            directiveInput = branch.directive,
+            continueCount = 1,
+            message = null,
+            error = null,
+        )
     }
 
     fun backToList() {
@@ -107,6 +140,9 @@ class WorldlineViewModel(
                 forkParagraph = 0,
                 intervention = intervention,
                 mode = current.modeInput,
+                lengthMode = current.lengthInput,
+                creativity = current.creativityInput,
+                directive = current.directiveInput,
             ).onSuccess {
                 reload(selectedId = it.id)
                 _state.value = _state.value.copy(
@@ -120,7 +156,7 @@ class WorldlineViewModel(
             }.onFailure {
                 _state.value = _state.value.copy(
                     busy = false,
-                    error = it.message ?: "生成失败",
+                    error = it.message?.take(240) ?: "生成失败",
                 )
             }
         }
@@ -129,27 +165,83 @@ class WorldlineViewModel(
     fun continueBranch() {
         val book = _state.value.book ?: return
         val selected = _state.value.selected ?: return
-        if (_state.value.busy) return
+        val current = _state.value
+        if (current.busy) return
+        val count = current.continueCount.coerceIn(1, 5)
         viewModelScope.launch {
-            _state.value = _state.value.copy(
+            _state.value = current.copy(
                 busy = true,
-                message = "正在续写第 ${selected.chapters.size + 1} 章…",
+                message = if (count == 1) {
+                    "正在续写第 ${selected.chapters.size + 1} 章…"
+                } else {
+                    "正在续写 $count 章…"
+                },
                 error = null,
             )
-            worldlineService.continueBranch(book, selected.id)
-                .onSuccess {
-                    reload(selectedId = it.id)
-                    _state.value = _state.value.copy(
-                        busy = false,
-                        message = "已续写第 ${it.branchCursor} 章",
-                    )
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        busy = false,
-                        error = it.message ?: "续写失败",
-                    )
-                }
+            worldlineService.continueBranch(
+                book = book,
+                id = selected.id,
+                count = count,
+                lengthMode = current.lengthInput,
+                creativity = current.creativityInput,
+                directive = current.directiveInput,
+                onProgress = { done, total ->
+                    if (total > 1) {
+                        _state.value = _state.value.copy(
+                            message = if (done < total) {
+                                "正在续写 ${done + 1}/$total 章…"
+                            } else {
+                                "续写完成，正在保存…"
+                            },
+                        )
+                    }
+                },
+            ).onSuccess {
+                reload(selectedId = it.id)
+                _state.value = _state.value.copy(
+                    busy = false,
+                    message = "已续写到第 ${it.branchCursor} 章",
+                )
+            }.onFailure {
+                reload(selectedId = selected.id)
+                _state.value = _state.value.copy(
+                    busy = false,
+                    error = it.message?.take(240) ?: "续写失败",
+                )
+            }
+        }
+    }
+
+    fun regenerateLastChapter() {
+        val book = _state.value.book ?: return
+        val selected = _state.value.selected ?: return
+        val current = _state.value
+        if (current.busy || selected.chapters.isEmpty()) return
+        viewModelScope.launch {
+            _state.value = current.copy(
+                busy = true,
+                message = "正在重写第 ${selected.chapters.last().index} 章…",
+                error = null,
+            )
+            worldlineService.regenerateLastChapter(
+                book = book,
+                id = selected.id,
+                lengthMode = current.lengthInput,
+                creativity = current.creativityInput,
+                directive = current.directiveInput,
+            ).onSuccess {
+                reload(selectedId = it.id)
+                _state.value = _state.value.copy(
+                    busy = false,
+                    message = "已重写第 ${it.branchCursor} 章",
+                )
+            }.onFailure {
+                reload(selectedId = selected.id)
+                _state.value = _state.value.copy(
+                    busy = false,
+                    error = it.message?.take(240) ?: "重写失败",
+                )
+            }
         }
     }
 

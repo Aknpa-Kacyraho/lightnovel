@@ -95,6 +95,22 @@ class WorldlineStore(
     }
 
     @Synchronized
+    fun removeKnowledgeChapter(
+        storageDir: String,
+        id: String,
+        chapterIndex: Int,
+    ): BranchKnowledgeFile? {
+        val current = loadKnowledge(storageDir, id) ?: return null
+        val remaining = current.copy(
+            facts = current.facts.filterNot { it.sourceAnchor.chapter == chapterIndex },
+            relations = current.relations.filterNot { it.sourceAnchor.chapter == chapterIndex },
+            voiceFacts = current.voiceFacts.filterNot { it.sourceAnchor.chapter == chapterIndex },
+            extractedChapters = current.extractedChapters.filterNot { it == chapterIndex },
+        )
+        return saveKnowledge(storageDir, remaining)
+    }
+
+    @Synchronized
     fun save(storageDir: String, worldline: WorldlineFile): WorldlineFile {
         val value = worldline.copy(
             branchCursor = worldline.chapters.size,
