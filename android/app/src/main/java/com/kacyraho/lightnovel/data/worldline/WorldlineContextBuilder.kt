@@ -150,7 +150,7 @@ class WorldlineContextBuilder(
     fun branchHistory(branch: WorldlineFile, maxChars: Int = 7_000): String {
         if (branch.chapters.isEmpty()) return ""
         val recent = branch.chapters.takeLast(2)
-        val older = branch.chapters.dropLast(2).takeLast(12)
+        val older = branch.chapters.dropLast(2).takeLast(20)
         return buildString {
             if (older.isNotEmpty()) {
                 appendLine("【前情摘要】")
@@ -163,9 +163,9 @@ class WorldlineContextBuilder(
             }
             recent.forEach { chapter ->
                 appendLine("【最近章节：第 ${chapter.index} 章】")
-                appendLine(chapter.text.take(3_000))
+                appendLine(chapter.text.takeLast(3_000))
             }
-        }.take(maxChars.coerceAtLeast(1_000))
+        }.takeLast(maxChars.coerceAtLeast(1_000))
     }
 
     fun plannerContext(

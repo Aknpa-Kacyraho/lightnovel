@@ -862,7 +862,11 @@ class WorldlineService(
                 "用户修改后的分叉正文已经发生，不要重写它，只从它之后续写。" +
                 "不得引用分叉点之后的 canon 事件，不得提前揭示秘密，不得新增原文没有的世界规则。" +
                 "正文用简体中文，写完整场景、动作、对白和情绪推进，保留段落空行；" +
-                "只输出 JSON，text/content 字段放完整正文，不要 Markdown。"
+                "只输出 JSON，text/content 字段放完整正文，不要 Markdown。" +
+                "格式：{\"title\":\"第X章 标题\",\"content\":\"完整正文\"," +
+                "\"summary\":\"80-150字，概括本章事件、关系变化和留下的钩子\"," +
+                "\"state\":{\"time\":\"\",\"location\":\"\",\"summary\":\"\",\"facts\":[],\"openThreads\":[]}," +
+                "\"divergence\":{\"type\":\"event\",\"summary\":\"\",\"causedByIntervention\":true}}。"
 
         const val VALIDATOR_PROMPT =
             "你是分支一致性校对员。检查正文是否让角色知道了角色未知的信息、" +
