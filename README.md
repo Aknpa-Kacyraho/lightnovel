@@ -11,7 +11,7 @@
 
 ## 最新版本
 
-Android **0.9.7**（versionCode 30）：
+Android **0.9.8**（versionCode 31）：
 
 - 书架：移出只隐藏，保留离线正文、译文、世界线和阅读进度；「已移出」可恢复，移出后支持撤销。
 - 阅读器：顶栏精简，字号/纸色收进「更多」；查询/术语输入框跟随纸色；保存进度不再延迟 500ms。
@@ -21,9 +21,9 @@ Android **0.9.7**（versionCode 30）：
 - 世界线：分叉章号校验、plan 对象格式兼容、生成提示词和正文解析增强。
 - 其他：删除已淘汰的 Web skill；主攻 Android App。
 
-下载：[Release v0.9.7](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.7)
+下载：[Release v0.9.8](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.8)
 
-APK：`lightnovel-0.9.7-debug.apk`
+APK：`lightnovel-0.9.8-debug.apk`
 
 自检：159 JVM tests / 0 failures / 1 skipped；lint 0 errors。
 

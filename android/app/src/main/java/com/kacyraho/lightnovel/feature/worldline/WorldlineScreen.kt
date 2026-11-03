@@ -64,8 +64,8 @@ fun WorldlineRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(state.message, state.error) {
-        val text = state.error ?: state.message ?: return@LaunchedEffect
+    LaunchedEffect(state.message, state.error, state.busy) {
+        val text = state.error ?: state.message?.takeIf { !state.busy } ?: return@LaunchedEffect
         viewModel.consumeMessage()
         snackbarHostState.showSnackbar(text)
     }
@@ -155,6 +155,14 @@ fun WorldlineScreen(
     ) { padding ->
         if (state.busy) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(padding))
+            state.message?.let { message ->
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
         }
         Column(
             modifier = Modifier

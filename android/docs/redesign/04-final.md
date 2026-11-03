@@ -233,11 +233,12 @@ Column
 
 ## 8. 实施补充（2026-10-31）
 
-- 当前构建：`0.9.7`（versionCode 30）。发布：[Release v0.9.7](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.7)。
+- 当前构建：`0.9.8`（versionCode 31）。发布：[Release v0.9.8](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.8)。
 - 0.9.5 返修：书架卡片 `⋮ → 移出书架`（只写 `hidden=1`，保留 DB/文件/译文/进度，可在「已移出」恢复）；查询 Sheet 按类型分组、字号分层；世界线编辑器初始定位当前段；plan JSON 容忍 `beats` 对象并重试；普通技能/概念不再进查询和自动术语表。
 - 0.9.6 审查优化：任务页导航图补全、网络异常不再闪退、Python 0 基章号备份兼容、书架移出可撤销、主题 surface 角色与系统栏图标、阅读器顶栏精简、输入框跟随纸色、任务卡/目录预览重排、阅读进度立即保存、世界线分叉章号校验、Web skill 删除。
 - 世界线返修：真实模型常返回 `content` 而非 `text`，解析已兼容并补标题/梗概/状态/偏离；plan 兼容根数组与对象 beats；503/超时退避重试；Writer 增加分叉前原文节选；实测 DeepSeek 官方 `deepseek-flash` 生成 2713 字、OpenCode Go `deepseek-v4.1-flash` 生成 3915 字分支均成功。
 - 0.9.7 酒馆式续写：分支存长度档位（短/标准/长）、创作强度（稳定/均衡/放开）、作者备注和章节状态；Writer 带前情摘要 + 最近两章正文 + 角色知情边界；支持连续续写 1/3/5 章、重写最后一章；实测 DeepSeek 短档创建 1375 字、续写 1981/1726 字、重写 2200 字。
+- 0.9.8 交互收尾：连续续写的进度改为内联文本，不再每条进度弹 Snackbar；完成后才弹结果提示，避免批量续写时提示刷屏。
 - 大书库：发现页搜索/推荐/翻译元数据持久化到 Room `catalog_books`；发现页顶栏「大书库」支持本地搜索、来源/状态/标签多选（同时满足）、最近爬取/更新/话数/字数/书名排序；标签用 `TagLocalizer` 本地汉化，未知标签保留原文；加入书架复用 `DirectLibraryService`。
 - 发现池：目录不足 200 本时从 Kakuyomu/Syosetu 排行榜各抓 10 页写入目录，再随机抽 24 本；`(provider, source_id)` 主键去重，`catalogCrawlAt` 记录成功扩充时间，7 天内不重复爬，提供「换一批」。
 - 阅读性能：翻页视图按页构建 `StaticLayout`，不再每帧绘制整章；滚动段落知识状态 120ms 防抖，`translatedThrough` 与正文/边车读取移到 IO 线程。实测翻页 janky 1/988（0.10%），发现页 3/1040（0.29%）。
