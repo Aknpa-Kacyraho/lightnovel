@@ -25,7 +25,7 @@ Android **0.9.10**（versionCode 33）：
 
 APK：`lightnovel-0.9.10-debug.apk`
 
-自检：159 JVM tests / 0 failures / 1 skipped；lint 0 errors。
+自检：160 JVM tests / 0 failures / 1 skipped；lint 0 errors。
 
 ## 快速开始（Web）
 
