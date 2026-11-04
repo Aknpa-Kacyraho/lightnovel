@@ -34,6 +34,9 @@ data class AppSettings(
     val translationCalibrationKey: String = "",
     val translationCalibratedAt: String = "",
     val translationCalibrationNote: String = "",
+    val autoTranslateWhileReading: Boolean = true,
+    val translateAheadChapters: Int = 3,
+    val translateBackfillChapters: Int = 5,
     val noveliaBaseUrl: String = "https://n.novelia.cc/api/",
     val lastBackupAt: String? = null,
     val catalogCrawlAt: Long = 0L,
@@ -71,6 +74,9 @@ class SettingsStore(
             prefs[Keys.TRANSLATION_CALIBRATION_KEY] = merged.translationCalibrationKey
             prefs[Keys.TRANSLATION_CALIBRATED_AT] = merged.translationCalibratedAt
             prefs[Keys.TRANSLATION_CALIBRATION_NOTE] = merged.translationCalibrationNote
+            prefs[Keys.AUTO_TRANSLATE] = merged.autoTranslateWhileReading
+            prefs[Keys.TRANSLATE_AHEAD] = merged.translateAheadChapters
+            prefs[Keys.TRANSLATE_BACKFILL] = merged.translateBackfillChapters
             prefs[Keys.NOVELIA_BASE_URL] = merged.noveliaBaseUrl
             prefs[Keys.CATALOG_CRAWL_AT] = merged.catalogCrawlAt
             merged.lastBackupAt?.let { prefs[Keys.LAST_BACKUP_AT] = it }
@@ -100,6 +106,9 @@ class SettingsStore(
         translationCalibrationKey = this[Keys.TRANSLATION_CALIBRATION_KEY] ?: "",
         translationCalibratedAt = this[Keys.TRANSLATION_CALIBRATED_AT] ?: "",
         translationCalibrationNote = this[Keys.TRANSLATION_CALIBRATION_NOTE] ?: "",
+        autoTranslateWhileReading = this[Keys.AUTO_TRANSLATE] ?: true,
+        translateAheadChapters = this[Keys.TRANSLATE_AHEAD] ?: 3,
+        translateBackfillChapters = this[Keys.TRANSLATE_BACKFILL] ?: 5,
         noveliaBaseUrl = this[Keys.NOVELIA_BASE_URL] ?: "https://n.novelia.cc/api/",
         lastBackupAt = this[Keys.LAST_BACKUP_AT],
         catalogCrawlAt = this[Keys.CATALOG_CRAWL_AT] ?: 0L,
@@ -126,6 +135,9 @@ class SettingsStore(
         val TRANSLATION_CALIBRATION_KEY = stringPreferencesKey("translation_calibration_key")
         val TRANSLATION_CALIBRATED_AT = stringPreferencesKey("translation_calibrated_at")
         val TRANSLATION_CALIBRATION_NOTE = stringPreferencesKey("translation_calibration_note")
+        val AUTO_TRANSLATE = booleanPreferencesKey("auto_translate_while_reading")
+        val TRANSLATE_AHEAD = intPreferencesKey("translate_ahead_chapters")
+        val TRANSLATE_BACKFILL = intPreferencesKey("translate_backfill_chapters")
         val NOVELIA_BASE_URL = stringPreferencesKey("novelia_base_url")
         val LAST_BACKUP_AT = stringPreferencesKey("last_backup_at")
         val CATALOG_CRAWL_AT = longPreferencesKey("catalog_crawl_at")

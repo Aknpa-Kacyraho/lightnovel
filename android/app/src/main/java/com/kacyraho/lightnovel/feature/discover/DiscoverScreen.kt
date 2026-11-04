@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -172,103 +173,117 @@ fun DiscoverRoute(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            contentPadding = PaddingValues(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                label = { Text("搜索日文标题、作者或标签") },
-                singleLine = true,
-                trailingIcon = {
-                    TextButton(
-                        onClick = { viewModel.search() },
-                        enabled = !state.loading && state.query.isNotBlank(),
-                    ) {
-                        Text("搜索")
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { viewModel.search() }),
-            )
-            if (state.query.isBlank() && state.recentSearches.isNotEmpty()) {
-                Row(
+            item {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = viewModel::onQueryChange,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "最近搜索",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.recentSearches.forEach { value ->
-                        LnTag(
-                            text = value,
-                            kind = LnTagKind.KEYWORD,
-                            onClick = {
-                                viewModel.onQueryChange(value)
-                                viewModel.search(value)
-                            },
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    label = { Text("搜索作品标题、作者或标签") },
+                    singleLine = true,
+                    trailingIcon = {
+                        TextButton(
+                            onClick = { viewModel.search() },
+                            enabled = !state.loading && state.query.isNotBlank(),
+                        ) {
+                            Text("搜索")
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { viewModel.search() }),
+                )
+            }
+            if (state.query.isBlank() && state.recentSearches.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "最近搜索",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    TextButton(onClick = viewModel::clearSearchHistory) {
-                        Text("清空")
+                        state.recentSearches.forEach { value ->
+                            LnTag(
+                                text = value,
+                                kind = LnTagKind.KEYWORD,
+                                onClick = {
+                                    viewModel.onQueryChange(value)
+                                    viewModel.search(value)
+                                },
+                            )
+                        }
+                        TextButton(onClick = viewModel::clearSearchHistory) {
+                            Text("清空")
+                        }
                     }
                 }
             }
             if (state.query.isBlank() && state.savedSearches.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "保存的搜索",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.savedSearches.forEach { preset ->
-                        LnTag(
-                            text = preset.query,
-                            kind = LnTagKind.TYPE,
-                            onClick = { viewModel.applyPreset(preset) },
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "保存的搜索",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        state.savedSearches.forEach { preset ->
+                            LnTag(
+                                text = preset.query,
+                                kind = LnTagKind.TYPE,
+                                onClick = { viewModel.applyPreset(preset) },
+                            )
+                        }
                     }
                 }
             }
             if (state.loading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
             }
             if (state.metadataLoading) {
-                Text(
-                    text = "翻译书名和简介…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                )
+                item {
+                    Text(
+                        text = "正在翻译书名和简介…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    )
+                }
             }
-            state.errors.distinct().forEach { error ->
-                Text(
-                    text = error,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                )
+            if (state.errors.isNotEmpty()) {
+                item {
+                    state.errors.distinct().forEach { error ->
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                        )
+                    }
+                }
             }
             when {
-                state.results.isNotEmpty() -> SearchResults(
+                state.results.isNotEmpty() -> searchResultItems(
                     results = visibleResults,
                     sourceFilter = state.sourceFilter,
                     onSourceFilterChange = viewModel::setSourceFilter,
@@ -284,30 +299,31 @@ fun DiscoverRoute(
                     onTagClick = viewModel::searchTag,
                 )
 
-                state.searchedQuery != null && !state.loading -> Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        "没有找到「${state.searchedQuery}」",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "换个关键词，或从链接直接加书。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = viewModel::clearSearch) {
-                        Text("清空搜索")
+                state.searchedQuery != null && !state.loading -> item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            "没有找到「${state.searchedQuery}」",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "换个关键词，或者从链接直接加书。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        TextButton(onClick = viewModel::clearSearch) {
+                            Text("清除搜索")
+                        }
                     }
                 }
 
-                else -> DiscoverHome(
+                else -> discoverHomeItems(
                     recommendations = state.recommendations,
                     loading = state.loadingRecommendations,
                     loadingPool = state.loadingPool,
@@ -324,8 +340,7 @@ fun DiscoverRoute(
     }
 }
 
-@Composable
-private fun DiscoverHome(
+private fun LazyListScope.discoverHomeItems(
     recommendations: List<SourceBook>,
     loading: Boolean,
     loadingPool: Boolean,
@@ -339,105 +354,98 @@ private fun DiscoverHome(
 ) {
     val featured = recommendations.take(6)
     val more = recommendations.drop(6)
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "本周推荐",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onShuffle) { Text("换一批") }
-            }
+    item {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                "大书库随机推荐",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-            if (loadingPool) {
-                Text(
-                    "补充书库…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                )
-            }
-        }
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(featured, key = { it.provider + "/" + it.id }) { book ->
-                    RecommendationCard(
-                        book = book,
-                        onClick = { onPreview(book) },
-                    )
-                }
-            }
-        }
-        item {
-            Text(
-                "热门标签",
+                "本周推荐",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f),
             )
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(commonTags) { tag ->
-                    LnTag(
-                        text = TagLocalizer.translate(tag) ?: tag,
-                        kind = LnTagKind.TYPE,
-                        onClick = { onTagClick(tag) },
-                    )
-                }
-            }
+            TextButton(onClick = onShuffle) { Text("换一批") }
         }
-        if (recommendations.isEmpty()) {
-            item {
-                Text(
-                    if (loading) "正在加载推荐…" else "暂时拿不到推荐，可以搜索或从链接加书。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
-                )
-            }
-        } else if (more.isNotEmpty()) {
-            item {
-                Text(
-                    "更多推荐",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            items(more, key = { "rec-" + it.provider + "/" + it.id }) { book ->
-                SourceResultCard(
-                    item = book,
-                    adding = addingId == book.provider + "/" + book.id,
-                    added = book.provider + "/" + book.id in addedKeys,
-                    onAdd = { onAdd(book) },
-                    onPreview = { onPreview(book) },
-                    onAuthorClick = onAuthorClick,
-                    onTagClick = onTagClick,
+        Text(
+            "大书库随机推荐",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        if (loadingPool) {
+            Text(
+                "补充书库…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+            )
+        }
+    }
+    item {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(featured, key = { it.provider + "/" + it.id }) { book ->
+                RecommendationCard(
+                    book = book,
+                    onClick = { onPreview(book) },
                 )
             }
         }
     }
+    item {
+        Text(
+            "热门标签",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(commonTags) { tag ->
+                LnTag(
+                    text = TagLocalizer.translate(tag) ?: tag,
+                    kind = LnTagKind.TYPE,
+                    onClick = { onTagClick(tag) },
+                )
+            }
+        }
+    }
+    if (recommendations.isEmpty()) {
+        item {
+            Text(
+                if (loading) "正在加载推荐…" else "暂时拿不到推荐，可以搜索或从链接加书。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    } else if (more.isNotEmpty()) {
+        item {
+            Text(
+                "更多推荐",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+        items(more, key = { "rec-" + it.provider + "/" + it.id }) { book ->
+            SourceResultCard(
+                item = book,
+                adding = addingId == book.provider + "/" + book.id,
+                added = book.provider + "/" + book.id in addedKeys,
+                onAdd = { onAdd(book) },
+                onPreview = { onPreview(book) },
+                onAuthorClick = onAuthorClick,
+                onTagClick = onTagClick,
+            )
+        }
+    }
 }
 
-@Composable
-private fun SearchResults(
+private fun LazyListScope.searchResultItems(
     results: List<SourceBook>,
     sourceFilter: String?,
     onSourceFilterChange: (String?) -> Unit,
@@ -452,22 +460,17 @@ private fun SearchResults(
     onAuthorClick: (String) -> Unit,
     onTagClick: (String) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
         item {
             Text(
                 "搜索结果 · ${results.size}",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BrandFilterChip(
@@ -490,7 +493,7 @@ private fun SearchResults(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 2.dp),
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BrandFilterChip(
@@ -518,7 +521,7 @@ private fun SearchResults(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 2.dp),
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 BrandFilterChip(
@@ -551,17 +554,18 @@ private fun SearchResults(
             }
         }
         items(results, key = { it.provider + "/" + it.id }) { item ->
-            SourceResultCard(
-                item = item,
-                adding = addingId == item.provider + "/" + item.id,
-                added = item.provider + "/" + item.id in addedKeys,
-                onAdd = { onAdd(item) },
-                onPreview = { onPreview(item) },
-                onAuthorClick = onAuthorClick,
-                onTagClick = onTagClick,
-            )
+            Box(Modifier.padding(horizontal = 16.dp)) {
+                SourceResultCard(
+                    item = item,
+                    adding = addingId == item.provider + "/" + item.id,
+                    added = item.provider + "/" + item.id in addedKeys,
+                    onAdd = { onAdd(item) },
+                    onPreview = { onPreview(item) },
+                    onAuthorClick = onAuthorClick,
+                    onTagClick = onTagClick,
+                )
+            }
         }
-    }
 }
 
 @Composable

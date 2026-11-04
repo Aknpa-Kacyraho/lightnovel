@@ -23,6 +23,7 @@ import com.kacyraho.lightnovel.data.worldline.WorldlineStore
 import com.kacyraho.lightnovel.data.story.StoryMemoryService
 import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationVersionStore
@@ -45,10 +46,15 @@ import com.kacyraho.lightnovel.reader.engine.ReaderChapterCache
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class AppContainer(
     context: Context,
 ) {
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     val dataRoot: Path = Paths.get(context.filesDir.absolutePath, "lightnovel-data").also {
         Files.createDirectories(it.resolve("novels"))
         Files.createDirectories(it.resolve("legacy"))
@@ -172,6 +178,14 @@ class AppContainer(
         apiKeyStore = apiKeyStore,
         storyMemoryStore = storyMemoryStore,
         versionStore = versionStore,
+    )
+
+    val readingTranslationCoordinator: ReadingTranslationCoordinator = ReadingTranslationCoordinator(
+        scope = appScope,
+        translationService = translationService,
+        taskRegistry = translationTaskRegistry,
+        contentStore = contentStore,
+        dao = database.libraryDao(),
     )
 
     val importCoordinator: ImportCoordinator = ImportCoordinator(

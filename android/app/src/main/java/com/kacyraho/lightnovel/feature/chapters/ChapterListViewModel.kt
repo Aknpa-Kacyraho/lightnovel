@@ -12,6 +12,9 @@ import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.source.DirectLibraryService
 import com.kacyraho.lightnovel.data.source.SourceDetail
+import com.kacyraho.lightnovel.data.translation.TranslationOutcome
+import com.kacyraho.lightnovel.data.translation.TranslationService
+import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +32,7 @@ data class ChapterListUiState(
     val message: String? = null,
     val exporting: Boolean = false,
     val downloading: Boolean = false,
+    val translating: Boolean = false,
     val downloadProgress: String? = null,
     val favorite: Boolean = false,
     val catalogQuery: String = "",
@@ -42,6 +46,8 @@ class ChapterListViewModel(
     private val onlineBookService: DirectLibraryService,
     private val metadataService: MetadataTranslationService? = null,
     private val downloadScheduler: BookDownloadScheduler? = null,
+    private val translationService: TranslationService? = null,
+    private val taskRegistry: TranslationTaskRegistry? = null,
     private val bookId: String,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ChapterListUiState())
@@ -232,6 +238,45 @@ class ChapterListViewModel(
                     error = it.message ?: "下载失败",
                 )
             }
+        }
+    }
+
+    fun translateCurrent() {
+        val current = _state.value
+        if (current.translating) return
+        val book = current.book ?: return
+        val service = translationService ?: return
+        val target = current.readState?.progressIdx?.takeIf {
+            it in 1..current.chapters.size
+        } ?: current.chapters.firstOrNull()?.idx ?: return
+        if (taskRegistry?.isRunning(book.id, target) == true) {
+            _state.value = current.copy(error = "这一章已经在翻译")
+            return
+        }
+        _state.value = current.copy(
+            translating = true,
+            message = "正在翻译第 $target 章…",
+            error = null,
+        )
+        val job = viewModelScope.launch {
+            val outcome = service.translate(book, target)
+            _state.value = _state.value.copy(
+                translating = false,
+                message = when (outcome) {
+                    is TranslationOutcome.Complete -> "第 $target 章已翻译"
+                    is TranslationOutcome.Partial -> "第 $target 章已部分翻译"
+                    is TranslationOutcome.Failed -> null
+                },
+                error = (outcome as? TranslationOutcome.Failed)?.reason,
+            )
+            refresh()
+        }
+        if (taskRegistry?.register(book.id, target, job) == false) {
+            job.cancel()
+            _state.value = _state.value.copy(
+                translating = false,
+                error = "这一章已经有翻译任务",
+            )
         }
     }
 

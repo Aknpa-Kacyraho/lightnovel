@@ -227,13 +227,13 @@ Column
 - [ ] 设置 5 组；主题 8 套预览卡；字号/行距/边距/段距/常亮可达；高级端点折叠；清缓存确认。
 - [ ] 8 套主题浅/深色标签/状态/正文对比度通过；业务页面无硬编码颜色。
 - [ ] 最近阅读不漏导入书；`tags_json` 对在线书/本地书可解析；主题默认/回退 amber。
-- [x] 当前 160 tests 全绿（0 failures / 1 skipped）；新增主题/标签/继续阅读/大书库/性能/标签汉化/段落锚点测试全绿；`lintDebug` 0 errors。
+- [x] 当前 164 tests 全绿（0 failures / 1 skipped）；新增主题/标签/继续阅读/大书库/性能/标签汉化/段落锚点测试全绿；`lintDebug` 0 errors。
 - [ ] 真机：4 Tab、详情 Tab、标签/作者跳转、加书、最近阅读、8 主题切换、深色、返回栈无异常。
 
 
 ## 8. 实施补充（2026-10-31）
 
-- 当前构建：`0.9.10`（versionCode 33）。发布：[Release v0.9.10](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v0.9.10)。
+- 当前构建：`1.0.0`（versionCode 34）。发布：[Release v1.0.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.0)。
 - 0.9.5 返修：书架卡片 `⋮ → 移出书架`（只写 `hidden=1`，保留 DB/文件/译文/进度，可在「已移出」恢复）；查询 Sheet 按类型分组、字号分层；世界线编辑器初始定位当前段；plan JSON 容忍 `beats` 对象并重试；普通技能/概念不再进查询和自动术语表。
 - 0.9.6 审查优化：任务页导航图补全、网络异常不再闪退、Python 0 基章号备份兼容、书架移出可撤销、主题 surface 角色与系统栏图标、阅读器顶栏精简、输入框跟随纸色、任务卡/目录预览重排、阅读进度立即保存、世界线分叉章号校验、Web skill 删除。
 - 世界线返修：真实模型常返回 `content` 而非 `text`，解析已兼容并补标题/梗概/状态/偏离；plan 兼容根数组与对象 beats；503/超时退避重试；Writer 增加分叉前原文节选；实测 DeepSeek 官方 `deepseek-flash` 生成 2713 字、OpenCode Go `deepseek-v4.1-flash` 生成 3915 字分支均成功。
@@ -241,6 +241,7 @@ Column
 - 0.9.8 交互收尾：连续续写的进度改为内联文本，不再每条进度弹 Snackbar；完成后才弹结果提示，避免批量续写时提示刷屏。
 - 0.9.9 长篇上下文收尾：前情摘要保留最近 20 章、最近两章正文取结尾 3000 字；Writer JSON 明确要求 80–150 字梗概与 state/divergence，减少长线续写漂移。
 - 0.9.10 子 agent 审查返修：滚动模式按段落而不是行号计算分叉点；Reader 编辑正文只把当前段及之前送入 Planner/Writer；分叉前事实严格排除当前段；连续续写进度条/文案不再被顶栏遮挡；生成可取消；列表/删除移到 IO 线程；旧 worldline 缺 chapterStates 自动对齐；校验器 canProceed=false 会触发重写；世界线 id 拒绝 `..` 路径穿越。
+- 1.0.0：阅读时自动翻译当前章 + 超前 X 章（默认 3），跳章时回补当前章前最多 N 章（默认 5）；设置页可开关、调超前/回补；详情页「翻译当前章」手动入口；发现页与作品详情页改为整页滚动，顶部搜索/Hero/Tab 随内容滚走，不再只滚下半屏。当前 164 JVM tests。
 - 大书库：发现页搜索/推荐/翻译元数据持久化到 Room `catalog_books`；发现页顶栏「大书库」支持本地搜索、来源/状态/标签多选（同时满足）、最近爬取/更新/话数/字数/书名排序；标签用 `TagLocalizer` 本地汉化，未知标签保留原文；加入书架复用 `DirectLibraryService`。
 - 发现池：目录不足 200 本时从 Kakuyomu/Syosetu 排行榜各抓 10 页写入目录，再随机抽 24 本；`(provider, source_id)` 主键去重，`catalogCrawlAt` 记录成功扩充时间，7 天内不重复爬，提供「换一批」。
 - 阅读性能：翻页视图按页构建 `StaticLayout`，不再每帧绘制整章；滚动段落知识状态 120ms 防抖，`translatedThrough` 与正文/边车读取移到 IO 线程。实测翻页 janky 1/988（0.10%），发现页 3/1040（0.29%）。
@@ -250,7 +251,7 @@ Column
 - 翻译自检：`retranslateParagraph` 在边车仍为 partial 时返回 `Partial`，不再误报完成。
 - 任务中心已按书分组，支持状态筛选（全部/失败/未译全/进行中）；失败/未译全可带 `retry=true` 进入阅读器自动重试。
 - 从标签/作者进入发现搜索时，搜索页提供返回箭头；仍保留当前栈 push 语义，完整多 Tab 栈恢复未做。
-- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 160 tests / 0 failures / 1 skipped。
+- 新增 `TaskGroupingTest`、`BookTagsTest`、`ThemePaletteTest`、`TranslationProvidersTest`、`TranslationCalibratorTest`、`StoryMemoryStoreTest`、`TranslationPromptsTest`、`StoryMemoryServiceTest`、`KnowledgeStoreTest`、`KnowledgeExtractionServiceTest`、`KnowledgeQueryServiceTest`、`EntityHighlighterTest`、`WorldlineStoreTest`、`WorldlineServiceTest`、`BranchKnowledgeExtractorTest`、`WorldlineContextBuilderTest`；当前 164 tests / 0 failures / 1 skipped。
 - 翻译设置支持 OpenAI 兼容供应商预设与自定义端点；首次保存自动校准 batch/sakura 协议和安全块大小，结果按端点+模型缓存，可手动重测。
 - 故事记忆按书存 `story.json`：术语/人物卡/梗概/风格/经验；翻译只注入本段相关记忆，自动生成章节梗概；「本书设定」可编辑与扫描人物/检查译名；阅读器支持「润色本章」。
 - 事实级知识库按书存 `knowledge.json`：Entity/Fact/Relation/VoiceFact/Secret，带原文 quote 与锚点；翻译后增量抽取；阅读器查询模式支持正文下划线、点词卡片、章节出处和「资料更新中」状态。

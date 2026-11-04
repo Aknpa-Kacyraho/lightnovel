@@ -88,6 +88,7 @@ fun ReaderRoute(
             versionStore = container.versionStore,
             onlineBookService = container.directLibraryService,
             taskRegistry = container.translationTaskRegistry,
+            readingTranslationCoordinator = container.readingTranslationCoordinator,
             worldlineService = container.worldlineService,
             bookId = bookId,
             chapterIndex = chapterIndex,

@@ -99,6 +99,8 @@ fun ChapterListRoute(
             onlineBookService = container.directLibraryService,
             metadataService = container.metadataTranslationService,
             downloadScheduler = container.bookDownloadScheduler,
+            translationService = container.translationService,
+            taskRegistry = container.translationTaskRegistry,
             bookId = bookId,
         )
     }
@@ -124,6 +126,7 @@ fun ChapterListRoute(
         onOpenChapter = onOpenChapter,
         onToggleFavorite = viewModel::toggleFavorite,
         onDownloadAll = viewModel::downloadAll,
+        onTranslateCurrent = viewModel::translateCurrent,
         onExport = {
             val title = state.book?.titleZh ?: state.book?.title ?: "lightnovel"
             launcher.launch("$title.epub")
@@ -161,6 +164,7 @@ fun ChapterListScreen(
     onOpenChapter: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     onDownloadAll: () -> Unit,
+    onTranslateCurrent: () -> Unit,
     onExport: () -> Unit,
     onSearchAuthor: (String) -> Unit,
     onSearchTag: (String) -> Unit,
@@ -177,8 +181,7 @@ fun ChapterListScreen(
     var selectedTab by rememberSaveable(state.book?.id) { mutableStateOf(TAB_INTRO) }
     var tabTouched by rememberSaveable(state.book?.id) { mutableStateOf(false) }
     var introExpanded by rememberSaveable(state.book?.id) { mutableStateOf(false) }
-    val introListState = rememberLazyListState()
-    val catalogListState = rememberLazyListState()
+    val detailListState = rememberLazyListState()
 
     LaunchedEffect(state.readState?.progressIdx) {
         if (!tabTouched && (state.readState?.progressIdx ?: 0) > 0) {
@@ -243,6 +246,16 @@ fun ChapterListScreen(
                                     },
                                 )
                             }
+                            DropdownMenuItem(
+                                text = {
+                                    Text(if (state.translating) "翻译中…" else "翻译当前章")
+                                },
+                                enabled = !state.translating && state.chapters.isNotEmpty(),
+                                onClick = {
+                                    menuOpen = false
+                                    onTranslateCurrent()
+                                },
+                            )
                             DropdownMenuItem(
                                 text = { Text(if (state.exporting) "导出中…" else "导出 EPUB") },
                                 enabled = !state.exporting,
@@ -315,57 +328,84 @@ fun ChapterListScreen(
                 if (state.downloading) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-                Hero(
-                    book = state.book,
-                    detail = state.detail,
-                    favorite = state.favorite,
-                    progressIdx = state.readState?.progressIdx ?: 0,
-                    onToggleFavorite = onToggleFavorite,
-                    onContinue = {
-                        val target = state.readState?.progressIdx?.takeIf {
-                            it in 1..state.chapters.size
-                        } ?: state.chapters.firstOrNull()?.idx ?: 1
-                        onOpenChapter(target)
-                    },
-                    onSearchAuthor = onSearchAuthor,
-                    onSearchTag = onSearchTag,
-                )
-                TabRow(selectedTabIndex = if (selectedTab == TAB_INTRO) 0 else 1) {
-                    Tab(
-                        selected = selectedTab == TAB_INTRO,
-                        onClick = {
-                            selectedTab = TAB_INTRO
-                            tabTouched = true
-                        },
-                        text = { Text("简介") },
-                    )
-                    Tab(
-                        selected = selectedTab == TAB_CATALOG,
-                        onClick = {
-                            selectedTab = TAB_CATALOG
-                            tabTouched = true
-                        },
-                        text = { Text("目录 · ${state.chapters.size}") },
-                    )
+                val filteredChapters = remember(
+                    state.chapters,
+                    state.catalogQuery,
+                    state.catalogSortDesc,
+                    state.catalogStatus,
+                ) {
+                    filterChapters(state)
                 }
-                if (selectedTab == TAB_INTRO) {
-                    IntroTab(
-                        state = state,
-                        listState = introListState,
-                        expanded = introExpanded,
-                        onExpand = { introExpanded = true },
-                        onSearchAuthor = onSearchAuthor,
-                        onSearchTag = onSearchTag,
-                    )
-                } else {
-                    CatalogTab(
-                        state = state,
-                        listState = catalogListState,
-                        onOpenChapter = onOpenChapter,
-                        onQueryChange = onCatalogQueryChange,
-                        onToggleSort = onToggleCatalogSort,
-                        onStatusChange = onCatalogStatusChange,
-                    )
+                LazyColumn(
+                    state = detailListState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                ) {
+                    item {
+                        Hero(
+                            book = state.book,
+                            detail = state.detail,
+                            favorite = state.favorite,
+                            progressIdx = state.readState?.progressIdx ?: 0,
+                            onToggleFavorite = onToggleFavorite,
+                            onContinue = {
+                                val target = state.readState?.progressIdx?.takeIf {
+                                    it in 1..state.chapters.size
+                                } ?: state.chapters.firstOrNull()?.idx ?: 1
+                                onOpenChapter(target)
+                            },
+                            onSearchAuthor = onSearchAuthor,
+                            onSearchTag = onSearchTag,
+                        )
+                    }
+                    item {
+                        TabRow(selectedTabIndex = if (selectedTab == TAB_INTRO) 0 else 1) {
+                            Tab(
+                                selected = selectedTab == TAB_INTRO,
+                                onClick = {
+                                    selectedTab = TAB_INTRO
+                                    tabTouched = true
+                                },
+                                text = { Text("简介") },
+                            )
+                            Tab(
+                                selected = selectedTab == TAB_CATALOG,
+                                onClick = {
+                                    selectedTab = TAB_CATALOG
+                                    tabTouched = true
+                                },
+                                text = { Text("目录 · ${state.chapters.size}") },
+                            )
+                        }
+                    }
+                    if (selectedTab == TAB_INTRO) {
+                        item {
+                            IntroContent(
+                                state = state,
+                                expanded = introExpanded,
+                                onExpand = { introExpanded = true },
+                                onSearchAuthor = onSearchAuthor,
+                                onSearchTag = onSearchTag,
+                            )
+                        }
+                    } else {
+                        item {
+                            CatalogHeader(
+                                state = state,
+                                filteredEmpty = filteredChapters.isEmpty(),
+                                onQueryChange = onCatalogQueryChange,
+                                onToggleSort = onToggleCatalogSort,
+                                onStatusChange = onCatalogStatusChange,
+                            )
+                        }
+                        items(filteredChapters, key = { it.idx }) { chapter ->
+                            ChapterRow(
+                                chapter = chapter,
+                                current = state.readState?.progressIdx == chapter.idx,
+                                onClick = { onOpenChapter(chapter.idx) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -487,9 +527,8 @@ private fun TagFlow(
 }
 
 @Composable
-private fun IntroTab(
+private fun IntroContent(
     state: ChapterListUiState,
-    listState: LazyListState,
     expanded: Boolean,
     onExpand: () -> Unit,
     onSearchAuthor: (String) -> Unit,
@@ -503,134 +542,113 @@ private fun IntroTab(
         ?: detail?.book?.synopsis
         ?: "暂无简介"
     val author = detail?.book?.author?.takeIf { it.isNotBlank() } ?: book.author
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            SectionCard(title = "简介") {
-                Text(
-                    text = synopsis,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = if (expanded) Int.MAX_VALUE else 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!expanded && synopsis.length > 120) {
-                    TextButton(onClick = onExpand) { Text("展开全部简介") }
-                }
+        SectionCard(title = "简介") {
+            Text(
+                text = synopsis,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = if (expanded) Int.MAX_VALUE else 6,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!expanded && synopsis.length > 120) {
+                TextButton(onClick = onExpand) { Text("展开全部简介") }
             }
         }
         if (tags.isNotEmpty()) {
-            item {
-                SectionCard(title = "标签") {
-                    TagFlow(tags = tags, onSearchTag = onSearchTag)
-                }
+            SectionCard(title = "标签") {
+                TagFlow(tags = tags, onSearchTag = onSearchTag)
             }
         }
-        item {
-            SectionCard(title = "信息") {
-                InfoRow("作者", author.orEmpty(), onClick = author?.let {
-                    { onSearchAuthor(it) }
-                })
-                InfoRow("来源", sourceLabel(book.source))
-                InfoRow("话数", "${state.chapters.size}")
-                InfoRow("类型", if (book.local) "本地导入" else "在线书源")
-            }
+        SectionCard(title = "信息") {
+            InfoRow("作者", author.orEmpty(), onClick = author?.let {
+                { onSearchAuthor(it) }
+            })
+            InfoRow("来源", sourceLabel(book.source))
+            InfoRow("章节", "${state.chapters.size}")
+            InfoRow("类型", if (book.local) "本地导入" else "在线来源")
         }
     }
 }
 
+private fun filterChapters(state: ChapterListUiState): List<ChapterEntity> {
+    val query = state.catalogQuery.trim()
+    return state.chapters
+        .filter { chapter ->
+            (query.isEmpty() ||
+                chapter.title.orEmpty().contains(query, ignoreCase = true) ||
+                chapter.titleZh.orEmpty().contains(query, ignoreCase = true)) &&
+                when (state.catalogStatus) {
+                    "translated" -> chapter.status in setOf("complete", "translated")
+                    "untranslated" -> chapter.status in setOf("online", "raw", "translating")
+                    "failed" -> chapter.status == "failed" || chapter.status == "missing"
+                    else -> true
+                }
+        }
+        .let { if (state.catalogSortDesc) it.reversed() else it }
+}
+
 @Composable
-private fun CatalogTab(
+private fun CatalogHeader(
     state: ChapterListUiState,
-    listState: LazyListState,
-    onOpenChapter: (Int) -> Unit,
+    filteredEmpty: Boolean,
     onQueryChange: (String) -> Unit,
     onToggleSort: () -> Unit,
     onStatusChange: (String) -> Unit,
 ) {
-    val filtered = remember(
-        state.chapters,
-        state.catalogQuery,
-        state.catalogSortDesc,
-        state.catalogStatus,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        state.chapters
-            .filter { chapter ->
-                val query = state.catalogQuery.trim()
-                (query.isEmpty() ||
-                    chapter.title.orEmpty().contains(query, ignoreCase = true) ||
-                    chapter.titleZh.orEmpty().contains(query, ignoreCase = true)) &&
-                    when (state.catalogStatus) {
-                        "translated" -> chapter.status in setOf("complete", "translated")
-                        "untranslated" -> chapter.status in setOf("online", "raw", "translating")
-                        "failed" -> chapter.status == "failed" || chapter.status == "missing"
-                        else -> true
-                    }
+        OutlinedTextField(
+            value = state.catalogQuery,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("搜索章节") },
+            singleLine = true,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onToggleSort) {
+                Text(if (state.catalogSortDesc) "降序" else "升序")
             }
-            .let { if (state.catalogSortDesc) it.reversed() else it }
-    }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        item {
-            OutlinedTextField(
-                value = state.catalogQuery,
-                onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("搜索章节") },
-                singleLine = true,
+            BrandFilterChip(
+                selected = state.catalogStatus == "all",
+                onClick = { onStatusChange("all") },
+                label = { Text("全部") },
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onToggleSort) {
-                    Text(if (state.catalogSortDesc) "倒序" else "正序")
-                }
-                BrandFilterChip(
-                    selected = state.catalogStatus == "all",
-                    onClick = { onStatusChange("all") },
-                    label = { Text("全部") },
-                )
-                BrandFilterChip(
-                    selected = state.catalogStatus == "translated",
-                    onClick = { onStatusChange("translated") },
-                    label = { Text("已译") },
-                )
-                BrandFilterChip(
-                    selected = state.catalogStatus == "untranslated",
-                    onClick = { onStatusChange("untranslated") },
-                    label = { Text("未译") },
-                )
-                BrandFilterChip(
-                    selected = state.catalogStatus == "failed",
-                    onClick = { onStatusChange("failed") },
-                    label = { Text("失败") },
-                )
-            }
-            if (filtered.isEmpty()) {
-                Text(
-                    "没有匹配的章节",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 24.dp),
-                )
-            }
+            BrandFilterChip(
+                selected = state.catalogStatus == "translated",
+                onClick = { onStatusChange("translated") },
+                label = { Text("已译") },
+            )
+            BrandFilterChip(
+                selected = state.catalogStatus == "untranslated",
+                onClick = { onStatusChange("untranslated") },
+                label = { Text("未译") },
+            )
+            BrandFilterChip(
+                selected = state.catalogStatus == "failed",
+                onClick = { onStatusChange("failed") },
+                label = { Text("失败") },
+            )
         }
-        items(filtered, key = { it.idx }) { chapter ->
-            ChapterRow(
-                chapter = chapter,
-                current = state.readState?.progressIdx == chapter.idx,
-                onClick = { onOpenChapter(chapter.idx) },
+        if (filteredEmpty) {
+            Text(
+                "没有匹配的章节",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp),
             )
         }
     }
@@ -690,7 +708,7 @@ private fun ChapterRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .padding(vertical = 10.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

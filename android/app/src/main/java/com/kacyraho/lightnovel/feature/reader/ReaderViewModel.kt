@@ -32,6 +32,7 @@ import com.kacyraho.lightnovel.data.translation.TranslationConfig
 import com.kacyraho.lightnovel.data.translation.toTranslationConfig
 import com.kacyraho.lightnovel.data.translation.TranslationOutcome
 import com.kacyraho.lightnovel.data.translation.TranslationService
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationVersionStore
 import com.kacyraho.lightnovel.data.worldline.Intervention
@@ -121,6 +122,7 @@ class ReaderViewModel(
     private val versionStore: TranslationVersionStore? = null,
     private val onlineBookService: ChapterFetcher? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
+    private val readingTranslationCoordinator: ReadingTranslationCoordinator? = null,
     private val worldlineService: WorldlineService? = null,
     private val bookId: String,
     private val chapterIndex: Int,
@@ -147,6 +149,7 @@ class ReaderViewModel(
     private var knowledgeStatusJob: Job? = null
     private var settingsJob: Job? = null
     private var worldlineJob: Job? = null
+    private var autoTranslationAttemptKey: String? = null
     private var lastKey: String? = null
     private var currentConfigHash: String? = null
     private var currentLegacyConfigHash: String? = null
@@ -709,6 +712,7 @@ class ReaderViewModel(
                         paragraphs = buildParagraphs(raw, zh),
                     )
                     prefetchAdjacent(book, chapters, _state.value.displayMode)
+                    maybeStartTranslationWindow(book, chapters, zh)
                 }.onFailure { error ->
                     _state.value = _state.value.copy(
                         loading = false,
@@ -1053,6 +1057,28 @@ class ReaderViewModel(
                 rawParagraphs.getOrNull(index)?.takeIf { it.isNotBlank() },
                 zhParagraphs.getOrNull(index)?.takeIf { it.isNotBlank() },
             ).joinToString("\n")
+        }
+    }
+
+    private fun maybeStartTranslationWindow(
+        book: BookEntity,
+        chapters: List<ChapterEntity>,
+        zh: String?,
+    ) {
+        val settings = currentSettings ?: return
+        if (!settings.autoTranslateWhileReading) return
+        if (zh == null) {
+            if (autoTranslationAttemptKey == taskKey) return
+            autoTranslationAttemptKey = taskKey
+            translateChapter()
+        } else {
+            readingTranslationCoordinator?.request(
+                book = book,
+                currentIndex = chapterIndex,
+                chapters = chapters,
+                ahead = settings.translateAheadChapters,
+                backfill = settings.translateBackfillChapters,
+            )
         }
     }
 

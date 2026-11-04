@@ -55,6 +55,9 @@ data class SettingsUiState(
     val readerTheme: String = "paper",
     val readerDisplayMode: String = "translated",
     val readerMode: String = "page",
+    val autoTranslateWhileReading: Boolean = true,
+    val translateAheadChapters: Int = 3,
+    val translateBackfillChapters: Int = 5,
     val noveliaBaseUrl: String = "https://n.novelia.cc/api/",
     val loggedIn: Boolean = false,
     val username: String = "",
@@ -111,6 +114,9 @@ class SettingsViewModel(
                 readerTheme = settings.readerTheme,
                 readerDisplayMode = settings.readerDisplayMode,
                 readerMode = settings.readerMode,
+                autoTranslateWhileReading = settings.autoTranslateWhileReading,
+                translateAheadChapters = settings.translateAheadChapters,
+                translateBackfillChapters = settings.translateBackfillChapters,
                 noveliaBaseUrl = settings.noveliaBaseUrl,
                 loggedIn = accountService.isLoggedIn(),
                 cacheBytes = usage.bytes,
@@ -337,6 +343,29 @@ class SettingsViewModel(
         _state.value = _state.value.copy(readerMode = value)
         viewModelScope.launch {
             settingsStore.update { it.copy(readerMode = value) }
+        }
+    }
+
+    fun setAutoTranslateWhileReading(value: Boolean) {
+        _state.value = _state.value.copy(autoTranslateWhileReading = value)
+        viewModelScope.launch {
+            settingsStore.update { it.copy(autoTranslateWhileReading = value) }
+        }
+    }
+
+    fun setTranslateAheadChapters(value: Int) {
+        val count = value.coerceIn(0, 10)
+        _state.value = _state.value.copy(translateAheadChapters = count)
+        viewModelScope.launch {
+            settingsStore.update { it.copy(translateAheadChapters = count) }
+        }
+    }
+
+    fun setTranslateBackfillChapters(value: Int) {
+        val count = value.coerceIn(0, 10)
+        _state.value = _state.value.copy(translateBackfillChapters = count)
+        viewModelScope.launch {
+            settingsStore.update { it.copy(translateBackfillChapters = count) }
         }
     }
 

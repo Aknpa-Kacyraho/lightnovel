@@ -106,6 +106,9 @@ fun SettingsRoute(
         onThemeChange = viewModel::setReaderTheme,
         onDisplayModeChange = viewModel::setReaderDisplayMode,
         onReaderModeChange = viewModel::setReaderMode,
+        onAutoTranslateWhileReadingChange = viewModel::setAutoTranslateWhileReading,
+        onTranslateAheadChange = viewModel::setTranslateAheadChapters,
+        onTranslateBackfillChange = viewModel::setTranslateBackfillChapters,
         onNoveliaBaseUrlChange = viewModel::setNoveliaBaseUrl,
         onUsernameChange = viewModel::setUsername,
         onPasswordChange = viewModel::setPassword,
@@ -143,6 +146,9 @@ fun SettingsScreen(
     onThemeChange: (String) -> Unit,
     onDisplayModeChange: (String) -> Unit,
     onReaderModeChange: (String) -> Unit,
+    onAutoTranslateWhileReadingChange: (Boolean) -> Unit,
+    onTranslateAheadChange: (Int) -> Unit,
+    onTranslateBackfillChange: (Int) -> Unit,
     onNoveliaBaseUrlChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -312,6 +318,57 @@ fun SettingsScreen(
                         onCheckedChange = onKeepScreenOnChange,
                     )
                 }
+            }
+
+            SettingsGroup("阅读翻译") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("阅读时自动翻译", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "只翻当前章和附近章节，不会自动翻完整本。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = state.autoTranslateWhileReading,
+                        onCheckedChange = onAutoTranslateWhileReadingChange,
+                    )
+                }
+                Text("超前预译", style = MaterialTheme.typography.titleSmall)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(0, 1, 3, 5, 10).forEach { count ->
+                        BrandFilterChip(
+                            selected = state.translateAheadChapters == count,
+                            onClick = { onTranslateAheadChange(count) },
+                            label = { Text(if (count == 0) "不预译" else "$count 章") },
+                        )
+                    }
+                }
+                Text("跳章回补", style = MaterialTheme.typography.titleSmall)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(0, 2, 5, 10).forEach { count ->
+                        BrandFilterChip(
+                            selected = state.translateBackfillChapters == count,
+                            onClick = { onTranslateBackfillChange(count) },
+                            label = { Text(if (count == 0) "不回补" else "前 $count 章") },
+                        )
+                    }
+                }
+                Text(
+                    "跳章时最多回补当前章之前 N 章；跳过太多时不会自动消耗整段章节。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             SettingsGroup("翻译 API") {
