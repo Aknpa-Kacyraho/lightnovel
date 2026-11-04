@@ -19,6 +19,8 @@ Android **1.0.0**（versionCode 34）：
 - 兼容：修复任务页进入阅读器后打开目录的崩溃；支持 Python 备份 0 基章号导入；Android 9+ 本地 HTTP 端点可用。
 - 网络：翻译/世界线断网或端点不可达时显示错误，不再直接闪退。
 - 世界线：分叉章号校验、plan 对象格式兼容、生成提示词和正文解析增强。
+- 阅读翻译：打开章自动翻当前章并预译后续 3 章；跳章回补前 5 章，设置页可调，不会自动翻完整本。
+- 发现/详情：整页滚动，搜索框、Hero、Tab、筛选和列表一起滚，不再只有下半屏可滑。
 - 其他：删除已淘汰的 Web skill；主攻 Android App。
 
 下载：[Release v1.0.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.0)
