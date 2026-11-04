@@ -58,7 +58,9 @@ object TranslationValidators {
 
     fun blockIssue(source: String, translated: String): String? {
         if (!detectChinese(translated)) return "不是简体中文"
-        if (isEcho(translated, source)) return "译文与原文相同"
+        if (isEcho(translated, source) && KANA.containsMatchIn(source)) {
+            return "译文与原文相同"
+        }
 
         val sourceQuotes = openQuoteCount(source)
         val translatedQuotes = openQuoteCount(translated)
@@ -101,7 +103,9 @@ object TranslationValidators {
 
     fun paragraphIssue(source: String, translated: String): String? {
         if (!detectChinese(translated)) return "不是简体中文"
-        if (isEcho(translated, source)) return "译文与原文相同"
+        if (isEcho(translated, source) && KANA.containsMatchIn(source)) {
+            return "译文与原文相同"
+        }
 
         val sourceQuotes = dialogueCount(source)
         val translatedQuotes = dialogueCount(translated)

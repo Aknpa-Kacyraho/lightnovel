@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -52,14 +53,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
+import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
+import com.kacyraho.lightnovel.data.translation.TranslationTaskSnapshot
 import com.kacyraho.lightnovel.reader.ReaderPageView
 import com.kacyraho.lightnovel.reader.engine.ReaderTheme
 import com.kacyraho.lightnovel.reader.engine.Viewport
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun ReaderRoute(
@@ -89,6 +95,7 @@ fun ReaderRoute(
             onlineBookService = container.directLibraryService,
             taskRegistry = container.translationTaskRegistry,
             readingTranslationCoordinator = container.readingTranslationCoordinator,
+            translationScope = container.appScope,
             worldlineService = container.worldlineService,
             bookId = bookId,
             chapterIndex = chapterIndex,
@@ -97,6 +104,15 @@ fun ReaderRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val translationState by viewModel.translationState.collectAsStateWithLifecycle()
     val worldlineState by viewModel.worldlineState.collectAsStateWithLifecycle()
+    val queueFlow = remember(bookId) {
+        container.readingTranslationCoordinator.states.map { it[bookId] }
+    }
+    val activeTaskFlow = remember(bookId, chapterIndex) {
+        container.translationTaskRegistry.active
+            .map { it[TranslationTaskRegistry.key(bookId, chapterIndex)] }
+    }
+    val queueState by queueFlow.collectAsStateWithLifecycle(initialValue = null)
+    val activeTask by activeTaskFlow.collectAsStateWithLifecycle(initialValue = null)
     var autoRetryConsumed by rememberSaveable(autoRetry, bookId, chapterIndex) { mutableStateOf(false) }
 
     LaunchedEffect(autoRetry, state.loading, state.error) {
@@ -106,10 +122,22 @@ fun ReaderRoute(
         }
     }
 
+    LaunchedEffect(translationState.message, translationState.error, translationState.running) {
+        if (!translationState.running &&
+            translationState.error == null &&
+            translationState.message != null
+        ) {
+            delay(6_000)
+            viewModel.dismissTranslationNotice()
+        }
+    }
+
     ReaderContent(
         state = state,
         translationState = translationState,
         worldlineState = worldlineState,
+        queueState = queueState,
+        activeTask = activeTask,
         onBack = onBack,
         onOpenCatalog = onOpenCatalog,
         onOpenChapter = onOpenChapter,
@@ -130,6 +158,17 @@ fun ReaderRoute(
         onUpdateKnowledge = viewModel::extractCurrentChapter,
         onToggleQueryMode = viewModel::toggleQueryMode,
         onCancelTranslation = viewModel::cancelTranslation,
+        onRetryTranslation = viewModel::retryTranslation,
+        onDismissTranslationNotice = viewModel::dismissTranslationNotice,
+        onPauseTranslationQueue = {
+            container.readingTranslationCoordinator.pause(bookId)
+        },
+        onResumeTranslationQueue = {
+            container.readingTranslationCoordinator.resume(bookId)
+        },
+        onStopTranslationQueue = {
+            container.readingTranslationCoordinator.stop(bookId)
+        },
         onThemeChange = viewModel::setTheme,
         onDisplayModeChange = viewModel::setDisplayMode,
         onReaderModeChange = viewModel::setReaderMode,
@@ -145,6 +184,8 @@ private fun ReaderContent(
     state: ReaderUiState,
     translationState: ReaderTranslationState,
     worldlineState: ReaderWorldlineState,
+    queueState: ReadingTranslationQueueState?,
+    activeTask: TranslationTaskSnapshot?,
     onBack: () -> Unit,
     onOpenCatalog: (() -> Unit)?,
     onOpenChapter: (Int) -> Unit,
@@ -165,6 +206,11 @@ private fun ReaderContent(
     onUpdateKnowledge: () -> Unit,
     onToggleQueryMode: () -> Unit,
     onCancelTranslation: () -> Unit,
+    onRetryTranslation: () -> Unit,
+    onDismissTranslationNotice: () -> Unit,
+    onPauseTranslationQueue: () -> Unit,
+    onResumeTranslationQueue: () -> Unit,
+    onStopTranslationQueue: () -> Unit,
     onThemeChange: (String) -> Unit,
     onDisplayModeChange: (String) -> Unit,
     onReaderModeChange: (String) -> Unit,
@@ -242,14 +288,15 @@ private fun ReaderContent(
             bookTitle = state.bookTitle,
             chapterTitle = state.chapterTitle,
             fontSizeSp = state.fontSizeSp,
-            status = if (translationState.running) {
+            status = if (translationState.running || activeTask != null) {
                 TranslationStatus.TRANSLATING
             } else {
                 state.translationStatus
             },
+            hasTranslation = state.hasTranslation,
             textColor = textColor,
             secondaryColor = secondaryColor,
-            translationRunning = translationState.running,
+            translationRunning = translationState.running || activeTask != null,
             onBack = onBack,
             onFontSizeChange = onFontSizeChange,
             onThemeChange = {
@@ -273,12 +320,36 @@ private fun ReaderContent(
             onToggleImmersive = { immersive = true },
         )
 
-        StaleBanner(
-            reasons = state.staleReasons,
-            reason = state.staleBannerReason,
-            theme = readerTheme,
-            enabled = !translationState.running && !state.loading,
-            onRetranslate = onTranslate,
+        if (!translationState.running && activeTask == null) {
+            StaleBanner(
+                reasons = state.staleReasons,
+                reason = state.staleBannerReason,
+                theme = readerTheme,
+                enabled = !state.loading,
+                onRetranslate = onTranslate,
+            )
+        }
+
+        TranslationStatusBanner(
+            status = state.translationStatus,
+            hasTranslation = state.hasTranslation,
+            incompleteParagraphs = state.chapterInfo?.incompleteParagraphs ?: 0,
+            autoEnabled = state.autoTranslateEnabled,
+            rawMode = state.displayMode == "raw",
+            translationState = translationState,
+            activeTask = activeTask,
+            queue = queueState,
+            textColor = textColor,
+            secondaryColor = secondaryColor,
+            errorColor = MaterialTheme.colorScheme.error,
+            enabled = !state.loading,
+            onTranslate = onTranslate,
+            onRetry = onRetryTranslation,
+            onCancel = onCancelTranslation,
+            onDismiss = onDismissTranslationNotice,
+            onPauseQueue = onPauseTranslationQueue,
+            onResumeQueue = onResumeTranslationQueue,
+            onStopQueue = onStopTranslationQueue,
         )
 
         if (state.queryMode && state.queryHint != null) {
@@ -359,23 +430,14 @@ private fun ReaderContent(
             ) {
                 Text(if (tts.speaking) "停止" else "朗读")
             }
-            if (translationState.running) {
-                TextButton(onClick = onCancelTranslation, colors = buttonColors) { Text("取消翻译") }
-            }
-            val translationNote = tts.error
-                ?: translationState.error
-                ?: translationState.message
-            if (translationNote != null) {
-                Text(
-                    text = translationNote,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (tts.error != null || translationState.error != null) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        secondaryColor
-                    },
-                )
-            }
+        }
+        tts.error?.let { error ->
+            Text(
+                text = error,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
         }
         }
 
@@ -631,6 +693,175 @@ private fun ReaderContent(
                 ) {
                     Text("退出沉浸")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationStatusBanner(
+    status: TranslationStatus,
+    hasTranslation: Boolean,
+    incompleteParagraphs: Int,
+    autoEnabled: Boolean,
+    rawMode: Boolean,
+    translationState: ReaderTranslationState,
+    activeTask: TranslationTaskSnapshot?,
+    queue: ReadingTranslationQueueState?,
+    textColor: androidx.compose.ui.graphics.Color,
+    secondaryColor: androidx.compose.ui.graphics.Color,
+    errorColor: androidx.compose.ui.graphics.Color,
+    enabled: Boolean,
+    onTranslate: () -> Unit,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+    onPauseQueue: () -> Unit,
+    onResumeQueue: () -> Unit,
+    onStopQueue: () -> Unit,
+) {
+    val queueActive = queue?.active == true
+    val task = activeTask
+    val title: String?
+    val body: String?
+    val isError: Boolean
+    when {
+        translationState.running -> {
+            title = translationState.message ?: "正在翻译本章"
+            body = null
+            isError = false
+        }
+        task != null -> {
+            title = "正在翻译本章"
+            body = if (task.total > 0) {
+                "已完成 ${task.done}/${task.total} 段"
+            } else {
+                "已加入翻译任务，正在准备"
+            }
+            isError = false
+        }
+        translationState.error != null -> {
+            title = "没有完成"
+            body = translationState.error
+            isError = true
+        }
+        status == TranslationStatus.FAILED -> {
+            title = "本章译文不完整"
+            body = queue?.lastError ?: if (incompleteParagraphs > 0) {
+                "$incompleteParagraphs 段没有译出，重译可补全"
+            } else {
+                "译文不完整，可以重译本章"
+            }
+            isError = true
+        }
+        status == TranslationStatus.UNTRANSLATED || !hasTranslation -> {
+            title = "本章还没翻译"
+            body = when {
+                rawMode -> "当前是原文模式，点「立即翻译」或切到译文"
+                autoEnabled -> "已开启阅读时自动翻译；还没开始就点「立即翻译」"
+                else -> "设置 → 阅读翻译 已关闭自动翻译"
+            }
+            isError = false
+        }
+        queueActive || queue?.paused == true || queue?.lastError != null -> {
+            val index = queue?.runningIndex ?: queue?.nextIndex
+            title = when {
+                queue?.paused == true -> "后台预译已暂停"
+                queueActive -> "正在预译后续章节"
+                else -> "预译没有全部完成"
+            }
+            body = buildString {
+                if (index != null) append("第 $index 章")
+                append(" · 已完成 ${queue?.completed ?: 0} 章")
+                if ((queue?.failed ?: 0) > 0) append(" · 失败 ${queue?.failed} 章")
+                if ((queue?.remaining ?: 0) > 0) append(" · 剩余 ${queue?.remaining} 章")
+                queue?.lastError?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+            }
+            isError = (queue?.failed ?: 0) > 0
+        }
+        translationState.message != null -> {
+            title = translationState.message
+            body = null
+            isError = false
+        }
+        else -> {
+            title = null
+            body = null
+            isError = false
+        }
+    }
+    if (title == null) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .background(
+                color = textColor.copy(alpha = if (isError) 0.10f else 0.06f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+            )
+            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (translationState.running || task != null) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .size(16.dp),
+                strokeWidth = 2.dp,
+                color = textColor,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) errorColor else textColor,
+            )
+            if (!body.isNullOrBlank()) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isError) errorColor else secondaryColor,
+                )
+            }
+        }
+        if (translationState.running || task != null) {
+            TextButton(onClick = onCancel, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("取消")
+            }
+        } else if (translationState.error != null) {
+            TextButton(onClick = onRetry, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("重试")
+            }
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("关闭")
+            }
+        } else if (status == TranslationStatus.UNTRANSLATED || !hasTranslation) {
+            TextButton(onClick = onTranslate, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("立即翻译")
+            }
+        } else if (status == TranslationStatus.FAILED) {
+            TextButton(onClick = onRetry, enabled = enabled, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("重译")
+            }
+        } else if (queueActive || queue?.paused == true) {
+            TextButton(
+                onClick = if (queue?.paused == true) onResumeQueue else onPauseQueue,
+                colors = ButtonDefaults.textButtonColors(contentColor = textColor),
+            ) {
+                Text(if (queue?.paused == true) "继续" else "暂停")
+            }
+            TextButton(onClick = onStopQueue, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("停止")
+            }
+        } else if (queue?.lastError != null) {
+            TextButton(onClick = onStopQueue, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("关闭")
+            }
+        } else if (translationState.message != null) {
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = textColor)) {
+                Text("关闭")
             }
         }
     }

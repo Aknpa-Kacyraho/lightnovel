@@ -52,6 +52,17 @@ class TranslationValidatorsTest {
     }
 
     @Test
+    fun acceptsKanjiOnlyParagraphThatDoesNotNeedRewriting() {
+        assertEquals(
+            null,
+            TranslationValidators.paragraphIssue("食欲、睡眠欲、性欲。", "食欲、睡眠欲、性欲。"),
+        )
+        assertTrue(
+            TranslationValidators.paragraphIssue("これはテストです。", "这是测试。") == null,
+        )
+    }
+
+    @Test
     fun splitsParagraphsAndParsesNumberedReply() {
         val paragraphs = TranslationValidators.splitParagraphs("a\nb\n\nc")
         assertEquals(listOf("a\nb", "", "c"), paragraphs)

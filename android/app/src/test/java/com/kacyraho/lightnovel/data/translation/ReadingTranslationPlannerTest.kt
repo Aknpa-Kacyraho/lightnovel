@@ -49,6 +49,22 @@ class ReadingTranslationPlannerTest {
     }
 
     @Test
+    fun retriesPartialChapterAhead() {
+        val chapters = (1..3).map { index ->
+            chapter(
+                index,
+                when (index) {
+                    2 -> "partial"
+                    3 -> "complete"
+                    else -> "raw"
+                },
+            )
+        }
+        val targets = ReadingTranslationPlanner.plan(1, chapters, ahead = 2, backfill = 0)
+        assertEquals(listOf(2), targets)
+    }
+
+    @Test
     fun boundsAheadAndBackfill() {
         val chapters = (1..30).map { chapter(it, "raw") }
         val targets = ReadingTranslationPlanner.plan(20, chapters, ahead = 50, backfill = 50)

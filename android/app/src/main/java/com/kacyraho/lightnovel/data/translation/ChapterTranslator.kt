@@ -199,6 +199,12 @@ class ChapterTranslator(
             translated[index] ?: text
         }.joinToString("\n")
         val incomplete = indexed.map { it.index }.filter { it !in translated }
+        if (translated.isEmpty() && incomplete.isNotEmpty()) {
+            return TranslationOutcome.Failed(
+                "本章没有成功翻译的段落，请检查 API 配置或稍后重试",
+                true,
+            )
+        }
         val sidecar = sidecar(
             sourceSha = sourceSha,
             contentSha = Hashes.sha256(output),
@@ -305,6 +311,12 @@ class ChapterTranslator(
                 ranges[index].last + 1,
             ).joinToString("\n")
         }.joinToString("\n")
+        if (translatedBlocks.isEmpty() && incomplete.isNotEmpty()) {
+            return TranslationOutcome.Failed(
+                "本章没有成功翻译的段落，请检查 API 配置或稍后重试",
+                true,
+            )
+        }
         val sidecar = sidecar(
             sourceSha = sourceSha,
             contentSha = Hashes.sha256(output),

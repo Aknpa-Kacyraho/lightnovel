@@ -11,23 +11,27 @@
 
 ## 最新版本
 
-Android **1.0.0**（versionCode 34）：
+Android **1.0.1**（versionCode 35）：
 
+- 阅读翻译：按书合并翻译队列，切换章节不再取消正在进行的任务；阅读器独立状态条显示当前进度、后台预译、失败原因，可暂停/继续/停止。
+- 手动翻译：详情页「更多 → 翻译章节…」支持当前章、当前章及后续 N 章、全书未译，带费用确认；任务页支持原地重试、重试未完成和停止本书。
+- 在线章节：预译前自动拉取 raw，不再因为没下载正文而空转。
+- 翻译正确性：全部分块失败不再写成 partial 原文；同形汉字短句不再卡成未译全；翻译后同步故事记忆 revision，避免刚翻完就误报需要重译。
+- 缓存：阅读器按实际译文校验缓存，后台任务完成/失败会通知页面刷新。
 - 书架：移出只隐藏，保留离线正文、译文、世界线和阅读进度；「已移出」可恢复，移出后支持撤销。
 - 阅读器：顶栏精简，字号/纸色收进「更多」；查询/术语输入框跟随纸色；保存进度不再延迟 500ms。
 - 全 App：补齐表面色层级和系统栏图标，8 套主题在深/浅色下更一致；任务卡、目录预览和空态重新排版。
 - 兼容：修复任务页进入阅读器后打开目录的崩溃；支持 Python 备份 0 基章号导入；Android 9+ 本地 HTTP 端点可用。
 - 网络：翻译/世界线断网或端点不可达时显示错误，不再直接闪退。
 - 世界线：分叉章号校验、plan 对象格式兼容、生成提示词和正文解析增强。
-- 阅读翻译：打开章自动翻当前章并预译后续 3 章；跳章回补前 5 章，设置页可调，不会自动翻完整本。
 - 发现/详情：整页滚动，搜索框、Hero、Tab、筛选和列表一起滚，不再只有下半屏可滑。
 - 其他：删除已淘汰的 Web skill；主攻 Android App。
 
-下载：[Release v1.0.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.0)
+下载：[Release v1.0.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.1)
 
-APK：`lightnovel-1.0.0-debug.apk`
+APK：`lightnovel-1.0.1-debug.apk`
 
-自检：164 JVM tests / 0 failures / 1 skipped；lint 0 errors。
+自检：168 JVM tests / 0 failures / 1 skipped；lint 0 errors。
 
 ## 快速开始（Web）
 

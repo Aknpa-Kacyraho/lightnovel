@@ -53,7 +53,7 @@ import kotlinx.coroutines.SupervisorJob
 class AppContainer(
     context: Context,
 ) {
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val dataRoot: Path = Paths.get(context.filesDir.absolutePath, "lightnovel-data").also {
         Files.createDirectories(it.resolve("novels"))
@@ -186,6 +186,7 @@ class AppContainer(
         taskRegistry = translationTaskRegistry,
         contentStore = contentStore,
         dao = database.libraryDao(),
+        chapterFetcher = directLibraryService,
     )
 
     val importCoordinator: ImportCoordinator = ImportCoordinator(

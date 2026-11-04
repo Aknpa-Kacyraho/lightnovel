@@ -84,7 +84,7 @@ class ChapterTranslatorTest {
     }
 
     @Test
-    fun marksSakuraBlockPartialWhenDialogueIsMissing() = runTest {
+    fun failsSakuraChapterWhenDialogueIsMissing() = runTest {
         val fake = FixedClient("「早上好」")
         val translator = ChapterTranslator(fake, store())
         val source = "「おはよう」\n\n「いい天気だね」"
@@ -96,10 +96,22 @@ class ChapterTranslatorTest {
             config = TranslationConfig(mode = com.kacyraho.lightnovel.core.settings.TranslationMode.SAKURA),
         )
 
-        assertTrue(outcome is TranslationOutcome.Partial)
-        val partial = outcome as TranslationOutcome.Partial
-        assertEquals("partial", partial.sidecar.status)
-        assertTrue(partial.text.contains("「おはよう」"))
+        assertTrue(outcome is TranslationOutcome.Failed)
+        assertEquals(3, fake.calls)
+    }
+
+    @Test
+    fun failsChapterWhenEveryChunkIsRejected() = runTest {
+        val fake = FixedClient("没有编号的中文回复")
+        val translator = ChapterTranslator(fake, store())
+
+        val outcome = translator.translate(
+            storageDir = "b5",
+            chapterIndex = 1,
+            sourceText = "「おはよう」\n\n今日はいい天気ですね。",
+        )
+
+        assertTrue(outcome is TranslationOutcome.Failed)
         assertEquals(3, fake.calls)
     }
 

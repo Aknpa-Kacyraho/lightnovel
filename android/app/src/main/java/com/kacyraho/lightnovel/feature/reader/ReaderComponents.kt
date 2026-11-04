@@ -223,6 +223,7 @@ fun ReaderTopBar(
     chapterTitle: String,
     fontSizeSp: Float,
     status: TranslationStatus,
+    hasTranslation: Boolean,
     textColor: Color,
     secondaryColor: Color,
     translationRunning: Boolean,
@@ -269,6 +270,7 @@ fun ReaderTopBar(
         }
         TranslationMenu(
             enabled = !translationRunning,
+            hasTranslation = hasTranslation,
             textColor = textColor,
             fontSizeSp = fontSizeSp,
             onFontSizeChange = onFontSizeChange,
@@ -372,6 +374,7 @@ fun LanguageModeMenu(
 @Composable
 private fun TranslationMenu(
     enabled: Boolean,
+    hasTranslation: Boolean,
     textColor: Color,
     fontSizeSp: Float,
     onFontSizeChange: (Float) -> Unit,
@@ -422,7 +425,7 @@ private fun TranslationMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text("重译本章") },
+                text = { Text(if (hasTranslation) "重译本章" else "翻译本章") },
                 enabled = enabled,
                 onClick = {
                     expanded = false
@@ -431,7 +434,7 @@ private fun TranslationMenu(
             )
             DropdownMenuItem(
                 text = { Text("润色本章") },
-                enabled = enabled,
+                enabled = enabled && hasTranslation,
                 onClick = {
                     expanded = false
                     onPolish()

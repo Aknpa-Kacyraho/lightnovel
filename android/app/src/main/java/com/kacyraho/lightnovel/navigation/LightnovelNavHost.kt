@@ -226,9 +226,6 @@ fun LightnovelNavHost(container: AppContainer) {
                             onOpenChapter = { bookId, idx ->
                                 tasksNav.navigate("reader/$bookId/$idx")
                             },
-                            onRetryChapter = { bookId, idx ->
-                                tasksNav.navigate("reader/$bookId/$idx?retry=true")
-                            },
                         )
                     }
                     bookRoutes(

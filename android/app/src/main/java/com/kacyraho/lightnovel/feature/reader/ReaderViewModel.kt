@@ -33,6 +33,7 @@ import com.kacyraho.lightnovel.data.translation.toTranslationConfig
 import com.kacyraho.lightnovel.data.translation.TranslationOutcome
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
+import com.kacyraho.lightnovel.data.translation.TranslationTaskEvent
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationVersionStore
 import com.kacyraho.lightnovel.data.worldline.Intervention
@@ -44,6 +45,9 @@ import com.kacyraho.lightnovel.reader.engine.ReaderChapter
 import com.kacyraho.lightnovel.reader.engine.ReaderChapterCache
 import com.kacyraho.lightnovel.reader.engine.ReaderLayout
 import com.kacyraho.lightnovel.reader.engine.Viewport
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -82,6 +86,7 @@ data class ReaderUiState(
     val staleBannerReason: StaleBannerReason? = null,
     val chapterInfo: ReaderChapterInfo? = null,
     val hasTranslation: Boolean = false,
+    val autoTranslateEnabled: Boolean = true,
     val glossaryEntries: List<GlossaryEntry> = emptyList(),
     val glossaryImpact: GlossaryImpact? = null,
     val queryEntries: List<QueryEntry> = emptyList(),
@@ -123,6 +128,7 @@ class ReaderViewModel(
     private val onlineBookService: ChapterFetcher? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
     private val readingTranslationCoordinator: ReadingTranslationCoordinator? = null,
+    private val translationScope: CoroutineScope? = null,
     private val worldlineService: WorldlineService? = null,
     private val bookId: String,
     private val chapterIndex: Int,
@@ -165,28 +171,65 @@ class ReaderViewModel(
 
     init {
         viewModelScope.launch {
-            taskRegistry?.cancelled?.collect { key ->
-                if (key == taskKey) {
-                    _translationState.value = ReaderTranslationState(message = "已取消")
-                    load()
+            taskRegistry?.events?.collect { event ->
+                if (event.bookId == bookId) {
+                    chapterCache.clearBook(bookId)
+                    if (event.chapterIndex == chapterIndex) {
+                        if (event is TranslationTaskEvent.Cancelled) {
+                            autoTranslationAttemptKey = taskKey
+                            _translationState.value = ReaderTranslationState(message = "已取消")
+                        }
+                        load()
+                    }
                 }
             }
         }
         viewModelScope.launch {
-            val settings = settingsStore.settings.first()
-            currentSettings = settings
-            _state.value = _state.value.copy(
-                fontSizeSp = settings.readerFontSizeSp,
-                lineHeight = settings.readerLineHeight,
-                marginDp = settings.readerMarginDp,
-                paragraphSpacing = settings.readerParagraphSpacing,
-                fontFamily = settings.readerFontFamily,
-                keepScreenOn = settings.readerKeepScreenOn,
-                theme = settings.readerTheme,
-                displayMode = settings.readerDisplayMode,
-                readerMode = settings.readerMode,
-            )
-            load()
+            var loaded = false
+            settingsStore.settings.collect { settings ->
+                val previous = currentSettings
+                currentSettings = settings
+                if (!loaded) {
+                    loaded = true
+                    _state.value = _state.value.copy(
+                        fontSizeSp = settings.readerFontSizeSp,
+                        lineHeight = settings.readerLineHeight,
+                        marginDp = settings.readerMarginDp,
+                        paragraphSpacing = settings.readerParagraphSpacing,
+                        fontFamily = settings.readerFontFamily,
+                        keepScreenOn = settings.readerKeepScreenOn,
+                        theme = settings.readerTheme,
+                        displayMode = settings.readerDisplayMode,
+                        readerMode = settings.readerMode,
+                        autoTranslateEnabled = settings.autoTranslateWhileReading,
+                    )
+                    load()
+                } else if (previous != null) {
+                    _state.value = _state.value.copy(
+                        autoTranslateEnabled = settings.autoTranslateWhileReading,
+                    )
+                    if (previous.autoTranslateWhileReading && !settings.autoTranslateWhileReading) {
+                        readingTranslationCoordinator?.pause(bookId)
+                    } else if (!previous.autoTranslateWhileReading && settings.autoTranslateWhileReading) {
+                        autoTranslationAttemptKey = null
+                        readingTranslationCoordinator?.resume(bookId)
+                        load()
+                    }
+                    if (previous.translateAheadChapters != settings.translateAheadChapters ||
+                        previous.translateBackfillChapters != settings.translateBackfillChapters
+                    ) {
+                        bookEntity?.let { book ->
+                            readingTranslationCoordinator?.request(
+                                book = book,
+                                currentIndex = chapterIndex,
+                                chapters = chapterList,
+                                ahead = settings.translateAheadChapters,
+                                backfill = settings.translateBackfillChapters,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -261,6 +304,11 @@ class ReaderViewModel(
             }
         _state.value = _state.value.copy(displayMode = mode)
         persistSettings()
+        if (mode == "raw") {
+            readingTranslationCoordinator?.pause(bookId)
+        } else if (currentSettings?.autoTranslateWhileReading == true) {
+            readingTranslationCoordinator?.resume(bookId)
+        }
         anchorToRestore = currentAnchor
         load()
     }
@@ -298,15 +346,26 @@ class ReaderViewModel(
 
     fun translateChapter() {
         if (_translationState.value.running) return
-        if (taskRegistry?.isRunning(bookId, chapterIndex) == true) return
+        if (taskRegistry?.isRunning(bookId, chapterIndex) == true) {
+            _translationState.value = ReaderTranslationState(
+                message = "本章已有翻译任务，等待完成",
+            )
+            return
+        }
         val book = bookEntity ?: return
-        val raw = rawText ?: return
+        val raw = rawText
+        if (raw.isNullOrBlank()) {
+            _translationState.value = ReaderTranslationState(
+                error = "本章原文还没下载，先下载本章再翻译",
+            )
+            return
+        }
         _translationState.value = ReaderTranslationState(
             running = true,
             message = "准备翻译",
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
-        val job = viewModelScope.launch {
+        val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
             val currentAnchor = _state.value.layout
                 ?.pages
                 ?.getOrNull(_state.value.pageIndex)
@@ -317,6 +376,7 @@ class ReaderViewModel(
                     null
                 }
             val outcome = translationService.translate(book, chapterIndex) { done, total ->
+                taskRegistry?.reportProgress(bookId, chapterIndex, done, total)
                 _translationState.value = ReaderTranslationState(
                     running = true,
                     message = "翻译中 $done/$total",
@@ -328,8 +388,7 @@ class ReaderViewModel(
                         running = true,
                         message = "翻译完成，正在更新故事记忆…",
                     )
-                    runCatching { knowledgeExtractionService?.extractChapter(book, chapterIndex) }
-                    runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
+                    updateMemoryAfterTranslation(book)
                     _translationState.value = ReaderTranslationState(
                         message = summary("翻译完成", outcome.sidecar),
                     )
@@ -343,8 +402,7 @@ class ReaderViewModel(
                         running = true,
                         message = "翻译完成，正在更新故事记忆…",
                     )
-                    runCatching { knowledgeExtractionService?.extractChapter(book, chapterIndex) }
-                    runCatching { storyMemoryService?.generateSummary(book, chapterIndex) }
+                    updateMemoryAfterTranslation(book)
                     _translationState.value = ReaderTranslationState(
                         message = summary(
                             "部分完成：${outcome.sidecar.incompleteParagraphs.size} 段保留原文",
@@ -364,15 +422,74 @@ class ReaderViewModel(
                     load()
                 }
             }
-            if (raw.isBlank()) {
-                _translationState.value = ReaderTranslationState(error = "原文为空")
-            }
         }
         translationJob = job
         if (taskRegistry?.register(bookId, chapterIndex, job) == false) {
             translationJob = null
-            _translationState.value = ReaderTranslationState(message = "已有翻译任务在运行")
+            _translationState.value = ReaderTranslationState(message = "本章已有翻译任务在运行")
+            load()
             return
+        }
+        job.start()
+    }
+
+    fun retryTranslation() {
+        autoTranslationAttemptKey = null
+        translateChapter()
+    }
+
+    fun dismissTranslationNotice() {
+        if (_translationState.value.running) return
+        _translationState.value = ReaderTranslationState()
+    }
+
+    private suspend fun updateMemoryAfterTranslation(book: BookEntity) {
+        try {
+            knowledgeExtractionService?.extractChapter(book, chapterIndex)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+        }
+        try {
+            storyMemoryService?.generateSummary(book, chapterIndex)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+        }
+        syncSidecarRevision(book)
+    }
+
+    private fun syncSidecarRevision(book: BookEntity) {
+        val settings = currentSettings ?: return
+        val store = storyMemoryStore ?: return
+        val memory = store.load(book.storageDir, book.id, book.title)
+        val revision = memory.revision
+        if (revision.isBlank()) return
+        val previousTail = if (chapterIndex > 1) {
+            contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
+        } else {
+            ""
+        }
+        val config = settings.toTranslationConfig(memory, previousTail)
+        val sidecar = runCatching {
+            contentStore.readSidecar(book.storageDir, chapterIndex)
+        }.getOrNull() ?: return
+        if (sidecar.storyRevision == revision &&
+            sidecar.glossaryRevision == revision &&
+            sidecar.translationConfigHash == config.cacheKey()
+        ) {
+            return
+        }
+        runCatching {
+            contentStore.writeSidecar(
+                book.storageDir,
+                chapterIndex,
+                sidecar.copy(
+                    translationConfigHash = config.cacheKey(),
+                    glossaryRevision = revision,
+                    storyRevision = revision,
+                ),
+            )
         }
     }
 
@@ -386,7 +503,7 @@ class ReaderViewModel(
             message = "正在重译第 ${paragraphIndex + 1} 段",
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
-        val job = viewModelScope.launch {
+        val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
             val outcome = translationService.retranslateParagraph(book, chapterIndex, paragraphIndex)
             when (outcome) {
                 is TranslationOutcome.Complete -> {
@@ -416,8 +533,10 @@ class ReaderViewModel(
         if (taskRegistry?.register(bookId, chapterIndex, job) == false) {
             translationJob = null
             _translationState.value = ReaderTranslationState(message = "已有翻译任务在运行")
+            load()
             return
         }
+        job.start()
     }
 
     fun estimateGlossaryImpact(source: String, aliases: List<String>) {
@@ -497,7 +616,7 @@ class ReaderViewModel(
             message = "正在润色本章",
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
-        val job = viewModelScope.launch {
+        val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
             val outcome = translationService.polishChapter(book, chapterIndex)
             when (outcome) {
                 is TranslationOutcome.Complete -> {
@@ -525,7 +644,10 @@ class ReaderViewModel(
         if (taskRegistry?.register(bookId, chapterIndex, job) == false) {
             translationJob = null
             _translationState.value = ReaderTranslationState(message = "已有翻译任务在运行")
+            load()
+            return
         }
+        job.start()
     }
 
     fun cancelTranslation() {
@@ -535,13 +657,14 @@ class ReaderViewModel(
             _translationState.value = ReaderTranslationState(message = "已取消资料更新")
             return
         }
+        autoTranslationAttemptKey = taskKey
         taskRegistry?.cancel(bookId, chapterIndex)
         translationJob?.cancel()
         translationJob = null
         _translationState.value = ReaderTranslationState(message = "已取消")
         val book = bookEntity
         if (book != null) {
-            viewModelScope.launch {
+            (translationScope ?: viewModelScope).launch {
                 translationService.markCancelled(book, chapterIndex)
                 load()
             }
@@ -632,10 +755,13 @@ class ReaderViewModel(
                     }
                     val readState = repository.readState(bookId)
                     val displayMode = _state.value.displayMode
+                    val actualZh = contentStore.readZh(book.storageDir, chapterIndex)
                     val cached = chapterCache.get(bookId, chapterIndex, displayMode)
-                    val readerChapter = cached ?: buildChapter(book, chapter, displayMode).also {
-                        chapterCache.put(bookId, chapterIndex, displayMode, it)
-                    }
+                    val readerChapter = cached
+                        ?.takeIf { cacheMatches(it, actualZh, displayMode) }
+                        ?: buildChapter(book, chapter, displayMode).also {
+                            chapterCache.put(bookId, chapterIndex, displayMode, it)
+                        }
                     val restore = if (readState?.progressIdx == chapterIndex) {
                         ReaderAnchor(
                             chapterIndex = chapterIndex,
@@ -689,6 +815,7 @@ class ReaderViewModel(
                             sidecar = sidecar,
                             stale = stale,
                             chapterStatus = chapters.firstOrNull { it.idx == chapterIndex }?.status,
+                            externalRunning = taskRegistry?.isRunning(bookId, chapterIndex) == true,
                         ),
                         hasTranslation = zh != null,
                         staleReasons = stale,
@@ -709,7 +836,11 @@ class ReaderViewModel(
                         },
                         glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
                         knowledgeStatus = _state.value.knowledgeStatus,
-                        paragraphs = buildParagraphs(raw, zh),
+                        paragraphs = buildParagraphs(
+                            raw,
+                            zh,
+                            sidecar?.incompleteParagraphs.orEmpty().toSet(),
+                        ),
                     )
                     prefetchAdjacent(book, chapters, _state.value.displayMode)
                     maybeStartTranslationWindow(book, chapters, zh)
@@ -945,6 +1076,19 @@ class ReaderViewModel(
         )
     }
 
+    private fun cacheMatches(
+        chapter: ReaderChapter,
+        zh: String?,
+        displayMode: String,
+    ): Boolean {
+        if (displayMode == "raw") return true
+        return if (zh == null) {
+            chapter.textKind == "raw" || chapter.textKind == "missing"
+        } else {
+            chapter.textKind in setOf("complete", "translated", "partial")
+        }
+    }
+
     private fun buildChapter(
         book: BookEntity,
         chapter: ChapterEntity,
@@ -964,7 +1108,11 @@ class ReaderViewModel(
         }
         val text = when (displayMode) {
             "raw" -> raw ?: zh
-            "bilingual" -> bilingualText(raw, zh)
+            "bilingual" -> bilingualText(
+                raw,
+                zh,
+                sidecar?.incompleteParagraphs.orEmpty().toSet(),
+            )
             else -> zh ?: raw
         } ?: "（本章暂无正文）"
         val normalized = text.replace("\r\n", "\n")
@@ -1017,12 +1165,13 @@ class ReaderViewModel(
         sidecar: com.kacyraho.lightnovel.core.storage.ChapterSidecar?,
         stale: Set<StaleReason>,
         chapterStatus: String?,
+        externalRunning: Boolean,
     ): TranslationStatus {
         if (zh == null) {
             return when {
+                externalRunning -> TranslationStatus.TRANSLATING
                 sidecar?.status == "partial" -> TranslationStatus.FAILED
                 chapterStatus == "failed" -> TranslationStatus.FAILED
-                chapterStatus == "translating" -> TranslationStatus.FAILED
                 else -> TranslationStatus.UNTRANSLATED
             }
         }
@@ -1033,7 +1182,11 @@ class ReaderViewModel(
         }
     }
 
-    private fun buildParagraphs(raw: String?, zh: String?): List<ReaderParagraph> {
+    private fun buildParagraphs(
+        raw: String?,
+        zh: String?,
+        incomplete: Set<Int> = emptySet(),
+    ): List<ReaderParagraph> {
         val sources = raw?.let(Paragraphs::split).orEmpty()
         val translated = zh?.let(Paragraphs::split).orEmpty()
         val size = maxOf(sources.size, translated.size)
@@ -1041,12 +1194,20 @@ class ReaderViewModel(
             ReaderParagraph(
                 id = index,
                 source = sources.getOrNull(index).orEmpty(),
-                translated = translated.getOrNull(index)?.takeIf { it.isNotBlank() },
+                translated = if (index in incomplete) {
+                    null
+                } else {
+                    translated.getOrNull(index)?.takeIf { it.isNotBlank() }
+                },
             )
         }
     }
 
-    private fun bilingualText(raw: String?, zh: String?): String? {
+    private fun bilingualText(
+        raw: String?,
+        zh: String?,
+        incomplete: Set<Int> = emptySet(),
+    ): String? {
         if (raw == null) return zh
         if (zh == null) return raw
         val rawParagraphs = Paragraphs.split(raw)
@@ -1055,7 +1216,8 @@ class ReaderViewModel(
         return (0 until size).joinToString("\n\n") { index ->
             listOfNotNull(
                 rawParagraphs.getOrNull(index)?.takeIf { it.isNotBlank() },
-                zhParagraphs.getOrNull(index)?.takeIf { it.isNotBlank() },
+                zhParagraphs.getOrNull(index)
+                    ?.takeIf { it.isNotBlank() && index !in incomplete },
             ).joinToString("\n")
         }
     }
@@ -1067,7 +1229,10 @@ class ReaderViewModel(
     ) {
         val settings = currentSettings ?: return
         if (!settings.autoTranslateWhileReading) return
+        if (_state.value.displayMode == "raw") return
         if (zh == null) {
+            if (_translationState.value.running) return
+            if (taskRegistry?.isRunning(bookId, chapterIndex) == true) return
             if (autoTranslationAttemptKey == taskKey) return
             autoTranslationAttemptKey = taskKey
             translateChapter()

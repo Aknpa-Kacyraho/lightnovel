@@ -328,7 +328,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text("阅读时自动翻译", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "只翻当前章和附近章节，不会自动翻完整本。",
+                            "只翻当前章和附近章节，不会自动翻完整本；会消耗 API 额度，阅读器可随时暂停。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

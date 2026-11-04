@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +69,7 @@ import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.BookTags
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.SourceDetail
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
 import com.kacyraho.lightnovel.ui.components.BookCover
 import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
@@ -101,6 +103,7 @@ fun ChapterListRoute(
             downloadScheduler = container.bookDownloadScheduler,
             translationService = container.translationService,
             taskRegistry = container.translationTaskRegistry,
+            readingTranslationCoordinator = container.readingTranslationCoordinator,
             bookId = bookId,
         )
     }
@@ -126,7 +129,8 @@ fun ChapterListRoute(
         onOpenChapter = onOpenChapter,
         onToggleFavorite = viewModel::toggleFavorite,
         onDownloadAll = viewModel::downloadAll,
-        onTranslateCurrent = viewModel::translateCurrent,
+        onTranslateBatch = viewModel::translateChapters,
+        onStopTranslation = viewModel::stopTranslationQueue,
         onExport = {
             val title = state.book?.titleZh ?: state.book?.title ?: "lightnovel"
             launcher.launch("$title.epub")
@@ -164,7 +168,8 @@ fun ChapterListScreen(
     onOpenChapter: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     onDownloadAll: () -> Unit,
-    onTranslateCurrent: () -> Unit,
+    onTranslateBatch: (TranslationBatchScope, Int) -> Unit,
+    onStopTranslation: () -> Unit,
     onExport: () -> Unit,
     onSearchAuthor: (String) -> Unit,
     onSearchTag: (String) -> Unit,
@@ -178,6 +183,7 @@ fun ChapterListScreen(
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { onRefresh() }
     var menuOpen by remember { mutableStateOf(false) }
+    var showTranslateDialog by rememberSaveable(state.book?.id) { mutableStateOf(false) }
     var selectedTab by rememberSaveable(state.book?.id) { mutableStateOf(TAB_INTRO) }
     var tabTouched by rememberSaveable(state.book?.id) { mutableStateOf(false) }
     var introExpanded by rememberSaveable(state.book?.id) { mutableStateOf(false) }
@@ -248,12 +254,20 @@ fun ChapterListScreen(
                             }
                             DropdownMenuItem(
                                 text = {
-                                    Text(if (state.translating) "翻译中…" else "翻译当前章")
+                                    Text(
+                                        if (state.translating ||
+                                            state.translationQueue?.active == true
+                                        ) {
+                                            "翻译队列…"
+                                        } else {
+                                            "翻译章节…"
+                                        },
+                                    )
                                 },
                                 enabled = !state.translating && state.chapters.isNotEmpty(),
                                 onClick = {
                                     menuOpen = false
-                                    onTranslateCurrent()
+                                    showTranslateDialog = true
                                 },
                             )
                             DropdownMenuItem(
@@ -325,6 +339,11 @@ fun ChapterListScreen(
                     .fillMaxSize()
                     .padding(padding),
             ) {
+                state.translationQueue
+                    ?.takeIf { it.active || it.paused || it.lastError != null }
+                    ?.let { queue ->
+                        TranslationQueueCard(queue = queue, onStop = onStopTranslation)
+                    }
                 if (state.downloading) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
@@ -407,6 +426,168 @@ fun ChapterListScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (showTranslateDialog) {
+        TranslationBatchDialog(
+            state = state,
+            onDismiss = { showTranslateDialog = false },
+            onStart = { scope, ahead ->
+                showTranslateDialog = false
+                onTranslateBatch(scope, ahead)
+            },
+        )
+    }
+}
+
+@Composable
+private fun TranslationBatchDialog(
+    state: ChapterListUiState,
+    onDismiss: () -> Unit,
+    onStart: (TranslationBatchScope, Int) -> Unit,
+) {
+    var scope by rememberSaveable { mutableStateOf(TranslationBatchScope.CURRENT) }
+    var ahead by rememberSaveable { mutableStateOf(3) }
+    val current = state.readState?.progressIdx?.takeIf {
+        it in 1..state.chapters.size
+    } ?: state.chapters.firstOrNull()?.idx ?: 1
+    val allUntranslated = state.chapters.count {
+        it.status != "translating" &&
+            it.status != "complete" &&
+            it.status != "translated"
+    }
+    val aheadCount = state.chapters.count {
+        it.idx >= current && it.idx <= current + ahead &&
+            it.status != "translating" &&
+            it.status != "complete" &&
+            it.status != "translated"
+    }
+    val count = when (scope) {
+        TranslationBatchScope.CURRENT -> if (
+            state.chapters.firstOrNull { it.idx == current }?.status in
+            setOf("complete", "translated", "translating")
+        ) {
+            0
+        } else {
+            1
+        }
+        TranslationBatchScope.AHEAD -> aheadCount
+        TranslationBatchScope.ALL -> allUntranslated
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("翻译章节") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "当前阅读：第 $current 话",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        TranslationBatchScope.CURRENT to "当前章",
+                        TranslationBatchScope.AHEAD to "后续章节",
+                        TranslationBatchScope.ALL to "全书未译",
+                    ).forEach { (id, label) ->
+                        BrandFilterChip(
+                            selected = scope == id,
+                            onClick = { scope = id },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+                if (scope == TranslationBatchScope.AHEAD) {
+                    Text("当前章后续预译", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(1, 3, 5, 10).forEach { count ->
+                            BrandFilterChip(
+                                selected = ahead == count,
+                                onClick = { ahead = count },
+                                label = { Text("$count 章") },
+                            )
+                        }
+                    }
+                }
+                Text(
+                    when {
+                        count == 0 -> "没有待翻译的章节。"
+                        scope == TranslationBatchScope.ALL ->
+                            "将翻译全书 $count 章未译章节，可能产生 API 费用。"
+                        scope == TranslationBatchScope.AHEAD ->
+                            "将翻译当前章及后续 $ahead 章，共 $count 章，可能产生 API 费用。"
+                        else -> "将翻译 $count 章，可能产生 API 费用。"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onStart(scope, ahead) },
+                enabled = count > 0,
+            ) {
+                Text(if (scope == TranslationBatchScope.ALL) "开始翻译" else "开始")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
+
+@Composable
+private fun TranslationQueueCard(
+    queue: ReadingTranslationQueueState,
+    onStop: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    when {
+                        queue.paused -> "翻译队列已暂停"
+                        queue.active -> "正在翻译"
+                        else -> "翻译没有全部完成"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                val index = queue.runningIndex ?: queue.nextIndex
+                Text(
+                    buildString {
+                        if (index != null) append("第 $index 话")
+                        append(" · 已完成 ${queue.completed} 章")
+                        if (queue.failed > 0) append(" · 失败 ${queue.failed} 章")
+                        if (queue.remaining > 0) append(" · 剩余 ${queue.remaining} 章")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                queue.lastError?.let { error ->
+                    Text(
+                        error,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            TextButton(onClick = onStop) {
+                Text(if (queue.active || queue.paused) "停止" else "关闭")
             }
         }
     }
@@ -585,7 +766,7 @@ private fun filterChapters(state: ChapterListUiState): List<ChapterEntity> {
                 when (state.catalogStatus) {
                     "translated" -> chapter.status in setOf("complete", "translated")
                     "untranslated" -> chapter.status in setOf("online", "raw", "translating")
-                    "failed" -> chapter.status == "failed" || chapter.status == "missing"
+                    "failed" -> chapter.status in setOf("failed", "missing", "partial")
                     else -> true
                 }
         }
@@ -641,7 +822,7 @@ private fun CatalogHeader(
             BrandFilterChip(
                 selected = state.catalogStatus == "failed",
                 onClick = { onStatusChange("failed") },
-                label = { Text("失败") },
+                label = { Text("失败/未译全") },
             )
         }
         if (filteredEmpty) {

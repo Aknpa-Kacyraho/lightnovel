@@ -5,12 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.kacyraho.lightnovel.data.local.ChapterTaskRow
 import com.kacyraho.lightnovel.data.local.LibraryDao
 import com.kacyraho.lightnovel.core.settings.TaskIgnoreStore
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
 
@@ -34,6 +37,7 @@ data class TaskCenterUiState(
     val failed: Int = 0,
     val partial: Int = 0,
     val translating: Int = 0,
+    val queues: Map<String, ReadingTranslationQueueState> = emptyMap(),
 )
 
 class TaskCenterViewModel(
@@ -41,6 +45,7 @@ class TaskCenterViewModel(
     private val translationService: TranslationService,
     private val taskRegistry: TranslationTaskRegistry,
     private val ignoreStore: TaskIgnoreStore? = null,
+    private val coordinator: ReadingTranslationCoordinator? = null,
 ) : ViewModel() {
     private val filter = MutableStateFlow(TaskFilter.ALL)
     private val ignored = MutableStateFlow(ignoreStore?.load().orEmpty())
@@ -49,7 +54,8 @@ class TaskCenterViewModel(
         dao.observeActiveTasks(),
         filter,
         ignored,
-    ) { tasks, selected, ignoredKeys ->
+        coordinator?.states ?: flowOf(emptyMap()),
+    ) { tasks, selected, ignoredKeys, queues ->
         val visible = tasks.filterNot { "${it.bookId}/${it.idx}" in ignoredKeys }
         TaskCenterUiState(
             groups = TaskGrouping.group(visible, selected),
@@ -58,6 +64,7 @@ class TaskCenterViewModel(
             failed = visible.count { it.status == "failed" },
             partial = visible.count { it.status == "partial" },
             translating = visible.count { it.status == "translating" },
+            queues = queues.filterValues { it.active || it.paused },
         )
     }.stateIn(
         scope = viewModelScope,
@@ -77,6 +84,39 @@ class TaskCenterViewModel(
     fun unignore(task: ChapterTaskRow) {
         ignored.value = ignoreStore?.clear(task.bookId, task.idx)
             ?: (ignored.value - "${task.bookId}/${task.idx}")
+    }
+
+    fun retry(task: ChapterTaskRow) {
+        viewModelScope.launch {
+            val book = dao.book(task.bookId) ?: return@launch
+            if (coordinator != null) {
+                coordinator.enqueue(book, listOf(task.idx))
+            } else {
+                translationService.translate(book, task.idx)
+            }
+        }
+    }
+
+    fun retryAllFailed() {
+        viewModelScope.launch {
+            val tasks = state.value.groups
+                .flatMap { it.tasks }
+                .filter { it.status == "failed" || it.status == "partial" }
+            tasks.groupBy { it.bookId }.forEach { (bookId, rows) ->
+                val book = dao.book(bookId) ?: return@forEach
+                val indices = rows.map { it.idx }
+                if (coordinator != null) {
+                    coordinator.enqueue(book, indices)
+                } else {
+                    indices.forEach { translationService.translate(book, it) }
+                }
+            }
+        }
+    }
+
+    fun stopBook(bookId: String) {
+        coordinator?.stop(bookId)
+        taskRegistry.cancelBook(bookId)
     }
 
     fun cancel(task: ChapterTaskRow) {

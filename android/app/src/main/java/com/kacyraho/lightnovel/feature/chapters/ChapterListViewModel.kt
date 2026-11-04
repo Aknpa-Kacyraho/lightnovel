@@ -12,6 +12,8 @@ import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.source.DirectLibraryService
 import com.kacyraho.lightnovel.data.source.SourceDetail
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
+import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
 import com.kacyraho.lightnovel.data.translation.TranslationOutcome
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
@@ -21,6 +23,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+
+enum class TranslationBatchScope {
+    CURRENT,
+    AHEAD,
+    ALL,
+}
+
+private val TRANSLATED_STATUSES = setOf("complete", "translated")
 
 data class ChapterListUiState(
     val loading: Boolean = true,
@@ -38,6 +49,7 @@ data class ChapterListUiState(
     val catalogQuery: String = "",
     val catalogSortDesc: Boolean = false,
     val catalogStatus: String = "all",
+    val translationQueue: ReadingTranslationQueueState? = null,
 )
 
 class ChapterListViewModel(
@@ -48,12 +60,23 @@ class ChapterListViewModel(
     private val downloadScheduler: BookDownloadScheduler? = null,
     private val translationService: TranslationService? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
+    private val readingTranslationCoordinator: ReadingTranslationCoordinator? = null,
     private val bookId: String,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ChapterListUiState())
     val state: StateFlow<ChapterListUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            readingTranslationCoordinator?.observe(bookId)?.collect { queue ->
+                _state.value = _state.value.copy(translationQueue = queue)
+            }
+        }
+        viewModelScope.launch {
+            readingTranslationCoordinator?.translated?.collect { event ->
+                if (event.bookId == bookId) refresh()
+            }
+        }
         viewModelScope.launch {
             runCatching {
                 val book = repository.book(bookId)
@@ -86,7 +109,7 @@ class ChapterListViewModel(
                     favorite = readState?.favorite == true,
                 )
             }.onSuccess { loaded ->
-                _state.value = loaded
+                _state.value = loaded.copy(translationQueue = _state.value.translationQueue)
                 val book = loaded.book
                 if (book != null && !book.local) {
                     viewModelScope.launch {
@@ -242,23 +265,57 @@ class ChapterListViewModel(
     }
 
     fun translateCurrent() {
+        translateChapters(TranslationBatchScope.CURRENT)
+    }
+
+    fun translateChapters(scope: TranslationBatchScope, aheadCount: Int = 3) {
         val current = _state.value
-        if (current.translating) return
         val book = current.book ?: return
-        val service = translationService ?: return
-        val target = current.readState?.progressIdx?.takeIf {
-            it in 1..current.chapters.size
-        } ?: current.chapters.firstOrNull()?.idx ?: return
-        if (taskRegistry?.isRunning(book.id, target) == true) {
-            _state.value = current.copy(error = "这一章已经在翻译")
+        if (current.chapters.isEmpty()) return
+        val startIndex = current.readState?.progressIdx?.takeIf {
+            it in 1..current.chapters.lastIndex + 1
+        } ?: current.chapters.first().idx
+        val candidates = when (scope) {
+            TranslationBatchScope.CURRENT -> current.chapters.filter { it.idx == startIndex }
+            TranslationBatchScope.AHEAD -> current.chapters
+                .filter { it.idx >= startIndex }
+                .take(aheadCount.coerceIn(0, 10) + 1)
+            TranslationBatchScope.ALL -> current.chapters
+        }
+        val targets = candidates
+            .filter { it.status != "translating" && it.status !in TRANSLATED_STATUSES }
+            .map { it.idx }
+        if (targets.isEmpty()) {
+            _state.value = current.copy(
+                message = if (scope == TranslationBatchScope.ALL) {
+                    "全书没有待翻译章节"
+                } else {
+                    "选中的章节已完成或正在翻译"
+                },
+                error = null,
+            )
             return
         }
+        if (readingTranslationCoordinator != null) {
+            readingTranslationCoordinator.enqueue(book, targets)
+            _state.value = current.copy(
+                translating = false,
+                message = "已加入 ${targets.size} 章翻译队列",
+                error = null,
+            )
+            return
+        }
+        val service = translationService ?: run {
+            _state.value = current.copy(error = "翻译服务不可用")
+            return
+        }
+        val target = targets.first()
         _state.value = current.copy(
             translating = true,
             message = "正在翻译第 $target 章…",
             error = null,
         )
-        val job = viewModelScope.launch {
+        val job = viewModelScope.launch(start = CoroutineStart.LAZY) {
             val outcome = service.translate(book, target)
             _state.value = _state.value.copy(
                 translating = false,
@@ -277,9 +334,15 @@ class ChapterListViewModel(
                 translating = false,
                 error = "这一章已经有翻译任务",
             )
+            return
         }
+        job.start()
     }
 
+    fun stopTranslationQueue() {
+        readingTranslationCoordinator?.stop(bookId)
+        _state.value = _state.value.copy(message = "已停止本书翻译队列", error = null)
+    }
     fun exportEpub(uri: Uri, resolver: ContentResolver) {
         val book = _state.value.book ?: return
         if (_state.value.exporting) return
