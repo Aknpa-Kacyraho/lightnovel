@@ -11,8 +11,11 @@
 
 ## 版本与发布
 
-Android **1.0.1**（versionCode 35）：
+Android **1.0.2**（versionCode 36）：
 
+- 安全：公网模型端点强制 HTTPS，移除 Novelia 账号与 Token 存储链，Release 构建禁止明文签名配置入库。
+- 发布：仓库根目录 CI、签名 Release 工作流、Gradle Wrapper SHA-256 校验。
+- 兼容：继续保留回环与 RFC1918 私网 HTTP 模型端点和既有阅读/翻译能力。
 - 阅读翻译：按书合并翻译队列，切换章节不再取消正在进行的任务；阅读器独立状态条显示当前进度、后台预译、失败原因，可暂停/继续/停止。
 - 手动翻译：详情页「更多 → 翻译章节…」支持当前章、当前章及后续 N 章、全书未译，带费用确认；任务页支持原地重试、重试未完成和停止本书。
 - 在线章节：预译前自动拉取 raw，不再因为没下载正文而空转。
@@ -27,12 +30,10 @@ Android **1.0.1**（versionCode 35）：
 - 发现/详情：整页滚动，搜索框、Hero、Tab、筛选和列表一起滚，不再只有下半屏可滑。
 - 其他：删除已淘汰的 Web skill；主攻 Android App。
 
-下载：[Release v1.0.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.1)
+下载：[Release v1.0.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.2)
 
-`v1.0.1` 的历史资产是 `lightnovel-1.0.1-debug.apk`，仅适合开发验收，不建议作为长期安装包。
-当前 `main` 已配置正式签名构建与环境变量闸门，后续正式版本必须通过
-[Signed Android Release](.github/workflows/release-android.yml) 构建；签名说明见
-[android/RELEASE.md](android/RELEASE.md)。
+`v1.0.2` 使用独立 Release 证书签名。签名私钥不进入仓库；CI 通过 GitHub Secrets
+构建，配置说明见 [android/RELEASE.md](android/RELEASE.md)。
 
 当前 `main`：172 JVM tests、lint、assembleDebug 由根目录 CI 验证；签名 Release
 由独立工作流验证 APK 证书。
