@@ -5,6 +5,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,6 +41,7 @@ class NoveliaClientTest {
         assertEquals("/api/novel", request.requestUrl?.encodedPath)
         assertEquals("転生", request.requestUrl?.queryParameter("query"))
         assertEquals("1", request.requestUrl?.queryParameter("sort"))
+        assertTrue(request.getHeader("Authorization").isNullOrEmpty())
     }
 
     @Test
@@ -64,5 +66,15 @@ class NoveliaClientTest {
         assertEquals("译文一", chapter.bestTranslation()?.first())
         assertEquals("sakura", chapter.translationModel())
         assertTrue(server.takeRequest().path!!.startsWith("/api/novel/kakuyomu/123"))
+    }
+
+    @Test
+    fun rejectsCleartextRemoteAndEmbeddedCredentials() {
+        assertThrows(IllegalArgumentException::class.java) {
+            NoveliaClient().setBaseUrl("http://n.novelia.cc/api/")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            NoveliaClient().setBaseUrl("https://user:secret@n.novelia.cc/api/")
+        }
     }
 }

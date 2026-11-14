@@ -28,8 +28,6 @@ ROOT_FILES = {
     "LICENSE",
     "NOTICE",
     "README.md",
-    "README-FOR-REVIEW.md",
-    "REVIEW-ROUND2-FOLLOWUP.md",
     "SECURITY.md",
     "SHARE-README.md",
     "VERSION",
@@ -47,9 +45,7 @@ INCLUDE = (
     ("lntrans", ("*.py", "*.md", "test_click_dom.js")),
     ("lntrans/static", ("*.js", "*.css", "*.png")),
     ("lntrans/contracts", ("*.json", "*.md")),
-    ("skills", ("*.md",)),
     ("docs", ("*.md",)),
-    (".github/workflows", ("*.yml", "*.yaml")),
 )
 
 FORBIDDEN_NAMES = {

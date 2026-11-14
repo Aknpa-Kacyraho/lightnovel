@@ -235,7 +235,6 @@ Kakuyomu 搜索页  https://kakuyomu.jp/search?q=<日文标签>
 | `lnlib.py` | 采集库（Kakuyomu + syosetu 官方 API） |
 | `taste_profile.json` | 偏好画像（标签权重、黑名单、下限） |
 | `reports/` | Markdown 推荐报告 |
-| `.dsh/skills/lnfinder/SKILL.md` | 固化成 skill，以后一句话就能用 |
 
 设计要点：**用标签组合打分，而不是用人气排序** ——
 这正是「通用 AI 只推名著」的反面。热度只做温和封顶加成（`min(评价点/5000, 2)`），

@@ -5,10 +5,18 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DeepSeekClientTest {
+    @Test
+    fun rejectsPublicCleartextEndpointBeforeAnyRequest() {
+        assertThrows(IllegalArgumentException::class.java) {
+            DeepSeekClient("http://gateway.example.com/v1", "key")
+        }
+    }
+
     @Test
     fun parsesSuccessfulCompletionAndUsage() = runTest {
         val server = MockWebServer()

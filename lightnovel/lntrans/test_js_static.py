@@ -53,7 +53,9 @@ for var, fname in PAIRS:
     exists = os.path.exists(p)
     body = ""
     if exists:
-        with open(p, encoding="utf-8") as f:
+        # 与 lnserve._read_static() 使用同一换行语义。默认的通用换行会把
+        # Windows checkout 的 CRLF 折成 LF，导致逐字节比较出现假红。
+        with open(p, encoding="utf-8", newline="") as f:
             body = f.read()
     check(f"static/{fname} 存在且非空", exists and len(body.strip()) > 0,
           f"{len(body)} 字符")

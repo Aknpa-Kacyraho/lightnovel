@@ -1,5 +1,6 @@
 package com.kacyraho.lightnovel.data.translation
 
+import com.kacyraho.lightnovel.core.settings.TranslationProviders
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -42,10 +43,15 @@ interface TranslationClient {
 }
 
 class DeepSeekClient(
-    private val baseUrl: String,
+    rawBaseUrl: String,
     private val apiKey: String,
-    private val http: OkHttpClient = defaultHttp(),
+    http: OkHttpClient = defaultHttp(),
 ) : TranslationClient {
+    private val baseUrl = TranslationProviders.requireSafeBaseUrl(rawBaseUrl)
+    private val http = http.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false

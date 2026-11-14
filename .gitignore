@@ -1,5 +1,6 @@
 # Local scratch, generated artifacts, snapshots
 .tmp/
+.planning/
 _newver_tmp/
 .playwright-mcp/
 _snapshots/
@@ -15,6 +16,9 @@ novelia-main/
 
 # Android local/build artifacts
 android/local.properties
+android/*.jks
+android/*.keystore
+android/keystore.properties
 android/.gradle/
 android/.kotlin/
 android/build/
@@ -56,6 +60,8 @@ lightnovel/lnfinder/recommend-latest.md
 !.env.example
 *.pem
 *.key
+*.jks
+*.keystore
 *.token
 *credential*
 *credentials*

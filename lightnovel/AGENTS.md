@@ -1,20 +1,16 @@
-# AGENTS.md — DSHAWORKAREA/Andoroid
+# AGENTS.md — Lightnovel Web
 
 两个自用工具：**lnfinder**（按口味画像去找轻小说）+ **lntrans**（按需把日文轻小说译成中文，
 并用书架 Web 服务给用户读）。用户是**中文读者，不吃生肉**，所有面向用户的文案一律中文。
 
-> 深度内容在 skill 与文档里，**按需加载**，不要在这里重复：
-> `.dsh/skills/lightnovel/SKILL.md`（入口 + §0 开网站，约 5KB）与其同目录
-> `references/{finder,translate,lnserve,lessons,setup}.md`（找书 / 翻译 / 网站实现 /
-> 踩坑 / 部署；**按需只读一份**）、
+> 深度内容在仓库文档里，**按需加载**，不要在这里重复：
+> `README.md`（Web 启动与配置）、
 > `lntrans/STATE-MACHINE.md`（4 状态 + on_shelf 语义）、
 > `lntrans/PRIOR-ART.md`（Kavita / LightNovelReader / auto-novel 的取舍理由）、
 > `lnfinder/README.md`（上游站点 API 逆向笔记）。
 >
-> skill 只有 `lightnovel` 这一个（原来拆成 lnfinder / lntrans 两个，因为流程本来就是
-> 连着的，拆开每次都要两边各读一遍，而且"怎么开网站"两边都没写清楚）。
-> 它是**要分享出去给人用的**：写进去的任何东西都可能被陌生人看到 ——
-> 绝对不写 key、凭据、绝对路径、用户口味的具体取值、书名/slug。
+> lightnovel skill 已全面退役；不要再恢复 `.dsh/skills`、`skills/lightnovel`
+> 或分享包里的 skill 目录。需要交接的工程信息直接写入仓库文档。
 
 ## 目录地图
 
@@ -47,7 +43,6 @@
 | `lntrans/align_quotes.py` | 维护脚本：把存量译文的引号字形**对齐到原文**（默认干跑、只动引号、自动备份、报结构不一致的段） |
 | `lntrans/repair_dialogue.py` | 维护脚本：重译「多行对白只译了第一行」的坏段（调真实 LLM；默认干跑 + 估算 token） |
 | `lnfinder/selftest.py` | lnfinder 自检（画像/打分/套路折扣） |
-| `skills/lightnovel/PHONE-HANDOFF.md` | 手机侧交接页（环境差异 / 三条硬边界 / 最近一轮的坑），给下一位接手的人看 |
 | `lntrans/novels/` `lntrans/data/` | **用户真实数据**（见下） |
 | `vs.sh` | 虚拟屏操作助手（不打扰用户真实屏幕） |
 | `phone-report.md` `shots/` | 早前的手机体检报告与截图 |

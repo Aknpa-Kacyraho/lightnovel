@@ -75,7 +75,7 @@ class TranslationServiceTest {
             val settingsStore = SettingsStore(context)
             settingsStore.update {
                 it.copy(
-                    deepSeekBaseUrl = "http://test.local/chat/completions",
+                    deepSeekBaseUrl = "http://127.0.0.1:1/chat/completions",
                     deepSeekModel = "deepseek-flash",
                 )
             }
@@ -178,7 +178,7 @@ class TranslationServiceTest {
             val settingsStore = SettingsStore(context)
             settingsStore.update {
                 it.copy(
-                    deepSeekBaseUrl = "http://test.local/chat/completions",
+                    deepSeekBaseUrl = "http://127.0.0.1:1/chat/completions",
                     deepSeekModel = "deepseek-flash",
                 )
             }

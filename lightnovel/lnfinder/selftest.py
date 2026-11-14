@@ -339,11 +339,15 @@ check("top_genres 按权重排序且只含有榜流派（排除 MAHO）",
 _o_rank11 = lf.lnlib.kakuyomu_rankings
 _o_grk11 = lf.lnlib.kakuyomu_ranking
 _o_srch11 = lf.lnlib.kakuyomu_search
+_o_syo_rank11 = lf.lnlib.syosetu_rankings
+_o_syo_search11 = lf.lnlib.syosetu_search
 lf.lnlib.kakuyomu_rankings = lambda: {"weekly": [], "recommended": [], "fresh": [],
                                       "keywords": []}
 lf.lnlib.kakuyomu_ranking = lambda g, r="weekly": [
     {"source": "kakuyomu", "id": "g-" + g, "title": "流派" + g, "tags": []}]
 lf.lnlib.kakuyomu_search = lambda q, pages=1: []
+lf.lnlib.syosetu_rankings = lambda r18=False: []
+lf.lnlib.syosetu_search = lambda q: []
 _w11 = lf.collect([], include_rankings=True, pages=1, genres=["FANTASY", "LOVE_STORY"])
 check("★ collect 纳入流派榜（origin 可辨认）",
       {w["id"] for w in _w11} == {"g-FANTASY", "g-LOVE_STORY"},
@@ -351,6 +355,8 @@ check("★ collect 纳入流派榜（origin 可辨认）",
 lf.lnlib.kakuyomu_rankings = _o_rank11
 lf.lnlib.kakuyomu_ranking = _o_grk11
 lf.lnlib.kakuyomu_search = _o_srch11
+lf.lnlib.syosetu_rankings = _o_syo_rank11
+lf.lnlib.syosetu_search = _o_syo_search11
 
 print()
 print("=" * 66)

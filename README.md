@@ -9,7 +9,7 @@
 
 译文、术语表、阅读进度和口味画像都保存在本机；仓库不包含任何书籍正文、译文或个人数据。
 
-## 最新版本
+## 版本与发布
 
 Android **1.0.1**（versionCode 35）：
 
@@ -29,9 +29,13 @@ Android **1.0.1**（versionCode 35）：
 
 下载：[Release v1.0.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.1)
 
-APK：`lightnovel-1.0.1-debug.apk`
+`v1.0.1` 的历史资产是 `lightnovel-1.0.1-debug.apk`，仅适合开发验收，不建议作为长期安装包。
+当前 `main` 已配置正式签名构建与环境变量闸门，后续正式版本必须通过
+[Signed Android Release](.github/workflows/release-android.yml) 构建；签名说明见
+[android/RELEASE.md](android/RELEASE.md)。
 
-自检：168 JVM tests / 0 failures / 1 skipped；lint 0 errors。
+当前 `main`：172 JVM tests、lint、assembleDebug 由根目录 CI 验证；签名 Release
+由独立工作流验证 APK 证书。
 
 ## 快速开始（Web）
 
@@ -42,7 +46,8 @@ python lnserve.py --port 8099    # 打开 http://127.0.0.1:8099/
 ```
 
 翻译需要 OpenAI 兼容的 Chat Completions 端点。复制 `lightnovel/.env.example` 到自己的私有
-环境配置，填入端点和 Key；本地回环端点（Ollama / LM Studio / llama.cpp）通常不需要 Key。
+环境配置，填入端点和 Key；本地回环或私有局域网端点（Ollama / LM Studio / llama.cpp）
+通常不需要 Key。公网端点必须使用 HTTPS，URL 不得内嵌用户名或密码。
 完整变量说明见 `lightnovel/docs/MODEL-CONFIG.md`。
 
 ## Android
@@ -65,7 +70,7 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 
 ## 翻译 API：不只 DeepSeek
 
-Android 设置页内置了这些 OpenAI 兼容预设，也可以填任意自定义端点：
+Android 设置页内置了这些 OpenAI 兼容预设，也可以填自定义端点：
 
 - DeepSeek、OpenAI、OpenRouter、硅基流动、Moonshot、Gemini 兼容入口
 - Ollama / LM Studio 本机端点（通常免 Key）
@@ -121,8 +126,11 @@ icon-preview.png   图标预览
 
 ## 许可
 
-GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later），见根目录 `LICENSE` 与 `lightnovel/NOTICE`。
+GNU Affero General Public License v3.0 or later（AGPL-3.0-or-later），
+见根目录 `LICENSE`、`NOTICE` 与 `lightnovel/NOTICE`。
 
-你可以商用、修改和分发；但分发修改版，或将它作为网络服务提供给他人使用时，必须按 AGPL 提供完整对应源码。
+你可以商用、修改和分发；但分发修改版，或将它作为网络服务提供给他人使用时，
+必须按 AGPL 提供完整对应源码。
 
-`0.9.5` 及更早版本按 Apache-2.0 发布，其授权不可撤销；当前源码及后续版本使用 AGPL-3.0-or-later。
+当前 `main` 与后续版本使用 AGPL-3.0-or-later。`0.9.5` 及更早版本按
+Apache-2.0 发布；此前已经发布的版本仍按其发布时的许可证授权，既有授权不可撤销。

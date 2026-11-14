@@ -63,17 +63,17 @@ try:
         "lntrans/lnui/__init__.py", "lntrans/lnui/components.py",
         "lntrans/lnui/icons.py", "lntrans/lnui/layout.py",
         "lntrans/lnui/preview.py", "lntrans/lnui/settings.py",
-        "lntrans/lnui/styles.py",
+        "lntrans/lnui/static.py", "lntrans/lnui/styles.py",
         "lntrans/static/app.css", "lntrans/static/lnui.css",
         "lntrans/static/lnui-preview.js", "lntrans/static/lnui-settings.js",
         "lntrans/static/reader.js",
         "lntrans/static/icon-192.png", "lntrans/static/icon-512.png",
         "lntrans/contracts/chapter-meta-v1.schema.json",
-        "skills/lightnovel/SKILL.md",
-        "skills/lightnovel/references/finder.md",
     )}
     check("必备文件齐全（少 app.css 服务直接起不来）",
           required <= names, str(sorted(required - names)[:5]))
+    retired_skill = [name for name in names if "/skills/" in f"/{name}"]
+    check("已退役 skill 不再进入分享包", not retired_skill, str(retired_skill[:5]))
 
     css_rel = "lntrans/static/app.css"
     src_css = open(os.path.join(ROOT, css_rel), "rb").read()

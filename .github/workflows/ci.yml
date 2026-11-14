@@ -7,8 +7,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  selftests:
+  python:
     strategy:
       fail-fast: false
       matrix:
@@ -24,26 +28,28 @@ jobs:
         with:
           node-version: "20"
       - name: Compile Python
-        run: python -m compileall -q lntrans lnfinder
-      - name: Run isolated behavior tests
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m compileall -q lightnovel/lntrans lightnovel/lnfinder
+      - name: Run isolated Web self-tests
         env:
           PYTHONUTF8: "1"
           PYTHONIOENCODING: utf-8
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python lntrans/run_selftests.py
-      - name: Run finder self-test
+        run: python lightnovel/lntrans/run_selftests.py
+      - name: Run offline finder self-test
         env:
           PYTHONUTF8: "1"
           PYTHONIOENCODING: utf-8
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python lnfinder/selftest.py
+        run: python lightnovel/lnfinder/selftest.py
 
   readonly-container:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build CI-only image
-        run: docker build -f Dockerfile.ci -t lightnovel-ci .
+        run: docker build -f lightnovel/Dockerfile.ci -t lightnovel-ci lightnovel
       - name: Prepare writable data volume
         run: |
           mkdir -p "$RUNNER_TEMP/lnhome"
@@ -94,3 +100,25 @@ jobs:
           docker run --rm --read-only --tmpfs /tmp --user 10001:10001 \
             lightnovel-ci python -c \
             "from pathlib import Path; assert not list(Path('lntrans').rglob('__pycache__'))"
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run JVM tests, lint and debug assembly
+        working-directory: android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug

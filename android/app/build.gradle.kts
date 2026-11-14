@@ -6,6 +6,32 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+fun envValue(name: String): String? =
+    providers.environmentVariable(name).orNull?.trim()?.takeIf { it.isNotEmpty() }
+
+val releaseSigningValues = listOf(
+    envValue("LIGHTNOVEL_RELEASE_STORE_FILE"),
+    envValue("LIGHTNOVEL_RELEASE_STORE_PASSWORD"),
+    envValue("LIGHTNOVEL_RELEASE_KEY_ALIAS"),
+    envValue("LIGHTNOVEL_RELEASE_KEY_PASSWORD"),
+)
+val releaseSigningConfigured = releaseSigningValues.all { it != null }
+val releaseSigningPartial = releaseSigningValues.any { it != null } && !releaseSigningConfigured
+val releaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+
+if (releaseSigningPartial) {
+    throw GradleException(
+        "Release 签名变量不完整；必须同时设置 STORE_FILE、STORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD",
+    )
+}
+if (releaseTaskRequested && !releaseSigningConfigured) {
+    throw GradleException(
+        "拒绝构建未签名 Release。请设置 LIGHTNOVEL_RELEASE_* 环境变量，详见 android/RELEASE.md",
+    )
+}
+
 android {
     namespace = "com.kacyraho.lightnovel"
     compileSdk = 36
@@ -21,9 +47,24 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(releaseSigningValues[0]!!)
+                storePassword = releaseSigningValues[1]
+                keyAlias = releaseSigningValues[2]
+                keyPassword = releaseSigningValues[3]
+            }
+        }
+    }
+
     buildTypes {
         release {
+            isDebuggable = false
             isMinifyEnabled = false
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

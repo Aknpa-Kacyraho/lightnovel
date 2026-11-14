@@ -1,5 +1,6 @@
 package com.kacyraho.lightnovel.core.settings
 
+import java.net.InetAddress
 import java.net.URI
 
 enum class TranslationMode(val wire: String) {
@@ -118,13 +119,43 @@ object TranslationProviders {
         if (value.isEmpty()) return ""
         if (!value.contains("://")) {
             val host = value.substringBefore('/').substringBefore(':').lowercase()
-            value = if (host in LOCAL_HOSTS || host.startsWith("127.")) {
+            value = if (isPrivateNetworkHost(host)) {
                 "http://$value"
             } else {
                 "https://$value"
             }
         }
         return value.trimEnd('/')
+    }
+
+    /**
+     * Validates a user-supplied OpenAI-compatible endpoint.
+     *
+     * Public cleartext endpoints are rejected because both prompts and the
+     * Authorization header would otherwise cross the network in plaintext.
+     * Loopback and RFC1918/link-local addresses remain available for local
+     * model runtimes and self-hosted gateways.
+     */
+    fun requireSafeBaseUrl(raw: String): String {
+        val normalized = normalizeBaseUrl(raw)
+        require(normalized.isNotBlank()) { "端点不能为空" }
+        val uri = runCatching { URI(normalized) }.getOrNull()
+            ?: throw IllegalArgumentException("端点不是有效 URL")
+        val scheme = uri.scheme?.lowercase()
+        require(scheme == "http" || scheme == "https") {
+            "端点只支持 HTTP 或 HTTPS"
+        }
+        require(uri.userInfo == null) {
+            "端点 URL 不能包含用户名或密码"
+        }
+        val host = uri.host?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("端点缺少主机名")
+        if (scheme == "http" && !isPrivateNetworkHost(host)) {
+            throw IllegalArgumentException(
+                "公网端点必须使用 HTTPS；HTTP 仅允许本机或局域网私有地址",
+            )
+        }
+        return normalized
     }
 
     fun hostOf(baseUrl: String): String {
@@ -156,7 +187,18 @@ object TranslationProviders {
 
     fun isLocal(baseUrl: String): Boolean {
         val host = hostOf(baseUrl)
-        return host in LOCAL_HOSTS || host.startsWith("127.")
+        return isPrivateNetworkHost(host)
+    }
+
+    fun isLoopback(baseUrl: String): Boolean {
+        val host = hostOf(baseUrl).removeSurrounding("[", "]")
+        if (host == "localhost" || host == "::1" || host.startsWith("127.")) {
+            return true
+        }
+        if (!isIpLiteral(host)) return false
+        return runCatching {
+            InetAddress.getByName(host).isLoopbackAddress
+        }.getOrDefault(false)
     }
 
     fun requiresKey(baseUrl: String): Boolean = !isLocal(baseUrl)
@@ -174,12 +216,33 @@ object TranslationProviders {
     fun calibrationKey(baseUrl: String, model: String): String =
         "${normalizeBaseUrl(baseUrl)}|${model.trim()}"
 
+    private fun isPrivateNetworkHost(host: String): Boolean {
+        val normalized = host.lowercase().removeSurrounding("[", "]")
+        if (normalized == "localhost" || normalized == "::1" ||
+            normalized.startsWith("127.") || normalized == "10.0.2.2"
+        ) {
+            return true
+        }
+        if (!isIpLiteral(normalized)) return false
+        return runCatching {
+            val address = InetAddress.getByName(normalized)
+            !address.isAnyLocalAddress &&
+                (address.isLoopbackAddress ||
+                    address.isSiteLocalAddress ||
+                    address.isLinkLocalAddress)
+        }.getOrDefault(false)
+    }
+
+    private fun isIpLiteral(host: String): Boolean =
+        host.contains(':') || IPV4.matches(host)
+
+    private val IPV4 = Regex("""\d{1,3}(?:\.\d{1,3}){3}""")
+
     private val LOCAL_HOSTS = setOf(
         "127.0.0.1",
         "localhost",
         "::1",
         "[::1]",
-        "0.0.0.0",
         "10.0.2.2",
     )
 }

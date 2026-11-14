@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from .layout import shell
+from .static import read_static
 from .styles import css
-
-_JS_PATH = Path(__file__).resolve().parent.parent / "static" / "lnui-import.js"
 
 
 def import_js() -> str:
-    text = _JS_PATH.read_text(encoding="utf-8")
-    if not text.strip():
-        raise RuntimeError(f"import script is empty: {_JS_PATH}")
-    return text
+    return read_static("lnui-import.js")
 
 
 def render_import(*, pwa_head: str = "") -> str:

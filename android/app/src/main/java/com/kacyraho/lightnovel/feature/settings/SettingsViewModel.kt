@@ -10,8 +10,6 @@ import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.settings.TranslationProviders
 import com.kacyraho.lightnovel.core.storage.CacheManager
 import com.kacyraho.lightnovel.data.export.BackupExporter
-import com.kacyraho.lightnovel.data.online.NoveliaAccountService
-import com.kacyraho.lightnovel.data.online.NoveliaClient
 import com.kacyraho.lightnovel.data.translation.CalibrationOutcome
 import com.kacyraho.lightnovel.data.translation.DeepSeekClient
 import com.kacyraho.lightnovel.data.translation.TranslationCalibrator
@@ -58,12 +56,6 @@ data class SettingsUiState(
     val autoTranslateWhileReading: Boolean = true,
     val translateAheadChapters: Int = 3,
     val translateBackfillChapters: Int = 5,
-    val noveliaBaseUrl: String = "https://n.novelia.cc/api/",
-    val loggedIn: Boolean = false,
-    val username: String = "",
-    val password: String = "",
-    val accountMessage: String? = null,
-    val accountBusy: Boolean = false,
     val saving: Boolean = false,
     val exporting: Boolean = false,
     val message: String? = null,
@@ -74,8 +66,6 @@ class SettingsViewModel(
     private val settingsStore: SettingsStore,
     private val apiKeyStore: ApiKeyStore,
     private val backupExporter: BackupExporter,
-    private val noveliaClient: NoveliaClient,
-    private val accountService: NoveliaAccountService,
     private val cacheManager: CacheManager,
     private val clientFactory: (String, String) -> TranslationClient = { base, key ->
         DeepSeekClient(base, key)
@@ -89,7 +79,6 @@ class SettingsViewModel(
         viewModelScope.launch {
             val settings = settingsStore.settings.first()
             val usage = withContext(Dispatchers.IO) { cacheManager.usage() }
-            noveliaClient.setBaseUrl(settings.noveliaBaseUrl)
             val scope = TranslationProviders.keyScope(settings.deepSeekBaseUrl)
             _state.value = SettingsUiState(
                 loading = false,
@@ -117,8 +106,6 @@ class SettingsViewModel(
                 autoTranslateWhileReading = settings.autoTranslateWhileReading,
                 translateAheadChapters = settings.translateAheadChapters,
                 translateBackfillChapters = settings.translateBackfillChapters,
-                noveliaBaseUrl = settings.noveliaBaseUrl,
-                loggedIn = accountService.isLoggedIn(),
                 cacheBytes = usage.bytes,
                 cacheFiles = usage.files,
             )
@@ -137,91 +124,6 @@ class SettingsViewModel(
                 cacheFiles = 0,
                 message = "已清理 ${formatBytes(before.bytes)} 缓存",
             )
-        }
-    }
-
-    fun setUsername(value: String) {
-        _state.value = _state.value.copy(username = value, accountMessage = null)
-    }
-
-    fun setPassword(value: String) {
-        _state.value = _state.value.copy(password = value, accountMessage = null)
-    }
-
-    fun login() {
-        val current = _state.value
-        if (current.accountBusy) return
-        viewModelScope.launch {
-            _state.value = current.copy(accountBusy = true, accountMessage = null)
-            runCatching { accountService.login(current.username, current.password) }
-                .onSuccess {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        loggedIn = true,
-                        password = "",
-                        accountMessage = "登录成功",
-                    )
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        accountMessage = it.message ?: "登录失败",
-                    )
-                }
-        }
-    }
-
-    fun logout() {
-        accountService.logout()
-        _state.value = _state.value.copy(loggedIn = false, accountMessage = "已退出登录")
-    }
-
-    fun importFavorites() {
-        if (_state.value.accountBusy) return
-        viewModelScope.launch {
-            _state.value = _state.value.copy(accountBusy = true, accountMessage = "正在导入收藏")
-            runCatching { accountService.importFavorites() }
-                .onSuccess {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        accountMessage = it.message,
-                    )
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        accountMessage = it.message ?: "导入收藏失败",
-                    )
-                }
-        }
-    }
-
-    fun importHistory() {
-        if (_state.value.accountBusy) return
-        viewModelScope.launch {
-            _state.value = _state.value.copy(accountBusy = true, accountMessage = "正在导入历史")
-            runCatching { accountService.importHistory() }
-                .onSuccess {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        accountMessage = it.message,
-                    )
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(
-                        accountBusy = false,
-                        accountMessage = it.message ?: "导入历史失败",
-                    )
-                }
-        }
-    }
-
-    fun setNoveliaBaseUrl(value: String) {
-        val normalized = value.trim().trimEnd('/') + "/"
-        _state.value = _state.value.copy(noveliaBaseUrl = normalized)
-        noveliaClient.setBaseUrl(normalized)
-        viewModelScope.launch {
-            settingsStore.update { it.copy(noveliaBaseUrl = normalized) }
         }
     }
 
@@ -375,7 +277,12 @@ class SettingsViewModel(
 
     fun testConnection() {
         val current = _state.value
-        val baseUrl = TranslationProviders.normalizeBaseUrl(current.baseUrl)
+        val baseUrl = runCatching {
+            TranslationProviders.requireSafeBaseUrl(current.baseUrl)
+        }.getOrElse {
+            _state.value = current.copy(error = it.message ?: "端点地址无效")
+            return
+        }
         val model = current.model.trim()
         val maxTokens = parseMaxTokens(current.maxTokensInput)
         if (baseUrl.isBlank() || model.isBlank()) {
@@ -431,7 +338,12 @@ class SettingsViewModel(
 
     fun save(forceCalibration: Boolean = false) {
         val current = _state.value
-        val baseUrl = TranslationProviders.normalizeBaseUrl(current.baseUrl)
+        val baseUrl = runCatching {
+            TranslationProviders.requireSafeBaseUrl(current.baseUrl)
+        }.getOrElse {
+            _state.value = current.copy(error = it.message ?: "端点地址无效")
+            return
+        }
         val model = current.model.trim()
         val maxTokens = parseMaxTokens(current.maxTokensInput)
         if (baseUrl.isBlank() || model.isBlank()) {

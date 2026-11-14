@@ -1,107 +1,33 @@
 package com.kacyraho.lightnovel.data.online
 
+import com.kacyraho.lightnovel.core.settings.TranslationProviders
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 class NoveliaClient(
     initialBaseUrl: String = "https://n.novelia.cc/api/",
-    private val http: OkHttpClient = defaultClient(),
+    http: OkHttpClient = defaultClient(),
 ) {
     @Volatile
-    var baseUrl: String = initialBaseUrl
+    var baseUrl: String = requireSafeBaseUrl(initialBaseUrl)
         private set
 
     fun setBaseUrl(value: String) {
-        val normalized = value.trim().trimEnd('/') + "/"
-        if (normalized.startsWith("https://") || normalized.startsWith("http://")) {
-            baseUrl = normalized
-        }
+        baseUrl = requireSafeBaseUrl(value)
     }
 
-    @Volatile
-    private var token: String? = null
-
-    fun setToken(value: String?) {
-        token = value?.takeIf { it.isNotBlank() }
-    }
-
-    fun hasToken(): Boolean = token != null
-
-    suspend fun login(authBaseUrl: String, username: String, password: String): String {
-        val url = authBaseUrl.trimEnd('/') + "/login"
-        val body = json.encodeToString(
-            LoginBody(username = username, password = password),
-        )
-        val request = Request.Builder()
-            .url(url)
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .post(body.toRequestBody("application/json".toMediaType()))
-            .build()
-        return withContext(Dispatchers.IO) {
-            http.newCall(request).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IOException("登录失败（${response.code}）：${text.take(300)}")
-                }
-                text.trim().trim('"').also { if (it.isBlank()) error("登录返回空 token") }
-            }
-        }
-    }
-
-    suspend fun favored(): NoveliaFavoredList = get("user/favored")
-
-    suspend fun favoredWeb(
-        favoredId: String,
-        page: Int = 0,
-        pageSize: Int = 20,
-    ): NoveliaPage<NoveliaOutline> = get(
-        "user/favored-web/${segment(favoredId)}",
-        mapOf(
-            "page" to page.toString(),
-            "pageSize" to pageSize.toString(),
-            "provider" to "kakuyomu,syosetu,novelup,hameln,pixiv,alphapolis",
-            "type" to "0",
-            "level" to "0",
-            "translate" to "0",
-            "sort" to "update",
-        ),
-    )
-
-    suspend fun readHistory(
-        page: Int = 0,
-        pageSize: Int = 30,
-    ): NoveliaPage<NoveliaOutline> = get(
-        "user/read-history",
-        mapOf("page" to page.toString(), "pageSize" to pageSize.toString()),
-    )
-
-    suspend fun favoriteWeb(favoredId: String, provider: String, novelId: String) {
-        request("PUT", "user/favored-web/${segment(favoredId)}/${segment(provider)}/${segment(novelId)}")
-    }
-
-    suspend fun unfavoriteWeb(provider: String, novelId: String) {
-        request("DELETE", "user/favored-web/default/${segment(provider)}/${segment(novelId)}")
-    }
-
-    suspend fun recordHistory(provider: String, novelId: String, chapterId: String) {
-        request(
-            "PUT",
-            "user/read-history/${segment(provider)}/${segment(novelId)}",
-            body = json.encodeToString(chapterId),
-        )
-    }
+    private val http = http.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -142,15 +68,13 @@ class NoveliaClient(
         path: String,
         params: Map<String, String> = emptyMap(),
     ): T {
-        val body = request("GET", path, params)
+        val body = getText(path, params)
         return json.decodeFromString<T>(body)
     }
 
-    private suspend fun request(
-        method: String,
+    private suspend fun getText(
         path: String,
         params: Map<String, String> = emptyMap(),
-        body: String? = null,
     ): String = withContext(Dispatchers.IO) {
         val url = (baseUrl + path.trimStart('/')).toHttpUrl().newBuilder().apply {
             params.forEach { (key, value) -> addQueryParameter(key, value) }
@@ -164,15 +88,7 @@ class NoveliaClient(
                 "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36",
             )
-        token?.let { builder.header("Authorization", "Bearer $it") }
-        if (method == "GET" || method == "HEAD") {
-            builder.method(method, null)
-        } else {
-            builder.method(
-                method,
-                (body ?: "").toRequestBody("application/json".toMediaType()),
-            )
-        }
+        builder.get()
         http.newCall(builder.build()).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
@@ -185,18 +101,28 @@ class NoveliaClient(
     private fun segment(value: String): String =
         URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
-    @Serializable
-    private data class LoginBody(
-        val username: String,
-        val password: String,
-        val app: String = "legado",
-    )
+    private fun requireSafeBaseUrl(value: String): String {
+        val normalized = value.trim().trimEnd('/') + "/"
+        val url = runCatching { normalized.toHttpUrl() }.getOrNull()
+            ?: throw IllegalArgumentException("Novelia 地址不是有效 URL")
+        require(url.username.isEmpty() && url.password.isEmpty()) {
+            "Novelia 地址不能包含用户名或密码"
+        }
+        require(
+            url.scheme == "https" ||
+                (url.scheme == "http" && TranslationProviders.isLoopback(normalized)),
+        ) {
+            "Novelia 远端地址必须使用 HTTPS；明文 HTTP 仅允许本机调试"
+        }
+        return normalized
+    }
 
     companion object {
         private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
-            .followRedirects(true)
+            .followRedirects(false)
+            .followSslRedirects(false)
             .build()
     }
 }

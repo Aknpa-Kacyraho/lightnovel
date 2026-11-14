@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.core.settings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class TranslationProvidersTest {
@@ -48,5 +49,42 @@ class TranslationProvidersTest {
         )
         assertTrue(TranslationProviders.presets.any { it.id == "deepseek" })
         assertTrue(TranslationProviders.presets.any { it.id == "custom" })
+    }
+
+    @Test
+    fun safeEndpointPolicyRejectsPublicCleartextAndCredentials() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TranslationProviders.requireSafeBaseUrl("http://gateway.example.com/v1")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            TranslationProviders.requireSafeBaseUrl("https://user:secret@example.com/v1")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            TranslationProviders.requireSafeBaseUrl("http://0.0.0.0:11434/v1")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            TranslationProviders.requireSafeBaseUrl("ftp://example.com/model")
+        }
+    }
+
+    @Test
+    fun safeEndpointPolicyAllowsHttpsAndPrivateNetworkModels() {
+        assertEquals(
+            "https://gateway.example.com/v1",
+            TranslationProviders.requireSafeBaseUrl("https://gateway.example.com/v1/"),
+        )
+        listOf(
+            "http://127.0.0.1:11434/v1",
+            "http://localhost:1234/v1",
+            "http://10.0.2.2:8080/v1",
+            "http://192.168.1.20:8080/v1",
+            "http://172.16.8.9:8080/v1",
+        ).forEach { url ->
+            assertEquals(url, TranslationProviders.requireSafeBaseUrl(url))
+        }
+        assertEquals(
+            "http://192.168.1.20:8080/v1",
+            TranslationProviders.requireSafeBaseUrl("192.168.1.20:8080/v1"),
+        )
     }
 }

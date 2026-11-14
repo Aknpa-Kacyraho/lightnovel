@@ -8,14 +8,11 @@ from __future__ import annotations
 
 import json
 
-from pathlib import Path
-
 from .components import attr, badge, button, empty, esc
 from .icons import icon
 from .layout import shell
+from .static import read_static
 from .styles import css
-
-_JS_PATH = Path(__file__).resolve().parent.parent / "static" / "lnui-library.js"
 SOURCE_LABELS = {"local": "本地导入", "source": "源站"}
 STATE_LABELS = {
     "reading": "在读",
@@ -26,10 +23,7 @@ STATE_LABELS = {
 
 
 def library_js() -> str:
-    text = _JS_PATH.read_text(encoding="utf-8")
-    if not text.strip():
-        raise RuntimeError(f"library script is empty: {_JS_PATH}")
-    return text
+    return read_static("lnui-library.js")
 
 
 def _source_badge(row: dict) -> str:
@@ -263,14 +257,8 @@ def render_library(rows: list[dict], *, source_counts: dict,
                 subtitle="源站和本地导入都在这里；移动端默认看还未开始的书。",
                 body=body, pwa_head=pwa_head)
 
-_TAGS_JS_PATH = Path(__file__).resolve().parent.parent / "static" / "lnui-tags.js"
-
-
 def tags_js() -> str:
-    text = _TAGS_JS_PATH.read_text(encoding="utf-8")
-    if not text.strip():
-        raise RuntimeError(f"tags script is empty: {_TAGS_JS_PATH}")
-    return text
+    return read_static("lnui-tags.js")
 
 
 def render_tags(tags: list[dict], recent: list[str], works: list[list[str]], *,

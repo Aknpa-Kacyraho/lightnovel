@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from .components import badge, button, card, empty, field, select
 from .layout import shell
+from .static import read_static
 from .styles import css
-
-_JS_PATH = Path(__file__).resolve().parent.parent / "static" / "lnui-preview.js"
 
 
 def _controls() -> str:
@@ -121,10 +118,7 @@ def _sample() -> str:
 
 
 def preview_js() -> str:
-    text = _JS_PATH.read_text(encoding="utf-8")
-    if not text.strip():
-        raise RuntimeError(f"preview script is empty: {_JS_PATH}")
-    return text
+    return read_static("lnui-preview.js")
 
 
 def render_preview() -> str:

@@ -33,8 +33,6 @@ import com.kacyraho.lightnovel.data.export.EpubExporter
 import com.kacyraho.lightnovel.data.import.ImportCoordinator
 import com.kacyraho.lightnovel.data.import.LocalDocumentImporter
 import com.kacyraho.lightnovel.data.local.LightnovelDatabase
-import com.kacyraho.lightnovel.data.online.KeystoreNoveliaSessionStore
-import com.kacyraho.lightnovel.data.online.NoveliaAccountService
 import com.kacyraho.lightnovel.data.online.NoveliaClient
 import com.kacyraho.lightnovel.data.online.OnlineBookService
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
@@ -96,12 +94,6 @@ class AppContainer(
         client = noveliaClient,
         dao = database.libraryDao(),
         contentStore = contentStore,
-    )
-
-    val noveliaAccountService: NoveliaAccountService = NoveliaAccountService(
-        client = noveliaClient,
-        onlineBookService = onlineBookService,
-        sessionStore = KeystoreNoveliaSessionStore(context),
     )
 
     val backupExporter: BackupExporter = BackupExporter(dataRoot, database.libraryDao())
