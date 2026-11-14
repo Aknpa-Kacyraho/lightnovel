@@ -90,7 +90,7 @@ check("★ 已在书架上时不重复写状态（ensure_on_shelf 幂等）",
 _items = [i for i in m.library() if i["slug"] == SLUG]
 _html = m.page_library(_items, {})
 check("★ 加入书架后书架里能看到这张卡", _html.count('<div class="card" data-slug=') == 1,
-      f"卡片数={_html.count('<div class="card" data-slug=')}")
+      "卡片数=" + str(_html.count('<div class="card" data-slug=')))
 check("★ 加入书架不等于收藏（不在收藏堆、没有收藏徽标）",
       'data-fav="1"' not in _html and 'class="badge fav"' not in _html)
 

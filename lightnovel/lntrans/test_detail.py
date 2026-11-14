@@ -186,7 +186,7 @@ try:
     check("★ 单卷 >400 话 → 标注『显示前 400』",
           "450 话 · 显示前 400" in _h, _h[:200])
     check("★ 实际目录条目数 = 400（不是 450）",
-          _h.count('class="epn"') == 400, f"{_h.count('class=\"epn\"')}")
+          _h.count('class="epn"') == 400, str(_h.count('class="epn"')))
     check("★ 大目录默认折叠（130 话不会把手机详情页撑到一万像素）",
           'class="shelf" open' not in _h)
     m.refresh_detail = lambda wid, url: {

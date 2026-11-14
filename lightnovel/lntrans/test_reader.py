@@ -252,7 +252,8 @@ def main() -> int:
     _one = m.lr.annotate_terms("澪登场了，澪很弱，澪很强，澪又来了，澪走了。",
                                [("澪", "原文：ミオ")])
     check("★ 单字译名每章最多标 3 处（不然满屏点线，正文没法读）",
-          _one.count('class="gloss"') == 3, f"{_one.count('class="gloss"')} 处")
+          _one.count('class="gloss"') == 3,
+          "{} 处".format(_one.count('class="gloss"')))
     _two = m.lr.annotate_terms("加尔德来了，加尔德又走了。",
                                [("加尔德", "原文：ガルド")])
     check("多字译名每次都标（不受单字限次影响）",
