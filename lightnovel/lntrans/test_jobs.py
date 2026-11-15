@@ -110,17 +110,13 @@ record = lt.chapter_meta_record(
 lt.save_json(lt.chapter_meta_path("book-a", 0), record)
 check("完整旁车让正文可用", lt.has_translation("book-a", 0))
 
-with open(zh1, "w", encoding="utf-8", newline="") as f:
-    f.write(text + "被篡改。\n")
+lt.save_text(zh1, text + "被篡改。\n")
 check("正文与旁车错配时不可读", not lt.has_translation("book-a", 0))
-with open(zh1, "w", encoding="utf-8", newline="") as f:
-    f.write(text)
+lt.save_text(zh1, text)
 
-with open(raw1, "w", encoding="utf-8", newline="") as f:
-    f.write("猫がいる。\n\n雪が降る。\n")
+lt.save_text(raw1, "猫がいる。\n\n雪が降る。\n")
 check("原文变化时旧译文不可读", not lt.has_translation("book-a", 0))
-with open(raw1, "w", encoding="utf-8", newline="") as f:
-    f.write("猫がいる。\n\n雨が降る。\n")
+lt.save_text(raw1, "猫がいる。\n\n雨が降る。\n")
 
 partial = lt.chapter_meta_record(
     "book-a", 0, meta, args, text=text, raw_sha=raw_sha,
