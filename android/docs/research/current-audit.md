@@ -2,7 +2,8 @@
 
 - 审计日期：2026-10-28
 - 范围：`android/` 全工程 + `docs/ADR-000-P0.md`、`docs/REFERENCE-NOTES.md`；
-  旧 Python `lntrans` 只作为行为 oracle 对照，不作为运行时依赖。
+  旧 Python `lntrans` 只在迁移期作为历史 oracle；源码现归档于 `archive/web`，
+  当前主分支与 Android 构建不包含也不依赖该实现。
 - 约束：只读审计；未联网、未跑 adb、未改任何源码。文中“推断/未验证”均已标注。
 
 ## 0. 结论摘要

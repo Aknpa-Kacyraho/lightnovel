@@ -9,13 +9,6 @@
 
 ## 本地验证
 
-Web/Python：
-
-```bash
-python lightnovel/lntrans/run_selftests.py
-python lightnovel/lnfinder/selftest.py
-```
-
 Android：
 
 ```bash
@@ -25,6 +18,9 @@ cd android
 
 Release 签名与 APK 证书验证见 `android/RELEASE.md`。普通 PR 只能使用 debug 构建；
 签名 Release 由标签或手动工作流使用 GitHub Secrets 构建。
+
+`main` 只接受 Android 客户端变更。旧 Web/Python 源码位于远端 `archive/web`
+归档分支，不作为当前运行时、规格来源或构建依赖重新引入。
 
 ## 提交要求
 
