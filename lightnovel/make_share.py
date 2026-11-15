@@ -42,7 +42,7 @@ ROOT_FILES = {
 # literal relative path.
 INCLUDE = (
     ("lnfinder", ("*.py", "README.md")),
-    ("lntrans", ("*.py", "*.md", "test_click_dom.js")),
+    ("lntrans", ("*.py", "*.md", "test_click_dom.js", "test_import_dom.js")),
     ("lntrans/static", ("*.js", "*.css", "*.png")),
     ("lntrans/contracts", ("*.json", "*.md")),
     ("docs", ("*.md",)),

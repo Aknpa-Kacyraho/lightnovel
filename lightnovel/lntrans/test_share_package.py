@@ -60,6 +60,7 @@ try:
         "VERSION", "SECURITY.md", "make_share.py",
         "lntrans/lnserve.py", "lntrans/lncatalog.py",
         "lntrans/migrate_reset.py", "lntrans/run_selftests.py",
+        "lntrans/test_import_dom.js",
         "lntrans/lnui/__init__.py", "lntrans/lnui/components.py",
         "lntrans/lnui/icons.py", "lntrans/lnui/layout.py",
         "lntrans/lnui/preview.py", "lntrans/lnui/settings.py",

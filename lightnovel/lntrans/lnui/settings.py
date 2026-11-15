@@ -141,7 +141,7 @@ def render_settings(*, pwa_head: str, translation_summary: str,
         title="阅读与应用",
         subtitle="主题、阅读、翻译与数据都在这里。",
         content=content,
-        actions='<a class="ui-btn ui-btn-ghost" href="/">返回书架</a>',
+        actions='<a class="ui-btn ui-btn-ghost" href="/shelf">返回书架</a>',
     )
     return f'''<!doctype html>
 <html lang="zh-CN" data-ui="next" data-theme="light">

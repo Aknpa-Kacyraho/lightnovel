@@ -11,8 +11,12 @@
 
 ## 版本与发布
 
-Android **1.0.2**（versionCode 36）：
+Android **1.0.3**（versionCode 37）：
 
+- 体验审计：修复后台导入成功却未进书架、空书架空白、返回书架误跳发现页、未上架作品却显示“移出书架”等主路径问题。
+- 阅读连续性：下一章译好后，章末与底部导航同时点亮；全书译完不再显示无效的继续翻译入口。
+- 移动可用性：补齐 44px 触控目标、键盘焦点环、准确的“未开始”筛选和空状态下一步。
+- 发布基线：Web 同步升级到 `5.0.0-alpha.15`；Android 保持既有功能并通过 JVM 测试、lint 与 debug/release 构建。
 - 安全：公网模型端点强制 HTTPS，移除 Novelia 账号与 Token 存储链，Release 构建禁止明文签名配置入库。
 - 发布：仓库根目录 CI、签名 Release 工作流、Gradle Wrapper SHA-256 校验。
 - 兼容：继续保留回环与 RFC1918 私网 HTTP 模型端点和既有阅读/翻译能力。
@@ -30,9 +34,9 @@ Android **1.0.2**（versionCode 36）：
 - 发现/详情：整页滚动，搜索框、Hero、Tab、筛选和列表一起滚，不再只有下半屏可滑。
 - 其他：删除已淘汰的 Web skill；主攻 Android App。
 
-下载：[Release v1.0.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.2)
+下载：[Release v1.0.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.3)
 
-`v1.0.2` 使用独立 Release 证书签名。签名私钥不进入仓库；CI 通过 GitHub Secrets
+`v1.0.3` 使用独立 Release 证书签名。签名私钥不进入仓库；CI 通过 GitHub Secrets
 构建，配置说明见 [android/RELEASE.md](android/RELEASE.md)。
 
 当前 `main`：172 JVM tests、lint、assembleDebug 由根目录 CI 验证；签名 Release

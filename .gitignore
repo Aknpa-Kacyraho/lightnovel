@@ -3,9 +3,11 @@
 .planning/
 _newver_tmp/
 .playwright-mcp/
+.playwright-cli/
 _snapshots/
 pictures/
 output/
+dist/
 phone-dsha-handoff.md
 *.zip
 *.log

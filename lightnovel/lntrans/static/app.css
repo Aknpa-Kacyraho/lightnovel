@@ -1,5 +1,13 @@
 /* 主题按钮：固定在右下角，半透明胶囊，不与卡片内容抢位置
    （踩过：它没有任何 CSS，用浏览器默认样式浮在卡片上） */
+:where(a,button,input,select,textarea,summary):focus-visible{
+  outline:3px solid var(--accent);outline-offset:2px}
+@media (max-width:899px), (pointer:coarse){
+  body :where(.lnkbtn,.back,.morebtn,.iconbtn),.pg-read .crumbs a,
+  .pg-read .crumbs button,.pg-read .tools button,.pg-read .tools a,
+  .pg-read .chapnav .navbtn,.pg-read #bar a,.pg-read #bar button{
+    min-height:44px}
+}
 /* ===== 作品详情页 ===== */
 .back{display:inline-block;margin:0 0 14px;font-size:.85em;color:var(--ct);
   text-decoration:none;font-family:system-ui,sans-serif}

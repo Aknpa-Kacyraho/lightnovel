@@ -62,6 +62,18 @@
   font: inherit;
 }
 
+[data-ui="next"] :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 899px), (pointer: coarse) {
+  [data-ui="next"] :where(.ui-chip, .ui-btn, .ui-nav-link,
+    .ui-mobile-link, .ui-segmented button) {
+    min-height: 44px;
+  }
+}
+
 [data-ui="next"] .ui-icon {
   width: 18px;
   height: 18px;

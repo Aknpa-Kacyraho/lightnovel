@@ -29,6 +29,13 @@
     if (step) step.textContent = label || "";
   }
 
+  function clearProgress() {
+    if (progress) progress.hidden = true;
+    if (fill) fill.style.width = "0%";
+    if (pct) pct.textContent = "0%";
+    if (step) step.textContent = "";
+  }
+
   function stopPoll() {
     clearTimeout(timer);
     timer = null;
@@ -92,6 +99,7 @@
       var data = {};
       try { data = JSON.parse(xhr.responseText || "{}"); } catch (e) { data = {}; }
       if (!data.ok || !data.id) {
+        clearProgress();
         say("导入失败：" + (data.error || ("HTTP " + xhr.status)), true);
         return;
       }
@@ -102,6 +110,7 @@
     };
     xhr.onerror = function () {
       go.disabled = false;
+      clearProgress();
       say("上传失败，请检查网络后重试", true);
     };
     xhr.send(f);

@@ -76,6 +76,14 @@ check("static/app.css 存在且非空（缺了服务起不来）",
 check("CSS == lnrender.CSS + static/app.css 全文",
       getattr(mod, "CSS") == (mod.lr.CSS + _css_body) and len(mod.CSS) > len(mod.lr.CSS),
       f"CSS {len(getattr(mod, 'CSS', ''))} 字符 / 基础 {len(mod.lr.CSS)}")
+_next_css_p = os.path.join(STATIC, "lnui.css")
+with open(_next_css_p, encoding="utf-8") as f:
+    _next_css = f.read()
+check("新旧 UI 都有键盘焦点样式",
+      ":focus-visible" in _css_body and ":focus-visible" in _next_css)
+check("移动端主要操作满足 44px 触控目标",
+      ("min-height: 44px" in _css_body or "min-height:44px" in _css_body)
+      and ("min-height: 44px" in _next_css or "min-height:44px" in _next_css))
 
 # ---- 状态栏单一写入入口（架构约束，不是事后断言） ---------------------------
 # 病根复盘：这个 bug 修过两次都复发（先是 tick/poll 各写一套文案，后来 v4.5 又把
@@ -106,6 +114,12 @@ for _p in sorted(glob.glob(os.path.join(STATIC, "*.js"))):
 # 只有 JS 没有标注 = 永远没有可点的东西。另外 #gtip 只许 reader.js 创建。
 check("reader.js 实现了术语悬浮（点 .gloss 弹出 #gtip）",
       "closest('.gloss')" in _rd and "gtip" in _rd)
+check("下一章译好后章末与底部导航会同时点亮",
+      "getElementById('nav-next')" in _rd
+      and "getElementById('bar-next')" in _rd)
+_lib_js = open(os.path.join(STATIC, "lnui-library.js"), encoding="utf-8").read()
+check("书库“未开始”筛选为空时给出切换全部的正确指引",
+      "切换到「全部」" in _lib_js)
 for _p in sorted(glob.glob(os.path.join(STATIC, "*.js"))):
     _f = os.path.basename(_p)
     if _f == "reader.js":
@@ -115,6 +129,13 @@ for _p in sorted(glob.glob(os.path.join(STATIC, "*.js"))):
 
 node = shutil.which("node")
 if node:
+    _import_dom = subprocess.run(
+        [node, os.path.join(HERE, "test_import_dom.js")],
+        capture_output=True, encoding="utf-8", errors="replace")
+    check("导入失败会清理上传进度界面",
+          _import_dom.returncode == 0,
+          ((_import_dom.stderr or "") + ("" if _import_dom.returncode == 0 else
+           (_import_dom.stdout or ""))).strip()[-240:])
     for _var, fname in PAIRS:
         r = subprocess.run([node, "--check", os.path.join(STATIC, fname)],
                            capture_output=True, encoding="utf-8", errors="replace")

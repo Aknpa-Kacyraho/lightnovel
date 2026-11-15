@@ -1,6 +1,6 @@
 [project]
 name = "lightnovel-shelf"
-version = "5.0.0a14"
+version = "5.0.0a15"
 description = "Local-first Japanese light-novel translator and personal bookshelf"
 readme = "README.md"
 requires-python = ">=3.10"

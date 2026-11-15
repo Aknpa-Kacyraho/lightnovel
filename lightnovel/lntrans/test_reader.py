@@ -349,7 +349,8 @@ def main() -> int:
     _, body = get("/read/__reader_seed__?from=8&nocheck=1")
     p8 = body.decode("utf-8", "replace")
     check("★ 缺译章的页面不给「下一章」链接（不许跳过正在等的那一章）",
-          '?from=9' not in p8 and "这一章译好才有下一章" in p8, "")
+          '?from=9' not in p8 and "这一章译好才有下一章" in p8
+          and 'id="bar-next"' in p8, "")
     check("缺译章的页面仍给「上一章」（能退回去读，不是死路）",
           '?from=7#c7">← 上一章' in p8, "")
     # 缺译章的下一章**已经译好**时，允许点过去（正当的绕开空洞，不是偷跳）

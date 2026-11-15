@@ -193,6 +193,16 @@ cd lntrans && python3 lnserve.py --port 8099 --watch      # 另开定时查更�
   这些脚本（连同 LIB/DISLIKE/READER/DETAIL/REVIEW）都在 **`lntrans/static/*.js`**（不再内嵌在
   `lnserve.py` 的 Python 字符串里），由 `lnserve._read_static()` 读入后内联注入 `<script>`。
   改前端就改 `static/*.js` 并跑 `node --check`（`test_js_static.py` 守着），别再写回 `.py`。
+* **“返回书架”必须回 `/shelf`**：`/` 是发现页。阅读、详情、设置、标签和导入页都踩过
+  “按钮写返回书架，实际落发现”的导航谎言；`test_pages` 会扫描所有这类链接。
+* **空列表先给下一步，不摆空筛选器**：书架零本时隐藏来源工具栏，只留“去发现/导入本地书”；
+  发现页无候选时给导入入口；书库“未开始”为空时明确提示切到“全部”。
+* **后台导入成功必须上架**：`/api/import_async` 完成 `import_bytes()` 后调用
+  `ensure_on_shelf(slug)`；同步导入和异步导入不能有两套可见性语义。
+* **按钮数字和可用性就是承诺**：全书已译不画“继续翻译/加入翻译列表”；未上架详情画
+  “加入书架”而不是“移出书架”；下一章译好后，章末导航和底部固定栏必须同时点亮。
+* **移动端触控目标至少 44px，键盘焦点必须可见**：主要按钮/链接用窄屏或粗指针媒体查询
+  抬高高度，页面统一提供 `:focus-visible` 焦点环；不能只靠颜色或 hover 表达状态。
 * `read_tracking()` 在**不在书架**时必须返回 `None`（不许伪造 `"want"`）：
   否则「打开阅读页 → want 转 reading」会把已移出的书自动加回书架。
   `/api/add`（加入书架）要显式 `ensure_on_shelf()` 写 `want`，**绝不碰 `favorites`**

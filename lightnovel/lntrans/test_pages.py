@@ -271,6 +271,25 @@ try:
         _rp = get(f"/read/{_probe}")
         check("导入的书能打开阅读页（落地章待译占位）",
               'id="need-1"' in _rp and "自检导入探针" in _rp)
+        check("阅读页翻译按钮不承诺超过书本章数的数量",
+              'id="btn-more"' in _rp and "多译 5 章" not in _rp
+              and ">继续翻译</button>" in _rp)
+        _back_pages = {
+            "阅读页": _rp,
+            "详情页": get(f"/book/{_probe}"),
+            "设置页": get("/settings"),
+            "翻译列表": get("/queue"),
+            "标签页": get("/tags"),
+        }
+        _bad_back = []
+        for _label, _html in _back_pages.items():
+            _m = re.search(
+                r'<a\b[^>]*href="([^"]+)"[^>]*>[^<]*返回书架',
+                _html)
+            if _m and _m.group(1) != "/shelf":
+                _bad_back.append(f"{_label}:{_m.group(1)}")
+        check("所有“返回书架”链接都回到 /shelf", not _bad_back,
+              str(_bad_back))
         _req2 = urllib.request.Request(
             _url, data=_body, method="POST",
             headers={"Content-Type": "application/octet-stream"})
@@ -279,6 +298,17 @@ try:
         check("同一文件重复导入返回原书（不建第二本）",
               bool(_d2.get("ok")) and not _d2.get("created")
               and _d2.get("slug") == _probe, str(_d2)[:160])
+        _remove_req = urllib.request.Request(
+            BASE + "/api/status",
+            data=json.dumps({"slug": _probe, "action": "off"}).encode("utf-8"),
+            method="POST", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(_remove_req, timeout=10) as r:
+            _removed = json.loads(r.read().decode("utf-8"))
+        _detail_off = get(f"/book/{_probe}")
+        check("未上架详情页提供“加入书架”而不是“移出书架”",
+              bool(_removed.get("removed"))
+              and 'data-d-act="want"' in _detail_off
+              and 'data-d-act="off"' not in _detail_off)
         _meta_path = os.path.join(_root, "novels", _probe, "meta.json")
         with open(_meta_path, encoding="utf-8") as _mf:
             _meta = json.load(_mf)
@@ -324,6 +354,33 @@ finally:
         except OSError:
             pass
 
+_done_slug = "__all_translated__"
+try:
+    if _root:
+        _done_dir = os.path.join(_root, "novels", _done_slug)
+        os.makedirs(os.path.join(_done_dir, "chapters"), exist_ok=True)
+        with open(os.path.join(_done_dir, "meta.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump({"slug": _done_slug, "source": "local",
+                       "source_id": "local-" + _done_slug,
+                       "title": "已译完测试书",
+                       "episodes": [{"id": "1", "title": "唯一章节"}],
+                       "glossary": {}, "characters": {}, "style": {},
+                       "progress": {"translated_through": 1,
+                                    "fetched_through": 1}}, f,
+                      ensure_ascii=False)
+        with open(os.path.join(_done_dir, "chapters", "0000.txt"), "w",
+                  encoding="utf-8", newline="") as f:
+            f.write("唯一章节已经译完。\n")
+        _done_page = get(f"/book/{_done_slug}")
+        check("全书已译完时不再显示无效的“加入翻译列表”",
+              "本书已译 1 章" in _done_page
+              and "data-qadd=" not in _done_page)
+finally:
+    if _root:
+        shutil.rmtree(os.path.join(_root, "novels", _done_slug),
+                      ignore_errors=True)
+
 _tags_html = get("/tags")
 check("新标签页 200 且带搜索/已选/全部标签",
       'data-ui-tags' in _tags_html and 'data-tag-search' in _tags_html
@@ -361,6 +418,14 @@ try:
               and bool(_async_slug), str(_ajob)[:160])
         check("异步导入写入 .import.json schema", bool(_async_slug) and os.path.exists(
             os.path.join(_root, "novels", _async_slug, ".import.json")))
+        with urllib.request.urlopen(
+                BASE + "/api/library?limit=1000", timeout=10) as r:
+            _alib = json.loads(r.read().decode("utf-8")).get("items") or []
+        _aitem = next((x for x in _alib if x.get("slug") == _async_slug), {})
+        check("异步导入后自动进入书架",
+              bool(_aitem.get("on_shelf"))
+              and _aitem.get("tracking") in ("want", "reading"),
+              str(_aitem)[:160])
 finally:
     if _async_slug and _root:
         shutil.rmtree(os.path.join(_root, "novels", _async_slug),
@@ -380,6 +445,13 @@ check("新首页 200 且挂 shell/发现",
       'data-ui="next"' in _home_new and 'data-page="home"' in _home_new
       and '今天适合读什么' in _home_new)
 check("新首页没有 Traceback", 'Traceback' not in _home_new)
+from lnui import render_home as _render_home  # noqa: E402
+_empty_home = _render_home([])
+check("发现页无候选时直接提供本地导入入口",
+      "暂时没有候选" in _empty_home
+      and 'href="/import"' in _empty_home
+      and ">打开书库</a>" in _empty_home
+      and ">去书库</a>" not in _empty_home)
 
 _discover = get("/discover")
 check("新发现页 200 且挂 shell/直接阅读",
@@ -391,10 +463,30 @@ _shelf = get("/shelf")
 check("新书架 200 且挂 shell/来源筛选", 
       'data-ui="next"' in _shelf and 'data-page="shelf"' in _shelf
       and 'data-source-filter="local"' in _shelf)
+from lnui import render_library as _render_library  # noqa: E402
+from lnui import render_shelf as _render_shelf  # noqa: E402
+_empty_shelf = _render_shelf(
+    [], [], source_counts={"all": 0, "source": 0, "local": 0})
+check("新书架为空时显示下一步而不是空白",
+      "书架还是空的" in _empty_shelf
+      and 'href="/import"' in _empty_shelf
+      and 'href="/discover"' in _empty_shelf
+      and "data-ui-toolbar" not in _empty_shelf)
+_read_library = _render_library(
+    [{"slug": "read-once", "title": "已读一章但未上架", "read": 1,
+      "total": 4, "on_shelf": False, "favorite": False,
+      "tracking": None, "source_key": "local", "href": "/book/read-once",
+      "read_href": "/read/read-once"}],
+    source_counts={"all": 1, "source": 0, "local": 1})
+check("“未开始”筛选不包含已经读到第一章的书",
+      'data-unstarted="0"' in _read_library)
 _library = get("/library")
 check("新书库 200 且挂来源筛选/搜索/未开始切换",
       'data-page="library"' in _library and 'data-search' in _library
       and 'data-view="new"' in _library and 'data-source-filter="source"' in _library)
+check("新书库区分“来源”和“阅读状态”两组筛选",
+      "所有来源" in _library and 'aria-label="按来源筛选"' in _library
+      and 'aria-label="按阅读状态筛选"' in _library)
 check("新书架/书库没有 Traceback", 'Traceback' not in _shelf + _library)
 
 check("旧页面不挂 data-ui=next（新令牌不泄漏）",

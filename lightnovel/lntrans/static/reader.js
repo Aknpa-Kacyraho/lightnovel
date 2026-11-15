@@ -258,12 +258,17 @@ async function poll(){
 function setNextReady(){
   if(!nextCh || nextCh>total) return;
   nextHave=true; nextTrans=true;
+  const href='/read/'+encodeURIComponent(slug)+'?from='+nextCh+'#c'+nextCh;
   const box=document.getElementById('nav-next');
-  if(!box) return;
-  if(box.querySelector('a')) return;              // 服务端已渲染成链接
-  box.innerHTML='<a class="navbtn" href="/read/'+encodeURIComponent(slug)
-    +'?from='+nextCh+'#c'+nextCh+'">下一章 →</a>';
-    tbar(`第 <b>${nextCh}</b> 章已译好`);
+  if(box&&!box.querySelector('a')) {
+    box.innerHTML='<a class="navbtn" href="'+href+'">下一章 →</a>';
+  }
+  // 底部固定栏和章末导航是同一承诺：译好后必须一起点亮。
+  const bar=document.getElementById('bar-next');
+  if(bar&&!bar.querySelector('a')) {
+    bar.innerHTML='<a href="'+href+'">下章 →</a>';
+  }
+  tbar(`第 <b>${nextCh}</b> 章已译好`);
 }
 const TRANS={enabled:window.__TENABLED__,ceiling:window.__CEIL__||0};
 let stopped=false;

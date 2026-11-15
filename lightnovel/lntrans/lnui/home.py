@@ -47,6 +47,10 @@ def _home_card(row: dict) -> str:
 def render_home(candidates: list[dict], continue_reading: dict | None = None,
                 *, pwa_head: str = "", notice: str = "") -> str:
     cards = "".join(_home_card(r) for r in candidates[:12])
+    section_action = (
+        '<a class="ui-btn ui-btn-ghost" href="/library">去书库</a>'
+        if cards else ""
+    )
     cont = ""
     if continue_reading:
         r = continue_reading
@@ -66,11 +70,12 @@ def render_home(candidates: list[dict], continue_reading: dict | None = None,
     <div class="ui-section-head">
       <div><span class="ui-kicker">DISCOVER</span><h2>今天适合读什么</h2>
         <p>先直接读，加入书架只决定能不能继续读，不代表收藏。</p></div>
-      <a class="ui-btn ui-btn-ghost" href="/library">去书库</a>
+      {section_action}
     </div>
     {f'<div class="ui-work-grid" data-work-grid>{cards}</div>' if cards else
-     empty("暂时没有候选", "去书库看看存量作品，或稍后再刷新推荐。",
-           '<a class="ui-btn ui-btn-primary" href="/library">打开书库</a>')}
+     empty("暂时没有候选", "导入自己的 EPUB/TXT，或去书库看看已有作品。",
+           '<a class="ui-btn ui-btn-primary" href="/import">导入本地书</a>'
+           '<a class="ui-btn ui-btn-ghost" href="/library">打开书库</a>')}
     <p class="ui-help" data-filter-empty hidden>没有匹配的作品。</p>
   </section>
 </div>'''

@@ -24,7 +24,12 @@
     });
     var grid = root.querySelector("[data-work-grid]");
     var empty = root.querySelector("[data-filter-empty]");
-    if (grid && empty) empty.hidden = shown !== 0;
+    if (grid && empty) {
+      empty.hidden = shown !== 0;
+      empty.textContent = (shown === 0 && view === "new")
+        ? "当前没有未开始的作品；切换到「全部」查看已读书目。"
+        : "没有匹配的作品，换一个来源或搜索词试试。";
+    }
   }
 
   function setButton(buttons, active, attr) {

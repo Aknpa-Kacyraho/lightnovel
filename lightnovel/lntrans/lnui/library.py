@@ -57,6 +57,9 @@ def _work_card(row: dict, *, shelf: bool = False) -> str:
     read_href = row.get("read_href") or ""
     source = row.get("source_key") or "source"
     state = row.get("tracking") or ""
+    unstarted = 0 if (
+        row.get("on_shelf") or row.get("favorite") or read > 0
+    ) else 1
     actions = []
     if read_href:
         actions.append(f'<a class="ui-btn ui-btn-primary" href="{attr(read_href)}">'
@@ -75,7 +78,7 @@ def _work_card(row: dict, *, shelf: bool = False) -> str:
         f'<article class="ui-card ui-work-card" data-work-card '
         f'data-href="{attr(href)}" '
         f'data-source="{attr(source)}" data-state="{attr(state)}" '
-        f'data-unstarted="{0 if row.get("on_shelf") or row.get("favorite") else 1}" '
+        f'data-unstarted="{unstarted}" '
         f'data-hay="{attr((title + " " + (row.get("author") or "") + " " + jp).lower())}">'
         '<div class="ui-card-body">'
         f'<div class="ui-card-top">{_source_badge(row)}{_state_badge(row)}</div>'
@@ -156,7 +159,8 @@ def _toolbar(*, source_counts: dict, search: bool, view: bool,
     search_html = ('<label class="ui-search"><span class="ui-sr">搜索</span>'
                    '<input type="search" data-search placeholder="搜索书名或作者">'
                    '</label>' if search else "")
-    view_html = ('<div class="ui-segmented" data-view-toggle>'
+    view_html = ('<div class="ui-segmented" data-view-toggle role="group" '
+                 'aria-label="按阅读状态筛选">'
                  '<button type="button" class="on" data-view="new">未开始</button>'
                  '<button type="button" data-view="all">全部</button></div>'
                  if view else "")
@@ -165,8 +169,8 @@ def _toolbar(*, source_counts: dict, search: bool, view: bool,
                 f'<a class="ui-btn ui-btn-ghost" href="/tags">{icon("tag")}'
                 '<span>标签</span></a>')
     return (f'<div class="ui-toolbar" data-ui-toolbar>'
-            f'<div class="ui-filterbar">'
-            f'{chip("all", "全部")}{chip("source", "源站")}{chip("local", "本地导入")}'
+            f'<div class="ui-filterbar" role="group" aria-label="按来源筛选">'
+            f'{chip("all", "所有来源")}{chip("source", "源站")}{chip("local", "本地导入")}'
             f'</div>{search_html}{view_html}{tag_html}</div>')
 
 
@@ -217,16 +221,18 @@ def render_shelf(rows: list[dict], unimported: list[dict], *,
             '<div class="ui-work-grid">'
             + "".join(_placeholder(r) for r in unimported)
             + '</div></section>')
-    body = (_toolbar(source_counts=source_counts, search=False, view=False,
-                     tag_drawer=bool(tag_payload))
-            + "".join(groups))
-    if tag_payload:
-        body += _tag_drawer(tag_payload)
-    if not groups:
-        body += empty("书架还是空的",
-                      "从发现页挑一本，或导入你自己手里的 EPUB/TXT。",
-                      '<a class="ui-btn ui-btn-primary" href="/">去发现</a>'
-                      '<a class="ui-btn ui-btn-ghost" href="/import">导入本地书</a>')
+    visible_groups = [group for group in groups if group]
+    if visible_groups:
+        body = (_toolbar(source_counts=source_counts, search=False, view=False,
+                         tag_drawer=bool(tag_payload))
+                + "".join(visible_groups))
+        if tag_payload:
+            body += _tag_drawer(tag_payload)
+    else:
+        body = empty("书架还是空的",
+                     "从发现页挑一本，或导入你自己手里的 EPUB/TXT。",
+                     '<a class="ui-btn ui-btn-primary" href="/discover">去发现</a>'
+                     '<a class="ui-btn ui-btn-ghost" href="/import">导入本地书</a>')
     return _doc(active="书架", page="shelf", title="书架",
                 subtitle="在读、想读、读完和弃文；收藏不单独分组。",
                 body=body, pwa_head=pwa_head)

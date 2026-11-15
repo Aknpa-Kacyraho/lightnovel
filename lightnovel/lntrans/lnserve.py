@@ -4379,7 +4379,7 @@ def page_tags(tag: str) -> str:
         all_rows = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
         rows = all_rows[:200]
         if not rows:
-            return ('<a class="back" href="/">← 返回书架</a>'
+            return ('<a class="back" href="/shelf">← 返回书架</a>'
                     '<h1>标签浏览</h1><p class="s">还没有带标签的作品。'
                     '从推荐页加入书架，或点开一本书查看它的标签。</p>')
         cloud = "".join(
@@ -4387,7 +4387,7 @@ def page_tags(tag: str) -> str:
             f'<b>{lr.esc(t)}</b><span>{n} 本</span></a>'
             for t, n in rows)
         more = (f" · 显示前 {len(rows)} 个" if len(all_rows) > len(rows) else "")
-        return (f'<a class="back" href="/">← 返回书架</a>'
+        return (f'<a class="back" href="/shelf">← 返回书架</a>'
                 f'<header class="book"><div class="kicker">标签浏览</div>'
                 f'<h1>全部标签</h1><div class="meta">共 {len(all_rows)} 个标签'
                 f'{more} · 按作品数排序 · 点标签看同类作品</div></header>'
@@ -4401,7 +4401,7 @@ def page_tags(tag: str) -> str:
         cards = (f'<p class="s">当前缓存中的 {len(pool)} 部作品没有该标签。'
                  '可在推荐页换一批，扩大候选池。</p>')
     more = f" · 显示前 {len(shown)} 本" if total > len(shown) else ""
-    return (f'<a class="back" href="/">← 返回书架</a>'
+    return (f'<a class="back" href="/shelf">← 返回书架</a>'
             f'<header class="book"><div class="kicker">标签浏览</div>'
             f'<h1>「{lr.esc(tag)}」</h1>'
             f'<div class="meta">找到 {total} 本 · 按评分排序{more}</div></header>'
@@ -4693,7 +4693,7 @@ def queue_body(embedded: bool = False) -> str:
     status = ("已全局暂停" if v["paused"] else
               ("今日超出预算（仍在继续）" if v["over_budget"] else "运行中"))
     crumbs = ('' if embedded else
-              '<nav class="crumbs"><a href="/">← 返回书架</a>'
+              '<nav class="crumbs"><a href="/shelf">← 返回书架</a>'
               '<span>·</span><span>翻译列表</span></nav>')
     return f'''{crumbs}
 <header class="book"><div class="bookline"><div><h1>翻译列表</h1>
@@ -4878,6 +4878,23 @@ def page_detail(work_id: str) -> str | None:
         def on(cond):
             return " on" if cond else ""
 
+        on_shelf = bool(fav or tk in TRACKING)
+        _detail_meta = novel_meta(slug) or {}
+        have = have_count(slug, _detail_meta)
+        total_now = len(_detail_meta.get("episodes") or [])
+        shelf_action = (
+            f'<button type="button" class="lnkbtn danger" '
+            f'data-d-slug="{attrescape(slug)}" data-d-act="off">移出书架</button>'
+            if on_shelf else
+            f'<button type="button" class="lnkbtn" '
+            f'data-d-slug="{attrescape(slug)}" data-d-act="want" '
+            f'title="加入后可从书架继续阅读；这不是收藏。">加入书架</button>'
+        )
+        queue_action = (
+            f'<button type="button" class="lnkbtn" data-qadd="{attrescape(slug)}"'
+            f' title="加入后即使不打开这本书也会按顺序提前翻译">加入翻译列表</button>'
+            if have < total_now else ""
+        )
         # ⚠ ★收藏 的 on 状态必须**来自真实数据**。
         # 踩过（用户就在这一步卡住）：这里原来写死 class="lnkbtn on"，
         # 于是①星永远显示"已收藏"，用户以为「加入书架」被当成了收藏；
@@ -4891,16 +4908,14 @@ def page_detail(work_id: str) -> str | None:
                f'{"★ 已收藏" if fav else "☆ 收藏"}</button>'
                f'<button type="button" class="lnkbtn{on(tk == "finished")}" data-d-slug="{attrescape(slug)}" data-d-act="finished">读完</button>'
                f'<button type="button" class="lnkbtn{on(tk == "dropped")}" data-d-slug="{attrescape(slug)}" data-d-act="dropped">弃文</button>'
-               f'<button type="button" class="lnkbtn danger" data-d-slug="{attrescape(slug)}" data-d-act="off">移出书架</button>'
-               f'<button type="button" class="lnkbtn" data-qadd="{attrescape(slug)}"'
-               f' title="加入后即使不打开这本书也会按顺序提前翻译">加入翻译列表</button>'
+               f'{shelf_action}'
+               f'{queue_action}'
                '</div>'
                # 用户明确提过：「加入书架不等于收藏」。这段解释默认收起，
                # 需要时能查，但不再每次占三行。
                '<details class="minihelp"><summary>加入书架与收藏的区别</summary>'
                '<div>加入书架决定<b>能否阅读</b>；收藏记录<b>偏好</b>'
                '（参与口味学习）。两者相互独立，只读不收藏完全可行。</div></details>')
-        have = have_count(slug, novel_meta(slug) or {})
         prog = (f'<div class="fb" style="margin-top:26px"><h3>阅读进度</h3>'
                 f'<div class="s">已读至第 {at} 章' +
                 (f' · 本书已译 {have} 章' if have else '') + '</div></div>')
@@ -4908,7 +4923,7 @@ def page_detail(work_id: str) -> str | None:
         ops = ('<div class="ctrls" style="margin-top:16px">'
                f'<button type="button" class="primary" data-d-add="{attrescape(url)}" data-d-id="{attrescape(str(work_id))}"'
                f' title="加入书架后可阅读与翻译；这不是收藏，也不影响偏好画像。">加入书架</button>'
-               '<a class="lnkbtn" href="/">返回书架</a></div>'
+               '<a class="lnkbtn" href="/shelf">返回书架</a></div>'
                '<details class="minihelp"><summary>加入书架的含义</summary>'
                '<div>加入书架只是让你<b>能够阅读</b>这部作品，不是收藏，也不影响偏好画像。</div>'
                '</details>')
@@ -4992,7 +5007,7 @@ def page_detail(work_id: str) -> str | None:
     sim_html = similar_block(str(work_id), tags, author=author)
 
     return (
-        '<a class="back" href="/">← 返回书架</a>'
+        '<a class="back" href="/shelf">← 返回书架</a>'
         '<header class="book">'
         f'<div class="kicker">{lr.esc(author) or "未知作者"}</div>'
         f'<h1>{lr.esc(zh_title or title)}</h1>{sub}'
@@ -5184,6 +5199,7 @@ def _run_import_job(job_id: str) -> None:
             slug=str(job.get("slug") or ""),
             novels_dir=NOVELS, progress=progress)
         slug = str(info.get("slug") or job.get("slug") or "")
+        ensure_on_shelf(slug)
         job.update({"status": "done", "progress": 1.0, "slug": slug,
                     "title": info.get("title") or "",
                     "chapters": info.get("chapters") or 0,
@@ -5738,6 +5754,14 @@ def page_reader(slug: str, from_ch: int | None = None, limit: int = 1) -> str | 
                        else "未配置密钥"))
     model_note = (f'<div class="s model-note">{lr.esc(_model_line)}<br>'
                   f'{lr.esc(_budget_line)} · {lr.esc(_key_line)}</div>')
+    more_button = (
+        '<button id="btn-more" class="morebtn" '
+        'title="按当前阅读位置继续翻译，一次最多处理 5 个未完成章节">'
+        '继续翻译</button>'
+        if done < total else
+        '<button id="btn-more" class="morebtn" disabled '
+        'title="全书已有译文">已全译</button>'
+    )
 
     toc = toc_list(slug, meta, have, shown)
     mem_html = memory_panel(slug, meta, start)
@@ -5777,9 +5801,12 @@ def page_reader(slug: str, from_ch: int | None = None, limit: int = 1) -> str | 
     # 阅读时手在屏幕下半部，翻章/开目录不用滚回顶部；顶部不再放第二套导航。
     _bar_prev = (f'<a href="/read/{attrescape(slug)}?from={_prev}#{_prev_anchor}">← 上章</a>'
                  if _prev >= 1 else '<span class="off">← 上章</span>')
-    _bar_next = (f'<a href="/read/{attrescape(slug)}?from={_next}#c{_next}">下章 →</a>'
-                 if _next_have else
-                 '<button data-wait="1" title="催翻译下一章">下章 →</button>')
+    _bar_next_inner = (
+        f'<a href="/read/{attrescape(slug)}?from={_next}#c{_next}">下章 →</a>'
+        if _next_have else
+        '<button data-wait="1" title="催翻译下一章">下章 →</button>'
+    )
+    _bar_next = f'<span id="bar-next" style="display:contents">{_bar_next_inner}</span>'
     # 「详情」用源站 id（与推荐/书架卡一致）：详情缓存按 id 存，
     # 用 slug 会另建一份 `<slug>.json`，同一本书两份详情互相看不见。
     _detail_id = str(meta.get("source_id") or slug)
@@ -5823,7 +5850,7 @@ if(h==='tight'||h==='loose')r.setAttribute('data-lh',h);}})();</script>
 <main>
 {recovery_notice_html()}
 {stale_html}
-<nav class="crumbs"><a href="/">← 返回书架</a>
+<nav class="crumbs"><a href="/shelf">← 返回书架</a>
   <span>·</span><span>{lr.esc(meta.get('author') or '')}</span>
   <span style="margin-left:auto;display:flex;gap:6px">
     <button data-act="finished" data-slug="{attrescape(slug)}" class="lnkbtn{' on' if finished else ''}"
@@ -5839,7 +5866,7 @@ if(h==='tight'||h==='loose')r.setAttribute('data-lh',h);}})();</script>
       <h1>{lr.esc(title)}</h1>
       <div class="meta">{lr.esc(meta.get('title') or '')}</div>
     </div>
-    <button id="btn-more" class="morebtn">多译 5 章</button>
+    {more_button}
   </div>
   <details class="adv" id="trans-settings">
     <summary>阅读与翻译设置</summary>

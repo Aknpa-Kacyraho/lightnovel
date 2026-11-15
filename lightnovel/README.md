@@ -1,6 +1,6 @@
 # Lightnovel Shelf
 
-**v5.0.0-alpha.14 — whole-chapter translation and remembered LAN devices**
+**v5.0.0-alpha.15 — safer imports, navigation and mobile controls**
 
 A local-first Japanese light-novel translator and personal bookshelf. It keeps
 translations, terminology, character memory, reading progress and taste data on

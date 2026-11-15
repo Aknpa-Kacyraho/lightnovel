@@ -33,7 +33,7 @@ def render_import(*, pwa_head: str = "") -> str:
       <button id="imp-retry" type="button" class="ui-btn ui-btn-ghost" hidden>继续导入</button>
       <a class="ui-btn ui-btn-ghost" href="/shelf">返回书架</a>
     </div>
-    <p id="imp-status" class="ui-help">选择文件后开始；离开页面也会继续。</p>
+    <p id="imp-status" class="ui-help" role="status" aria-live="polite">选择文件后开始；离开页面也会继续。</p>
     <div class="ui-import-progress" id="imp-progress" hidden>
       <div class="ui-qbar"><i id="imp-fill" style="width:0%"></i></div>
       <div class="ui-qmeta"><span id="imp-pct">0%</span><span id="imp-step"></span></div>
