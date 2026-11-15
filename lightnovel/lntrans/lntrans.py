@@ -206,6 +206,36 @@ def load_json(path: str, default):
         return json.load(f)
 
 
+_REPLACE_LOCKS: dict[str, threading.Lock] = {}
+_REPLACE_LOCKS_GUARD = threading.Lock()
+
+
+def _replace_file(tmp: str, path: str) -> None:
+    """Replace a file atomically, tolerating brief Windows sharing conflicts.
+
+    Two request threads may update the same cache file at once. POSIX lets the
+    last ``os.replace`` win, while Windows can briefly report access denied
+    while the previous destination handle is being closed. Serialize writers in
+    this process and retry only those transient sharing errors.
+    """
+    key = os.path.normcase(os.path.abspath(path))
+    with _REPLACE_LOCKS_GUARD:
+        lock = _REPLACE_LOCKS.setdefault(key, threading.Lock())
+    with lock:
+        for attempt in range(101):
+            try:
+                os.replace(tmp, path)
+                return
+            except OSError as ex:
+                transient = (
+                    getattr(ex, "winerror", None) in (5, 32, 33)
+                    if os.name == "nt" else ex.errno in (11, 13, 16)
+                )
+                if not transient or attempt == 100:
+                    raise
+                time.sleep(0.02)
+
+
 def save_json(path: str, data) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fd, tmp = tempfile.mkstemp(
@@ -218,7 +248,7 @@ def save_json(path: str, data) -> None:
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, path)
+        _replace_file(tmp, path)
         # 写端显式失效：exFAT / sdcardfs 的 mtime 只有 2 秒精度，刚写的文件
         # 可能带着与旧版本完全相同的签名 —— 只靠 stat 比对会把新内容当成旧的。
         lncontracts.invalidate_file_hash(path)
@@ -248,7 +278,7 @@ def save_text(path: str, text: str) -> None:
             f.write(text)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp, path)
+        _replace_file(tmp, path)
         lncontracts.invalidate_file_hash(path)
     finally:
         with contextlib.suppress(OSError):

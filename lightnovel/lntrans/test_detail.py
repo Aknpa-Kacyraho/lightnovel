@@ -245,8 +245,9 @@ else:
           (syn.group(1)[:60] if syn else "-"))
     check("★ 有标签（可点进同类书）", 'class="chip tag"' in _html,
           f"{_html.count('chip tag')} 个")
-    check("★ 有分类/话数/字数等元信息", _html.count('class="chip') >= 4,
-          f"{_html.count('class=\"chip')} 个 chip")
+    chip_count = _html.count('class="chip')
+    check("★ 有分类/话数/字数等元信息", chip_count >= 4,
+          f"{chip_count} 个 chip")
     check("★ 有目录", 'class="toc"' in _html,
           f"{_html.count('<li><span class=\"epn\">')} 话")
     check("★ 有『在源站查看』链接", "在源站查看" in _html)

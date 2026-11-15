@@ -360,9 +360,9 @@ check("移出后 on_shelf=False", item()["on_shelf"] is False)
 # 关键：不能再出现在书架上（这正是用户遇到的 bug）
 items = [i for i in m.library() if i["slug"] == SLUG]
 html = m.page_library(items, {})
-check("★ 移出后书架里没有这张卡",
-      html.count('<div class="card" data-slug=') == 0,
-      f"卡片数={html.count('<div class=\"card\" data-slug=')}")
+card_count = html.count('<div class="card" data-slug=')
+check("★ 移出后书架里没有这张卡", card_count == 0,
+      f"卡片数={card_count}")
 check("★ 移出后显示『书架还是空的』", "书架中还没有作品" in html)
 
 # ★ 旧数据/竞态可能留下"不在书架、但 has_update=True"的状态：

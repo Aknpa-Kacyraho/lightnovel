@@ -44,9 +44,19 @@ def check(name, cond, extra=""):
 def make_epub(single_doc: bool = False, hrefs: dict | None = None,
               doc1: str | None = None) -> bytes:
     buf = io.BytesIO()
+
+    def write(name: str, body: str) -> None:
+        # ZIP defaults to the current wall clock, so two otherwise identical
+        # imports can produce different bytes across a two-second boundary.
+        # Pin metadata to make duplicate-import tests deterministic on Windows.
+        info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.external_attr = 0o644 << 16
+        z.writestr(info, body)
+
     with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("mimetype", "application/epub+zip")
-        z.writestr("META-INF/container.xml", """<?xml version="1.0"?>
+        write("mimetype", "application/epub+zip")
+        write("META-INF/container.xml", """<?xml version="1.0"?>
 <container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0">
   <rootfiles><rootfile full-path="OEBPS/content.opf"
     media-type="application/oebps-package+xml"/></rootfiles>
@@ -64,12 +74,12 @@ def make_epub(single_doc: bool = False, hrefs: dict | None = None,
 <html xmlns="http://www.w3.org/1999/xhtml"><head><title>合集</title></head><body>
 <h2>第一話　始まり</h2><p>""" + ("あ" * 700) + """</p>
 <h2>第二話　続き</h2><p>""" + ("い" * 700) + """</p></body></html>"""
-        z.writestr("OEBPS/ch1.xhtml", ch1)
-        z.writestr("OEBPS/ch2.xhtml", ch2)
+        write("OEBPS/ch1.xhtml", ch1)
+        write("OEBPS/ch2.xhtml", ch2)
         spine = '<itemref idref="c1"/>' if single_doc else (
             '<itemref idref="c1"/><itemref idref="c2"/>')
         _hrefs = hrefs or {}
-        z.writestr("OEBPS/content.opf", """<?xml version="1.0"?>
+        write("OEBPS/content.opf", """<?xml version="1.0"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:title>テスト小説</dc:title><dc:creator>作者A</dc:creator>

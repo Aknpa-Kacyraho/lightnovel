@@ -318,10 +318,11 @@ def main() -> int:
     # 默认一页只渲染**一章**（用户嫌 3 章一页太长）：from=2 → 下一章是 3。
     _, body = get("/read/__reader_seed__?from=2&nocheck=1")
     p2_1 = body.decode("utf-8", "replace")
+    chapter_sections = p2_1.count('<section class="ch')
     check("★ 默认一页只渲染一章（不再 3 章一页堆得很长）",
-          p2_1.count('<section class="ch') == 1
+          chapter_sections == 1
           and p2_1.count('id="c2"') == 1 and 'id="c3"' not in p2_1,
-          f"{p2_1.count('<section class=\"ch')} 章")
+          f"{chapter_sections} 章")
     # 翻章链接必须带 `#c<N>` 锚点：点下去浏览器**直接落在正文**，不是回到页面顶部
     # 再让读者自己往下翻过标题和目录（用户报过这条）。
     check("★ 单章页的「下一章」指向第 3 章，且带正文锚点",
