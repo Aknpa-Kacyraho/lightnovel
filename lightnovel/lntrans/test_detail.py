@@ -248,8 +248,8 @@ else:
     chip_count = _html.count('class="chip')
     check("★ 有分类/话数/字数等元信息", chip_count >= 4,
           f"{chip_count} 个 chip")
-    check("★ 有目录", 'class="toc"' in _html,
-          f"{_html.count('<li><span class=\"epn\">')} 话")
+    episode_count = _html.count('<li><span class="epn">')
+    check("★ 有目录", 'class="toc"' in _html, f"{episode_count} 话")
     check("★ 有『在源站查看』链接", "在源站查看" in _html)
     check("★ 有下一步动作（加入书架 或 阅读）",
           "data-d-add" in _html or "data-d-act" in _html or "开始阅读" in _html)

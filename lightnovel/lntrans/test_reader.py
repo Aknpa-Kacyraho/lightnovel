@@ -334,9 +334,10 @@ def main() -> int:
     # ?n=3 仍可一页渲染 3 章（保留给测试/特殊用途）
     _, body = get("/read/__reader_seed__?from=2&n=3&nocheck=1")
     p2 = body.decode("utf-8", "replace")
+    has_chapnav = 'class="chapnav"' in p2
     check("★ ?n=3 时末端导航指向本页最后一章的下一章（4 → 5），带正文锚点",
           'class="chapnav"' in p2 and '?from=5#c5">下一章' in p2 and '?from=1#need-1">← 上一章' in p2,
-          f"chapnav={'class=\"chapnav\"' in p2}")
+          f"chapnav={has_chapnav}")
     _, body = get("/read/__reader_seed__?from=10&nocheck=1")
     p10 = body.decode("utf-8", "replace")
     check("★ 看到最后一章时，末尾导航如实显示「已是最后一章」",

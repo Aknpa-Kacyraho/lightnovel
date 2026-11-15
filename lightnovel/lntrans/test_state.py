@@ -407,9 +407,9 @@ m.apply_action(SLUG, "favorite", True)
 check("重新收藏后 on_shelf=True", item()["on_shelf"] is True)
 items = [i for i in m.library() if i["slug"] == SLUG]
 html = m.page_library(items, {})
-check("★ 卡片又出现在书架上",
-      html.count('<div class="card" data-slug=') == 1,
-      f"卡片数={html.count('<div class=\"card\" data-slug=')}")
+card_count = html.count('<div class="card" data-slug=')
+check("★ 卡片又出现在书架上", card_count == 1,
+      f"卡片数={card_count}")
 
 print()
 print("=" * 66)
