@@ -548,6 +548,8 @@ private fun ReaderContent(
                             },
                             update = { view ->
                                 view.onEntityClick = if (state.queryMode) onSelectEntity else null
+                                view.contentDescription =
+                                    "第 ${index + 1} 页，共 ${layout.pages.size} 页"
                                 view.bind(layout.layout, page.slice)
                             },
                             modifier = Modifier

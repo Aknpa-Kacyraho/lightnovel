@@ -20,6 +20,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -27,12 +30,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
@@ -58,6 +65,8 @@ fun TaskCenterRoute(
     }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showRetryAll by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     if (showRetryAll) {
         AlertDialog(
@@ -87,6 +96,7 @@ fun TaskCenterRoute(
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("翻译任务") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = Modifier.testTag("task-center-screen"),
     ) { padding ->
         Column(
@@ -213,7 +223,18 @@ fun TaskCenterRoute(
                                         viewModel.retry(task)
                                     },
                                     onCancel = { viewModel.cancel(task) },
-                                    onIgnore = { viewModel.ignore(task) },
+                                    onIgnore = {
+                                        viewModel.ignore(task)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "已忽略第 ${task.idx} 话，只从列表隐藏",
+                                                actionLabel = "撤销",
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                viewModel.unignore(task)
+                                            }
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -275,10 +296,20 @@ private fun TaskCard(
                     TextButton(onClick = onRetry) { Text("重试") }
                 }
                 if (task.status == "translating") {
-                    TextButton(onClick = onCancel) { Text("取消") }
+                    TextButton(
+                        onClick = onCancel,
+                        modifier = Modifier.semantics {
+                            contentDescription = "取消，停止正在进行的翻译"
+                        },
+                    ) { Text("取消") }
                 }
                 if (canRetry) {
-                    TextButton(onClick = onIgnore) { Text("忽略") }
+                    TextButton(
+                        onClick = onIgnore,
+                        modifier = Modifier.semantics {
+                            contentDescription = "忽略，只从列表隐藏，不删除译文"
+                        },
+                    ) { Text("忽略") }
                 }
             }
         }

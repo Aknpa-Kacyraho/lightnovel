@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,7 +44,7 @@ fun ReaderScreen(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    var fontSizeSp by rememberSaveable { mutableStateOf(18f) }
+    var fontSizeSp by rememberSaveable { mutableFloatStateOf(18f) }
     val density = LocalDensity.current
     val textColor = MaterialTheme.colorScheme.onBackground
 

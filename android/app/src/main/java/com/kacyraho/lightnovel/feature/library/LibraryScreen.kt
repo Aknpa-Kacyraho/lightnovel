@@ -196,7 +196,7 @@ fun LibraryScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "还没有备份，卸载 App 会丢失本地书库。",
+                        text = "还没有备份。设置 → 数据 → 导出备份；卸载 App 会丢失书库。",
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,

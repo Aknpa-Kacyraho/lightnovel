@@ -50,6 +50,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -449,7 +450,7 @@ private fun TranslationBatchDialog(
     onStart: (TranslationBatchScope, Int) -> Unit,
 ) {
     var scope by rememberSaveable { mutableStateOf(TranslationBatchScope.CURRENT) }
-    var ahead by rememberSaveable { mutableStateOf(3) }
+    var ahead by rememberSaveable { mutableIntStateOf(3) }
     val current = state.readState?.progressIdx?.takeIf {
         it in 1..state.chapters.size
     } ?: state.chapters.firstOrNull()?.idx ?: 1

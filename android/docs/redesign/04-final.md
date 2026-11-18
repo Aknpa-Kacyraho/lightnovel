@@ -272,3 +272,20 @@ Column
 - 元数据：先请求书名/简介/标签并立即刷新，章节标题后续并行补全，减少首屏等待。
 
 - 任务忽略：任务页可忽略失败/未译全任务，忽略键持久化在本机。
+
+### 8.1 1.0.2 – 1.0.4 记录
+
+- 1.0.2：首个签名 Release（versionCode 36）。`assembleRelease` 强制读取
+  `LIGHTNOVEL_RELEASE_STORE_FILE` / `STORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD`，
+  缺一项即失败；CI 增加签名产物校验。
+- 1.0.3：主分支收敛为 Android-only，旧 Web/Python 移入远端 `archive/web`；
+  同步版本号，Android 侧无用户可见功能变化。
+- 1.0.4（versionCode 38）：
+  - 任务页「忽略」可撤销：忽略后出现 4 秒 Snackbar，点「撤销」恢复任务；
+    「取消」与「忽略」补 TalkBack 语义，说明「取消=停止翻译」「忽略=只隐藏不删译文」。
+  - 阅读器每页补 `contentDescription`（「第 x 页，共 y 页」），未滑动点击调用
+    `performClick()`，消除 `ClickableViewAccessibility`。
+  - 备份提醒改为「设置 → 数据 → 导出备份」，降低首次备份迷路成本。
+  - 清理 `ObsoleteSdkInt`（合并 `mipmap-anydpi-v26`）与 3 处
+    `AutoboxingStateCreation`；新增 `TaskIgnoreStoreTest` 覆盖忽略键持久化。
+  - 新增 `android/CHANGELOG.md` 与 `android/docs/upgrade/` 三轮升级档案。

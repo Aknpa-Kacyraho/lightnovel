@@ -29,6 +29,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -116,7 +117,7 @@ fun StoryMemoryScreen(
     onRegenerateSummary: (Int) -> Unit,
     onRefresh: () -> Unit,
 ) {
-    var tab by rememberSaveable { mutableStateOf(TAB_TERMS) }
+    var tab by rememberSaveable { mutableIntStateOf(TAB_TERMS) }
     Scaffold(
         topBar = {
             TopAppBar(

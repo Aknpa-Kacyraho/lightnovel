@@ -67,7 +67,10 @@ class ReaderPageView(context: Context) : View(context) {
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (!moved) handleTap(event)
+                if (!moved) {
+                    performClick()
+                    handleTap(event)
+                }
                 return true
             }
             MotionEvent.ACTION_CANCEL -> return true
@@ -89,7 +92,6 @@ class ReaderPageView(context: Context) : View(context) {
 
     private fun handleTap(event: MotionEvent) {
         val id = entityAt(event.x, event.y) ?: return
-        performClick()
         onEntityClick?.invoke(id)
     }
 
