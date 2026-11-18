@@ -1,6 +1,7 @@
 package com.kacyraho.lightnovel.feature.reader
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,6 +89,30 @@ class ReaderMenuTest {
         assertEquals(
             "字号 21 · 增大",
             menu.first { it.action == ReaderMenuAction.FONT_INCREASE }.label,
+        )
+    }
+
+    @Test
+    fun charCountIsFormattedOnlyWhenKnown() {
+        assertNull(formatCharCount(0))
+        assertEquals("约 800 字", formatCharCount(800))
+        assertEquals("约 1.2 千字", formatCharCount(1200))
+    }
+
+    @Test
+    fun translateLabelCarriesCharCount() {
+        val menu = readerMenuItems(
+            fontSizeSp = 18f,
+            hasTranslation = false,
+            translationEnabled = true,
+            hasStoryMemory = false,
+            queryMode = false,
+            charCount = 1200,
+        )
+
+        assertEquals(
+            "翻译本章（约 1.2 千字）",
+            menu.first { it.action == ReaderMenuAction.TRANSLATE }.label,
         )
     }
 }

@@ -9,8 +9,8 @@
 | 轮次 | 版本 | 主题 | 指南 | 自检 | 发布 |
 | --- | --- | --- | --- | --- | --- |
 | Round 1 | 1.0.4（38） | 基线归零：误触可撤销、无障碍、lint 清理 | ✅ | ✅ | ✅ [v1.0.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.4) |
-| Round 2 | 1.1.0（39） | 体验一致性：空态主次、设置深链、菜单分组 | ✅ | ✅ | ⏳ |
-| Round 3 | 1.1.1（40） | 打磨：横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ⏳ | ⏳ |
+| Round 2 | 1.1.0（39） | 体验一致性：空态主次、设置深链、菜单分组 | ✅ | ✅ | ✅ [v1.1.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.1.0) |
+| Round 3 | 1.1.1（40） | 打磨：横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -38,7 +38,7 @@ cd android
 - 验证：178 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 - 发布：tag `v1.0.4`，Release 含签名 APK（11,340,376 bytes）。
 
-## Round 2 记录（待发布）
+## Round 2 记录（已发布）
 
 - 指南：`round-2/`；自检：`round-2/SELF-REVIEW.md`
 - 版本：1.1.0 / 39
@@ -48,10 +48,24 @@ cd android
   - 阅读器菜单四组（阅读 / 翻译 / 资料 / 世界线）；`readerMenuItems(...)` + 5 项测试。
   - 任务筛选标签显示数量，点数字即筛选；补 1 项分组筛选断言。
 - 验证：192 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 发布：tag `v1.1.0`，Release 含签名 APK（11,340,372 bytes）。
 
-## Round 3 记录（进行中）
+## Round 3 记录（待发布）
 
-- 指南：`round-3/`
+- 指南：`round-3/`；自检：`round-3/SELF-REVIEW.md`
 - 版本：1.1.1 / 40
-- 范围：横屏/平板 680dp 限宽、大字体 FlowRow、翻译字数提示、长章节排版提示、
-  `TabRow` → `PrimaryTabRow`。
+- 变更：
+  - 翻页阅读正文上限 680dp 并居中；`readerContentWidthDp(...)` + 5 项测试。
+  - 任务卡动作行、空态次级入口改 `FlowRow`，大字体自动换行。
+  - 翻译菜单显示「约 N 字」/「约 X.X 千字」；`formatCharCount(...)` + 2 项测试。
+  - 超大章排版超过 300ms 显示「正在排版长章节…」。
+  - `TabRow` → `PrimaryTabRow`（章节列表、本书设定）。
+- 验证：199 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 4 候选（未排期）
+
+- 滚动阅读模式同样限宽 680dp。
+- 章节列表批量翻译确认框显示「共 N 章」。
+- 导入完成摘要（书 N 本、进度 M 条、译文 K 章）。
+- `ClickableText` → `LinkAnnotation`（点词命中映射需重写）。
+- 升级依赖与清理 `UseKtx`（需独立回归）。

@@ -7,6 +7,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -120,7 +122,7 @@ fun LibraryRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
     state: LibraryUiState,
@@ -346,16 +348,12 @@ fun LibraryScreen(
 
                                 EmptyShelfAction.OPEN_DISCOVER -> {
                                     Button(onClick = onDiscover) { Text("去发现") }
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalArrangement = Arrangement.spacedBy(0.dp),
                                     ) {
                                         TextButton(onClick = onImport) { Text("导入备份") }
-                                        Text(
-                                            "·",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
                                         TextButton(onClick = onImportDocument) {
                                             Text("导入 TXT / EPUB")
                                         }

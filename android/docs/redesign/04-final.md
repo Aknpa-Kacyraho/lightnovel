@@ -295,3 +295,9 @@ Column
   - 阅读器「更多」菜单分四组（阅读 / 翻译 / 资料 / 世界线），功能集合不变。
   - 任务筛选标签显示数量，点击即筛选。
   - 新增 `LibraryEmptyStateTest`、`SettingsFocusTest`、`ReaderMenuTest`。
+- 1.1.1（versionCode 40）：
+  - 翻页阅读正文最大宽度 680dp 并居中，平板/横屏不再出现超长行；手机竖屏不变。
+  - 任务卡动作行与书架空态入口改 `FlowRow`，系统字体放大时自动换行。
+  - 阅读器「翻译本章」显示当前章规模（约 N 字 / 约 X.X 千字）。
+  - 超大章节排版超过 300ms 显示「正在排版长章节…」。
+  - `TabRow` 替换为 `PrimaryTabRow`；新增 `ReaderViewportTest`。

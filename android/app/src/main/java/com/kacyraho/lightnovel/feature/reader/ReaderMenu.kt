@@ -40,11 +40,13 @@ internal fun readerMenuItems(
     translationEnabled: Boolean,
     hasStoryMemory: Boolean,
     queryMode: Boolean,
+    charCount: Int = 0,
 ): List<ReaderMenuItem> = buildList {
     val reading = ReaderMenuGroup.READING
     val translation = ReaderMenuGroup.TRANSLATION
     val reference = ReaderMenuGroup.REFERENCE
     val worldline = ReaderMenuGroup.WORLDLINE
+    val charSuffix = formatCharCount(charCount)?.let { "（$it）" }.orEmpty()
 
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_DECREASE, "字号 ${fontSizeSp.toInt()} · 减小"))
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
@@ -55,7 +57,7 @@ internal fun readerMenuItems(
         ReaderMenuItem(
             translation,
             ReaderMenuAction.TRANSLATE,
-            if (hasTranslation) "重译本章" else "翻译本章",
+            (if (hasTranslation) "重译本章" else "翻译本章") + charSuffix,
             enabled = translationEnabled,
         ),
     )
@@ -84,4 +86,13 @@ internal fun readerMenuItems(
     add(ReaderMenuItem(reference, ReaderMenuAction.PARAGRAPH, "当前段落"))
 
     add(ReaderMenuItem(worldline, ReaderMenuAction.WORLDLINE, "编辑并生成世界线"))
+}
+
+/**
+ * 翻译前的规模提示：0 不显示，千字以内按整字，超过按千字保留一位小数。
+ */
+internal fun formatCharCount(count: Int): String? = when {
+    count <= 0 -> null
+    count < 1000 -> "约 $count 字"
+    else -> "约 %.1f 千字".format(java.util.Locale.US, count / 1000f)
 }

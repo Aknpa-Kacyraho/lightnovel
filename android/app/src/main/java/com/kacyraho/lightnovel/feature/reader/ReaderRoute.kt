@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -229,6 +231,16 @@ private fun ReaderContent(
     var showWorldline by remember { mutableStateOf(false) }
     var showParagraph by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
+    var showSlowPagination by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.loading, state.layout) {
+        if (state.loading || state.layout == null) {
+            delay(300)
+            showSlowPagination = true
+        } else {
+            showSlowPagination = false
+        }
+    }
     val currentParagraphId = if (state.readerMode == "scroll") {
         paragraphIdForLine(state, state.scrollParagraph)
     } else {
@@ -318,6 +330,7 @@ private fun ReaderContent(
             onShowGlossary = { showGlossary = true },
             onShowParagraph = { showParagraph = currentParagraph != null },
             onToggleImmersive = { immersive = true },
+            charCount = state.chapterText.length,
         )
 
         if (!translationState.running && activeTask == null) {
@@ -477,7 +490,8 @@ private fun ReaderContent(
                     .weight(1f),
             ) {
                 val widthPx = with(density) {
-                    (maxWidth - (state.marginDp * 2f).dp).roundToPx().coerceAtLeast(1)
+                    readerContentWidthDp(maxWidth.value, state.marginDp).dp.roundToPx()
+                        .coerceAtLeast(1)
                 }
                 val heightPx = with(density) {
                     (maxHeight - 20.dp).roundToPx().coerceAtLeast(1)
@@ -516,8 +530,20 @@ private fun ReaderContent(
 
                 val layout = state.layout
                 if (layout == null) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
                         CircularProgressIndicator(color = textColor)
+                        if (showSlowPagination) {
+                            Text(
+                                text = "正在排版长章节…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = secondaryColor,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+                        }
                     }
                 } else {
                     val pagerState = rememberPagerState(
@@ -536,7 +562,9 @@ private fun ReaderContent(
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .widthIn(max = READER_MAX_CONTENT_DP.dp)
+                            .fillMaxHeight()
+                            .align(Alignment.Center)
                             .testTag("reader-pager"),
                     ) { index ->
                         val page = layout.pages.getOrNull(index) ?: layout.pages.first()
