@@ -8,9 +8,9 @@
 
 | 轮次 | 版本 | 主题 | 指南 | 自检 | 发布 |
 | --- | --- | --- | --- | --- | --- |
-| Round 1 | 1.0.4（38） | 基线归零：误触可撤销、无障碍、lint 清理 | ✅ | ⏳ | ⏳ |
-| Round 2 | 1.1.0（39） | 体验一致性：空态主次、设置深链、任务语义 | ⏳ | ⏳ | ⏳ |
-| Round 3 | 1.1.1（40） | 打磨：性能、可访问性、工程可维护性 | ⏳ | ⏳ | ⏳ |
+| Round 1 | 1.0.4（38） | 基线归零：误触可撤销、无障碍、lint 清理 | ✅ | ✅ | ✅ [v1.0.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.4) |
+| Round 2 | 1.1.0（39） | 体验一致性：空态主次、设置深链、菜单分组 | ✅ | ✅ | ⏳ |
+| Round 3 | 1.1.1（40） | 打磨：横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ⏳ | ⏳ |
 
 ## 约束
 
@@ -25,14 +25,33 @@ cd android
 .\gradlew.bat --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-## Round 1 记录
+## Round 1 记录（已发布）
 
-- 指南：`docs/upgrade/round-1/{01-user,02-design,03-engineering,FINAL}.md`
+- 指南：`round-1/{01-user,02-design,03-engineering,FINAL}.md`；自检：`round-1/SELF-REVIEW.md`
 - 版本：1.0.4 / 38
-- 主要变更：
-  - 任务忽略改为可撤销（Snackbar + 撤销），并补「取消 / 忽略」语义说明。
+- 变更：
+  - 任务忽略改为可撤销（Snackbar + 撤销），补「取消 / 忽略」语义。
   - 阅读器每页页码 `contentDescription`，未滑动点击触发 `performClick()`。
-  - 备份提醒写清「设置 → 数据 → 导出备份」路径。
+  - 备份提醒写清「设置 → 数据 → 导出备份」。
   - 合并 `mipmap-anydpi-v26`；3 处装箱状态改 primitive state。
   - 新增 `TaskIgnoreStoreTest`、`CHANGELOG.md`、本档案。
-- 验证：见 `round-1/SELF-REVIEW.md`（实施完成后补）。
+- 验证：178 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 发布：tag `v1.0.4`，Release 含签名 APK（11,340,376 bytes）。
+
+## Round 2 记录（待发布）
+
+- 指南：`round-2/`；自检：`round-2/SELF-REVIEW.md`
+- 版本：1.1.0 / 39
+- 变更：
+  - 空态两条路径，「去发现」唯一主按钮；`emptyShelfCopy(...)` 纯函数 + 5 项测试。
+  - 备份提醒直达设置「数据」分组并高亮 2 秒；`SettingsFocus` 白名单 + 3 项测试。
+  - 阅读器菜单四组（阅读 / 翻译 / 资料 / 世界线）；`readerMenuItems(...)` + 5 项测试。
+  - 任务筛选标签显示数量，点数字即筛选；补 1 项分组筛选断言。
+- 验证：192 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 3 记录（进行中）
+
+- 指南：`round-3/`
+- 版本：1.1.1 / 40
+- 范围：横屏/平板 680dp 限宽、大字体 FlowRow、翻译字数提示、长章节排版提示、
+  `TabRow` → `PrimaryTabRow`。

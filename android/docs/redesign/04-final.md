@@ -289,3 +289,9 @@ Column
   - 清理 `ObsoleteSdkInt`（合并 `mipmap-anydpi-v26`）与 3 处
     `AutoboxingStateCreation`；新增 `TaskIgnoreStoreTest` 覆盖忽略键持久化。
   - 新增 `android/CHANGELOG.md` 与 `android/docs/upgrade/` 三轮升级档案。
+- 1.1.0（versionCode 39）：
+  - 空书架改为两条路径：「第一次用」去发现、「有旧备份」导入备份；唯一主按钮是「去发现」。
+  - 书架备份提醒直达设置「数据」分组并高亮 2 秒。
+  - 阅读器「更多」菜单分四组（阅读 / 翻译 / 资料 / 世界线），功能集合不变。
+  - 任务筛选标签显示数量，点击即筛选。
+  - 新增 `LibraryEmptyStateTest`、`SettingsFocusTest`、`ReaderMenuTest`。

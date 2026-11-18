@@ -48,4 +48,20 @@ class TaskGroupingTest {
         assertEquals("b2", TaskGrouping.group(tasks, TaskFilter.TRANSLATING).single().bookId)
         assertEquals(1, TaskGrouping.group(tasks, TaskFilter.PARTIAL).single().tasks.size)
     }
+
+    @Test
+    fun filterKeepsOnlyMatchingTasksAndCounts() {
+        val tasks = listOf(
+            row("b1", "Book One", 1, "failed"),
+            row("b1", "Book One", 2, "failed"),
+            row("b1", "Book One", 3, "partial"),
+            row("b2", "Book Two", 4, "translating"),
+        )
+
+        val failed = TaskGrouping.group(tasks, TaskFilter.FAILED)
+
+        assertEquals(1, failed.size)
+        assertEquals(listOf(1, 2), failed.single().tasks.map { it.idx })
+        assertEquals(2, failed.sumOf { it.tasks.size })
+    }
 }

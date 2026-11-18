@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,6 +67,7 @@ fun LibraryRoute(
     onOpenBook: (String) -> Unit,
     onContinue: (String, Int) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSettingsBackup: () -> Unit,
     onDiscover: () -> Unit,
 ) {
     val viewModel: LibraryViewModel = viewModel {
@@ -104,6 +106,7 @@ fun LibraryRoute(
         onContinue = onContinue,
         onDiscover = onDiscover,
         onOpenSettings = onOpenSettings,
+        onOpenSettingsBackup = onOpenSettingsBackup,
         onShelfChange = viewModel::setShelf,
         onFavoritesOnlyChange = viewModel::setFavoritesOnly,
         onRemovedOnlyChange = viewModel::setRemovedOnly,
@@ -128,6 +131,7 @@ fun LibraryScreen(
     onContinue: (String, Int) -> Unit,
     onDiscover: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSettingsBackup: () -> Unit,
     onShelfChange: (String?) -> Unit,
     onFavoritesOnlyChange: (Boolean) -> Unit,
     onRemovedOnlyChange: (Boolean) -> Unit,
@@ -201,7 +205,7 @@ fun LibraryScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
-                    TextButton(onClick = onOpenSettings) { Text("去设置") }
+                    TextButton(onClick = onOpenSettingsBackup) { Text("去设置") }
                     TextButton(onClick = { showBackupNotice = false }) { Text("关闭") }
                 }
             }
@@ -303,44 +307,69 @@ fun LibraryScreen(
                     CircularProgressIndicator()
                 }
 
-                state.books.isEmpty() -> Box(
-                    Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            if (state.removedOnly) "没有已移出的书" else "还没有书",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            when {
-                                state.removedOnly -> "移出书架的书会保留在这里，阅读进度和离线译文都不会丢。"
-                                state.query.isNotBlank() || state.favoritesOnly || state.shelf != null ->
-                                    "没有匹配的书；清除搜索或筛选后再试。"
-                                else -> "导入备份，或去发现找一本日文轻小说。"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        if (state.query.isNotBlank() || state.favoritesOnly || state.removedOnly || state.shelf != null) {
-                            Button(onClick = {
-                                onQueryChange("")
-                                onFavoritesOnlyChange(false)
-                                onRemovedOnlyChange(false)
-                                onShelfChange(null)
-                            }) {
-                                Text("清除筛选")
-                            }
-                        } else {
-                            Button(onClick = onImport) { Text("导入备份") }
+                state.books.isEmpty() -> {
+                    val copy = emptyShelfCopy(
+                        query = state.query,
+                        favoritesOnly = state.favoritesOnly,
+                        removedOnly = state.removedOnly,
+                        shelf = state.shelf,
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .weight(1f)
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                copy.title,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
                             Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = onImportDocument) { Text("导入 TXT / EPUB") }
-                            TextButton(onClick = onDiscover) { Text("去发现") }
+                            Text(
+                                copy.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            when (copy.primary) {
+                                EmptyShelfAction.CLEAR_FILTERS -> Button(onClick = {
+                                    onQueryChange("")
+                                    onFavoritesOnlyChange(false)
+                                    onRemovedOnlyChange(false)
+                                    onShelfChange(null)
+                                }) {
+                                    Text("清除筛选")
+                                }
+
+                                EmptyShelfAction.OPEN_DISCOVER -> {
+                                    Button(onClick = onDiscover) { Text("去发现") }
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        TextButton(onClick = onImport) { Text("导入备份") }
+                                        Text(
+                                            "·",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        TextButton(onClick = onImportDocument) {
+                                            Text("导入 TXT / EPUB")
+                                        }
+                                    }
+                                }
+
+                                // 空书架不会把导入备份/本地文件当成唯一主按钮，
+                                // 这两个分支只为编译完备性保留。
+                                EmptyShelfAction.IMPORT_BACKUP ->
+                                    Button(onClick = onImport) { Text("导入备份") }
+
+                                EmptyShelfAction.IMPORT_DOCUMENT ->
+                                    Button(onClick = onImportDocument) { Text("导入 TXT / EPUB") }
+                            }
                         }
                     }
                 }

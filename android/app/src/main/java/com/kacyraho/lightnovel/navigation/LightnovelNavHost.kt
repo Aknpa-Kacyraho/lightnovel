@@ -41,6 +41,7 @@ import com.kacyraho.lightnovel.feature.library.LibraryRoute
 import com.kacyraho.lightnovel.feature.memory.StoryMemoryRoute
 import com.kacyraho.lightnovel.feature.worldline.WorldlineRoute
 import com.kacyraho.lightnovel.feature.reader.ReaderRoute
+import com.kacyraho.lightnovel.feature.settings.SettingsFocus
 import com.kacyraho.lightnovel.feature.settings.SettingsRoute
 import com.kacyraho.lightnovel.feature.tasks.TaskCenterRoute
 
@@ -65,6 +66,7 @@ fun LightnovelNavHost(container: AppContainer) {
     val settingsNav = rememberNavController()
     var selectedTab by rememberSaveable { mutableStateOf("library") }
     var pendingDiscoverRoute by rememberSaveable { mutableStateOf<String?>(null) }
+    var settingsFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val stateHolder = rememberSaveableStateHolder()
     val activeNav = when (selectedTab) {
         "discover" -> discoverNav
@@ -157,6 +159,10 @@ fun LightnovelNavHost(container: AppContainer) {
                             },
                             onDiscover = { switchTab("discover") },
                             onOpenSettings = { switchTab("settings") },
+                            onOpenSettingsBackup = {
+                                settingsFocus = SettingsFocus.BACKUP
+                                switchTab("settings")
+                            },
                         )
                     }
                     bookRoutes(
@@ -239,7 +245,11 @@ fun LightnovelNavHost(container: AppContainer) {
             TabHost(selectedTab == "settings", stateHolder, "tab-settings") {
                 NavHost(settingsNav, startDestination = "settings") {
                     composable("settings") {
-                        SettingsRoute(container = container)
+                        SettingsRoute(
+                            container = container,
+                            focus = settingsFocus,
+                            onFocusConsumed = { settingsFocus = null },
+                        )
                     }
                 }
             }

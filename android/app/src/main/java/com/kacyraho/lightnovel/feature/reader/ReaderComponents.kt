@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -403,101 +402,48 @@ private fun TranslationMenu(
             Text("更多")
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("字号 ${fontSizeSp.toInt()} · 减小") },
-                onClick = {
-                    expanded = false
-                    onFontSizeChange(fontSizeSp - 1f)
-                },
+            val items = readerMenuItems(
+                fontSizeSp = fontSizeSp,
+                hasTranslation = hasTranslation,
+                translationEnabled = enabled,
+                hasStoryMemory = onOpenMemory != null,
+                queryMode = queryMode,
             )
-            DropdownMenuItem(
-                text = { Text("字号 ${fontSizeSp.toInt()} · 增大") },
-                onClick = {
-                    expanded = false
-                    onFontSizeChange(fontSizeSp + 1f)
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("切换纸色") },
-                onClick = {
-                    expanded = false
-                    onThemeChange()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(if (hasTranslation) "重译本章" else "翻译本章") },
-                enabled = enabled,
-                onClick = {
-                    expanded = false
-                    onRetranslate()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("润色本章") },
-                enabled = enabled && hasTranslation,
-                onClick = {
-                    expanded = false
-                    onPolish()
-                },
-            )
-            if (onOpenMemory != null) {
+            var renderedGroup: ReaderMenuGroup? = null
+            items.forEach { item ->
+                if (item.group != renderedGroup) {
+                    if (renderedGroup != null) HorizontalDivider()
+                    Text(
+                        text = item.group.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 2.dp),
+                    )
+                    renderedGroup = item.group
+                }
                 DropdownMenuItem(
-                    text = { Text("本书设定") },
+                    text = { Text(item.label) },
+                    enabled = item.enabled,
                     onClick = {
                         expanded = false
-                        onOpenMemory()
+                        when (item.action) {
+                            ReaderMenuAction.FONT_DECREASE -> onFontSizeChange(fontSizeSp - 1f)
+                            ReaderMenuAction.FONT_INCREASE -> onFontSizeChange(fontSizeSp + 1f)
+                            ReaderMenuAction.TOGGLE_THEME -> onThemeChange()
+                            ReaderMenuAction.IMMERSIVE -> onToggleImmersive()
+                            ReaderMenuAction.TRANSLATE -> onRetranslate()
+                            ReaderMenuAction.POLISH -> onPolish()
+                            ReaderMenuAction.CHAPTER_INFO -> onShowInfo()
+                            ReaderMenuAction.STORY_MEMORY -> onOpenMemory?.invoke()
+                            ReaderMenuAction.NEARBY_ENTITIES -> onOpenQuery()
+                            ReaderMenuAction.QUERY_MODE -> onToggleQueryMode()
+                            ReaderMenuAction.GLOSSARY -> onShowGlossary()
+                            ReaderMenuAction.PARAGRAPH -> onShowParagraph()
+                            ReaderMenuAction.WORLDLINE -> onOpenWorldline()
+                        }
                     },
                 )
             }
-            DropdownMenuItem(
-                text = { Text("编辑并生成世界线") },
-                onClick = {
-                    expanded = false
-                    onOpenWorldline()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("附近词条") },
-                onClick = {
-                    expanded = false
-                    onOpenQuery()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(if (queryMode) "查询模式：开" else "查询模式：关") },
-                onClick = {
-                    expanded = false
-                    onToggleQueryMode()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("本章信息") },
-                onClick = {
-                    expanded = false
-                    onShowInfo()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("术语表") },
-                onClick = {
-                    expanded = false
-                    onShowGlossary()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("当前段落") },
-                onClick = {
-                    expanded = false
-                    onShowParagraph()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("沉浸阅读") },
-                onClick = {
-                    expanded = false
-                    onToggleImmersive()
-                },
-            )
         }
     }
 }

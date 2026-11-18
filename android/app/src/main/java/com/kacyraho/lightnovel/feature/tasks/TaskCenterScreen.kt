@@ -114,8 +114,7 @@ fun TaskCenterRoute(
                     text = if (state.total == 0) {
                         if (state.queues.isNotEmpty()) "后台预译正在运行" else "没有待处理的翻译任务"
                     } else {
-                        "共 ${state.total} 项 · 失败 ${state.failed} · " +
-                            "未译全 ${state.partial} · 进行中 ${state.translating}"
+                        "共 ${state.total} 项"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -135,10 +134,18 @@ fun TaskCenterRoute(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 TaskFilter.entries.forEach { filter ->
+                    val count = when (filter) {
+                        TaskFilter.ALL -> state.total
+                        TaskFilter.FAILED -> state.failed
+                        TaskFilter.PARTIAL -> state.partial
+                        TaskFilter.TRANSLATING -> state.translating
+                    }
                     BrandFilterChip(
                         selected = state.filter == filter,
                         onClick = { viewModel.setFilter(filter) },
-                        label = { Text(filter.label) },
+                        label = {
+                            Text(if (count > 0) "${filter.label} $count" else filter.label)
+                        },
                     )
                 }
             }

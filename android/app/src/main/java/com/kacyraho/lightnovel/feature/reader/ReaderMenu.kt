@@ -1,0 +1,87 @@
+package com.kacyraho.lightnovel.feature.reader
+
+internal enum class ReaderMenuGroup(val label: String) {
+    READING("阅读"),
+    TRANSLATION("翻译"),
+    REFERENCE("资料"),
+    WORLDLINE("世界线"),
+}
+
+internal enum class ReaderMenuAction {
+    FONT_DECREASE,
+    FONT_INCREASE,
+    TOGGLE_THEME,
+    IMMERSIVE,
+    TRANSLATE,
+    POLISH,
+    CHAPTER_INFO,
+    STORY_MEMORY,
+    NEARBY_ENTITIES,
+    QUERY_MODE,
+    GLOSSARY,
+    PARAGRAPH,
+    WORLDLINE,
+}
+
+internal data class ReaderMenuItem(
+    val group: ReaderMenuGroup,
+    val action: ReaderMenuAction,
+    val label: String,
+    val enabled: Boolean = true,
+)
+
+/**
+ * 阅读器「更多」菜单的唯一事实来源：分组、文案、可用条件都在这里。
+ * 渲染层只负责按组输出，新增功能时不会再把项散落在 Composable 里。
+ */
+internal fun readerMenuItems(
+    fontSizeSp: Float,
+    hasTranslation: Boolean,
+    translationEnabled: Boolean,
+    hasStoryMemory: Boolean,
+    queryMode: Boolean,
+): List<ReaderMenuItem> = buildList {
+    val reading = ReaderMenuGroup.READING
+    val translation = ReaderMenuGroup.TRANSLATION
+    val reference = ReaderMenuGroup.REFERENCE
+    val worldline = ReaderMenuGroup.WORLDLINE
+
+    add(ReaderMenuItem(reading, ReaderMenuAction.FONT_DECREASE, "字号 ${fontSizeSp.toInt()} · 减小"))
+    add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
+    add(ReaderMenuItem(reading, ReaderMenuAction.TOGGLE_THEME, "切换纸色"))
+    add(ReaderMenuItem(reading, ReaderMenuAction.IMMERSIVE, "沉浸阅读"))
+
+    add(
+        ReaderMenuItem(
+            translation,
+            ReaderMenuAction.TRANSLATE,
+            if (hasTranslation) "重译本章" else "翻译本章",
+            enabled = translationEnabled,
+        ),
+    )
+    add(
+        ReaderMenuItem(
+            translation,
+            ReaderMenuAction.POLISH,
+            "润色本章",
+            enabled = translationEnabled && hasTranslation,
+        ),
+    )
+    add(ReaderMenuItem(translation, ReaderMenuAction.CHAPTER_INFO, "本章信息"))
+
+    if (hasStoryMemory) {
+        add(ReaderMenuItem(reference, ReaderMenuAction.STORY_MEMORY, "本书设定"))
+    }
+    add(ReaderMenuItem(reference, ReaderMenuAction.NEARBY_ENTITIES, "附近词条"))
+    add(
+        ReaderMenuItem(
+            reference,
+            ReaderMenuAction.QUERY_MODE,
+            if (queryMode) "查询模式：开" else "查询模式：关",
+        ),
+    )
+    add(ReaderMenuItem(reference, ReaderMenuAction.GLOSSARY, "术语表"))
+    add(ReaderMenuItem(reference, ReaderMenuAction.PARAGRAPH, "当前段落"))
+
+    add(ReaderMenuItem(worldline, ReaderMenuAction.WORLDLINE, "编辑并生成世界线"))
+}

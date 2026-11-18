@@ -2,6 +2,7 @@ package com.kacyraho.lightnovel.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,15 +38,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,11 +67,16 @@ import com.kacyraho.lightnovel.ui.theme.AppTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun SettingsRoute(
     container: AppContainer,
     onBack: (() -> Unit)? = null,
+    focus: String? = null,
+    onFocusConsumed: () -> Unit = {},
 ) {
     val viewModel: SettingsViewModel = viewModel {
         SettingsViewModel(
@@ -110,6 +121,8 @@ fun SettingsRoute(
         onSave = { viewModel.save() },
         onExport = { launcher.launch("lightnovel-backup-${System.currentTimeMillis()}.zip") },
         onClearCache = viewModel::clearCache,
+        focus = focus,
+        onFocusConsumed = onFocusConsumed,
     )
 }
 
@@ -143,9 +156,27 @@ fun SettingsScreen(
     onSave: () -> Unit,
     onExport: () -> Unit,
     onClearCache: () -> Unit,
+    focus: String? = null,
+    onFocusConsumed: () -> Unit = {},
 ) {
     var advanced by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    var dataTop by remember { mutableIntStateOf(0) }
+    var highlightData by remember { mutableStateOf(false) }
+
+    LaunchedEffect(focus) {
+        if (SettingsFocus.parse(focus) != SettingsFocus.BACKUP) return@LaunchedEffect
+        // 等首帧布局拿到「数据」分组的位置，最多 1 秒；超时就不滚，绝不阻塞页面。
+        withTimeoutOrNull(1_000) {
+            snapshotFlow { dataTop }.first { it > 0 }
+        } ?: return@LaunchedEffect
+        highlightData = true
+        scrollState.animateScrollTo((dataTop - 16).coerceAtLeast(0))
+        delay(2_000)
+        highlightData = false
+        onFocusConsumed()
+    }
 
     Scaffold(
         topBar = {
@@ -164,7 +195,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -509,7 +540,13 @@ fun SettingsScreen(
                 )
             }
 
-            SettingsGroup("数据") {
+            SettingsGroup(
+                title = "数据",
+                modifier = Modifier.onGloballyPositioned {
+                    dataTop = it.positionInParent().y.toInt()
+                },
+                highlighted = highlightData,
+            ) {
                 Text(
                     text = state.lastBackupAt?.let { "上次备份：${formatBackupTime(it)}" }
                         ?: "还没有备份；卸载 App 会丢失本地书库。",
@@ -574,14 +611,24 @@ fun SettingsScreen(
 @Composable
 private fun SettingsGroup(
     title: String,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val containerColor by animateColorAsState(
+        targetValue = if (highlighted) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        label = "settings-group-highlight",
+    )
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = containerColor,
         ),
     ) {
         Column(
