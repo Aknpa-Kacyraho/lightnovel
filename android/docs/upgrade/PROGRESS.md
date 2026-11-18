@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Round 1 | 1.0.4（38） | 基线归零：误触可撤销、无障碍、lint 清理 | ✅ | ✅ | ✅ [v1.0.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.0.4) |
 | Round 2 | 1.1.0（39） | 体验一致性：空态主次、设置深链、菜单分组 | ✅ | ✅ | ✅ [v1.1.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.1.0) |
-| Round 3 | 1.1.1（40） | 打磨：横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ✅ | ⏳ |
+| Round 3 | 1.1.1（40） | 打磨：横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ✅ | ✅ [v1.1.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.1.1) |
 
 ## 约束
 
@@ -50,7 +50,7 @@ cd android
 - 验证：192 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 - 发布：tag `v1.1.0`，Release 含签名 APK（11,340,372 bytes）。
 
-## Round 3 记录（待发布）
+## Round 3 记录（已发布）
 
 - 指南：`round-3/`；自检：`round-3/SELF-REVIEW.md`
 - 版本：1.1.1 / 40
@@ -61,6 +61,7 @@ cd android
   - 超大章排版超过 300ms 显示「正在排版长章节…」。
   - `TabRow` → `PrimaryTabRow`（章节列表、本书设定）。
 - 验证：199 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 发布：tag `v1.1.1`，Release 含签名 APK（11,356,756 bytes）。
 
 ## Round 4 候选（未排期）
 
