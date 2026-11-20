@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.2.0 — 2026-11-20
+
+### 用户可见
+
+- 阅读纸色新增「跟随系统」，并作为新安装默认：系统深色时自动用夜间纸色，
+  浅色时用纸白；已手动选过纸色的用户保持原选择。
+- 未翻译章节不再常驻「本章还没翻译」横幅；只有翻译进行中、失败、预译队列
+  运行/暂停/出错时才显示。
+- 夜间纸色正文调暗为 `#BDBAB2`，长时间关灯阅读不再觉得字在发光。
+
+### 工程
+
+- `ReaderTheme` 增加 `AUTO` 与 `resolve(dark)`；渲染前统一解析，偏好与显示分离。
+- 新增 `shouldShowTranslationBanner(...)`、`contrastRatio(...)` 纯函数。
+- 新增 `ReaderThemeTest`、`ReaderBannerTest`，补 `SettingsStoreTest` 纸色默认值。
+- `versionCode 41` / `versionName 1.2.0`。
+
 ## 1.1.1 — 2026-11-18
 
 ### 用户可见

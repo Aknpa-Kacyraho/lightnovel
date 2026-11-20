@@ -301,3 +301,8 @@ Column
   - 阅读器「翻译本章」显示当前章规模（约 N 字 / 约 X.X 千字）。
   - 超大章节排版超过 300ms 显示「正在排版长章节…」。
   - `TabRow` 替换为 `PrimaryTabRow`；新增 `ReaderViewportTest`。
+- 1.2.0（versionCode 41）：
+  - 阅读纸色新增「跟随系统」（`ReaderTheme.AUTO`），新安装默认跟随；系统深色落到夜间纸色。
+  - 未翻译章节不再常驻「本章还没翻译」横幅；只在翻译中/失败/预译队列时显示。
+  - 夜间正文调暗为 `#BDBAB2`，并加 `contrastRatio` 回归断言（正文 ≥7:1）。
+  - 新增 `ReaderThemeTest`、`ReaderBannerTest`。

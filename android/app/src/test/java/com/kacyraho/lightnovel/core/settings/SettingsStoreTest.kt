@@ -57,4 +57,15 @@ class SettingsStoreTest {
         assertEquals(123_456L, updated.catalogCrawlAt)
         assertEquals("2026-10-28T00:00:00Z", updated.lastBackupAt)
     }
+
+    @Test
+    fun readerThemeDefaultsToAutoAndKeepsExplicitChoice() = runTest {
+        val store = SettingsStore(ApplicationProvider.getApplicationContext<Context>())
+
+        assertEquals("auto", store.settings.first().readerTheme)
+
+        store.update { it.copy(readerTheme = "paper") }
+
+        assertEquals("paper", store.settings.first().readerTheme)
+    }
 }

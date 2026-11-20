@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Typeface
 import android.text.TextPaint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -252,7 +253,7 @@ private fun ReaderContent(
             ?: state.scrollParagraph
     }
     val currentParagraph = state.paragraphs.getOrNull(currentParagraphId.coerceAtLeast(0))
-    val readerTheme = ReaderTheme.fromId(state.theme)
+    val readerTheme = ReaderTheme.fromId(state.theme).resolve(isSystemInDarkTheme())
     val textColor = readerTheme.text
     val secondaryColor = readerTheme.secondary
     val buttonColors = ButtonDefaults.textButtonColors(
@@ -750,6 +751,18 @@ private fun TranslationStatusBanner(
     onResumeQueue: () -> Unit,
     onStopQueue: () -> Unit,
 ) {
+    val visible = shouldShowTranslationBanner(
+        status = status,
+        hasTranslation = hasTranslation,
+        running = translationState.running,
+        hasTask = activeTask != null,
+        hasError = translationState.error != null,
+        hasMessage = translationState.message != null,
+        queueActive = queue?.active == true,
+        queuePaused = queue?.paused == true,
+        queueError = !queue?.lastError.isNullOrBlank(),
+    )
+    if (!visible) return
     val queueActive = queue?.active == true
     val task = activeTask
     val title: String?

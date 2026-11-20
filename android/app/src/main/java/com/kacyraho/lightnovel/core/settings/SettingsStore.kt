@@ -22,7 +22,7 @@ data class AppSettings(
     val readerParagraphSpacing: Float = 8f,
     val readerFontFamily: String = "serif",
     val readerKeepScreenOn: Boolean = false,
-    val readerTheme: String = "paper",
+    val readerTheme: String = "auto",
     val readerDisplayMode: String = "translated",
     val readerMode: String = "page",
     val deepSeekBaseUrl: String = "https://api.deepseek.com/chat/completions",
@@ -91,7 +91,7 @@ class SettingsStore(
         readerParagraphSpacing = this[Keys.PARAGRAPH_SPACING] ?: 8f,
         readerFontFamily = this[Keys.FONT_FAMILY] ?: "serif",
         readerKeepScreenOn = this[Keys.KEEP_SCREEN_ON] ?: false,
-        readerTheme = this[Keys.THEME] ?: "paper",
+        readerTheme = this[Keys.THEME] ?: "auto",
         readerDisplayMode = this[Keys.DISPLAY_MODE] ?: "translated",
         readerMode = this[Keys.READER_MODE] ?: "page",
         deepSeekBaseUrl = this[Keys.BASE_URL]

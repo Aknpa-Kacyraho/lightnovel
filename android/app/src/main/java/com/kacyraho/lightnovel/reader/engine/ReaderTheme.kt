@@ -10,10 +10,27 @@ enum class ReaderTheme(
     val secondary: Color,
     val danger: Color,
 ) {
+    // AUTO 只保存偏好，渲染前必须调用 resolve(dark)；这里的颜色只是占位。
+    AUTO(
+        "auto",
+        "跟随系统",
+        Color(0xFFFAFAF7),
+        Color(0xFF242424),
+        Color(0xFF6B6B66),
+        Color(0xFFB3261E),
+    ),
     PAPER("paper", "纸白", Color(0xFFFAFAF7), Color(0xFF242424), Color(0xFF6B6B66), Color(0xFFB3261E)),
     SEPIA("sepia", "米黄", Color(0xFFF5ECD9), Color(0xFF3A3226), Color(0xFF7A6A52), Color(0xFFB3261E)),
     GREEN("green", "护眼", Color(0xFFEFF6E9), Color(0xFF081B16), Color(0xFF4F6B5D), Color(0xFFB3261E)),
-    NIGHT("night", "夜间", Color(0xFF121212), Color(0xFFC8C5BE), Color(0xFF8E8B84), Color(0xFFFFB4AB));
+    NIGHT("night", "夜间", Color(0xFF121212), Color(0xFFBDBAB2), Color(0xFF8E8B84), Color(0xFFFFB4AB)),
+    ;
+
+    /** 把用户偏好解析成可渲染的纸色；AUTO 按系统深浅色落到纸白或夜间。 */
+    fun resolve(dark: Boolean): ReaderTheme = when {
+        this != AUTO -> this
+        dark -> NIGHT
+        else -> PAPER
+    }
 
     companion object {
         fun fromId(id: String): ReaderTheme =
