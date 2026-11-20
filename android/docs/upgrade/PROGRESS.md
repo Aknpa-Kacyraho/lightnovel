@@ -22,7 +22,7 @@
 | Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ✅ [v1.4.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.2) |
 | Round 13 | 1.5.0（50） | 真沉浸、模式行精简、菜单去重 | ✅ | ✅ | ✅ [v1.5.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.0) |
 | Round 14 | 1.5.1（51） | 术语表搜索、覆盖提示、删除确认 | ✅ | ✅ | ✅ [v1.5.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.1) |
-| Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ✅ | ⏳ |
+| Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ✅ | ✅ [v1.5.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.2) |
 
 ## 约束
 
