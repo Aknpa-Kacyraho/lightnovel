@@ -22,6 +22,7 @@ internal enum class ReaderMenuAction {
     PARAGRAPH,
     ADD_BOOKMARK,
     OPEN_BOOKMARKS,
+    SEARCH_BOOK,
     WORLDLINE,
 }
 
@@ -98,6 +99,7 @@ internal fun readerMenuItems(
     add(ReaderMenuItem(reference, ReaderMenuAction.GLOSSARY, "术语表"))
     add(ReaderMenuItem(reference, ReaderMenuAction.PARAGRAPH, "当前段落"))
     add(ReaderMenuItem(reference, ReaderMenuAction.OPEN_BOOKMARKS, "书签列表"))
+    add(ReaderMenuItem(reference, ReaderMenuAction.SEARCH_BOOK, "搜索本书"))
 
     add(ReaderMenuItem(worldline, ReaderMenuAction.WORLDLINE, "编辑并生成世界线"))
 }

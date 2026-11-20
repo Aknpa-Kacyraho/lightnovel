@@ -326,6 +326,39 @@ class ReaderViewModel(
     private val _bookmarkNotice = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val bookmarkNotice: SharedFlow<String> = _bookmarkNotice.asSharedFlow()
 
+    private var searchJob: Job? = null
+    private val _searchResults = MutableStateFlow<List<BookSearchHit>>(emptyList())
+    val searchResults: StateFlow<List<BookSearchHit>> = _searchResults.asStateFlow()
+    private val _searching = MutableStateFlow(false)
+    val searching: StateFlow<Boolean> = _searching.asStateFlow()
+
+    fun searchBook(query: String) {
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            _searching.value = false
+            return
+        }
+        val book = bookEntity ?: return
+        searchJob = viewModelScope.launch {
+            _searching.value = true
+            val hits = BookSearchService(contentStore).search(
+                book = book,
+                chapters = chapterList,
+                query = query,
+                preferTranslated = _state.value.displayMode != "raw",
+            )
+            _searchResults.value = hits
+            _searching.value = false
+        }
+    }
+
+    fun clearSearch() {
+        searchJob?.cancel()
+        _searchResults.value = emptyList()
+        _searching.value = false
+    }
+
     fun addBookmark() {
         val anchor = currentAnchor()
             ?: if (_state.value.readerMode == "scroll") {

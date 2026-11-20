@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.4.1 — 2026-11-20
+
+### 用户可见
+
+- 阅读器「更多 → 资料」新增「搜索本书」：在当前书正文中搜索关键词。
+- 结果包含章节、前后文与关键词高亮；同章点击定位到命中段落，跨章跳到目标章。
+- 搜索范围随显示模式：译文模式搜译文、原文模式搜原文，缺失自动回退。
+- 输入 300ms 防抖；每章最多 3 条、总数 30 条；关闭即取消。
+
+### 工程
+
+- 新增 `findHits(...)` 纯函数与 `BookSearchService`（逐章 IO，不整本入内存）。
+- `ReaderViewModel` 增加 `searchResults/searching/searchBook/clearSearch`。
+- 新增 `BookSearchSheet` 与 `BookSearchTest`。
+- `versionCode 48` / `versionName 1.4.1`。
+
 ## 1.4.0 — 2026-11-20
 
 ### 用户可见

@@ -336,3 +336,7 @@ Column
   - 数据库 v5 新增 `bookmarks`（book/chapter/paragraph 主键 + preview + createdAt）。
   - 阅读器菜单「添加书签 / 书签列表」；同章跳转写进度并定位，跨章到章首。
   - 新增 `BookmarkSheet` 与 `relativeTime(...)`。
+- 1.4.1（versionCode 48）：
+  - 阅读器「搜索本书」：`findHits` + `BookSearchService` 逐章扫描。
+  - 结果含章节、上下文、关键词高亮；同章 `jumpToAnchor`，跨章到章首。
+  - 每章 3 条、总数 30，输入 300ms 防抖，关闭即取消。

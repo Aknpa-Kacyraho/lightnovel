@@ -17,8 +17,8 @@
 | Round 7 | 1.3.0（44） | 本地导入去重、书架排序、数据库 v4 | ✅ | ✅ | ✅ [v1.3.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.0) |
 | Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ✅ [v1.3.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.1) |
 | Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ✅ [v1.3.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.2) |
-| Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ⏳ |
-| Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ⏳ | ⏳ |
+| Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ✅ [v1.4.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.0) |
+| Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ⏳ |
 | Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ⏳ | ⏳ |
 
 ## 约束
@@ -56,11 +56,15 @@ cd android
   - 新增 `BookmarkSheet`、`relativeTime(...)`；删除书时级联删除书签。
 - 验证：249 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 11（进行中）
+## Round 11（已发布）
 
-- 指南：`round-11/`
+- 指南：`round-11/`；自检：`round-11/SELF-REVIEW.md`
 - 版本：1.4.1 / 48
-- 范围：书内搜索（逐章扫描、每章 3 条/总 30、上下文、同章定位）。
+- 变更：
+  - 阅读器「搜索本书」：`findHits` + `BookSearchService` 逐章扫描。
+  - 结果含章节、上下文、关键词高亮；同章 `jumpToAnchor`，跨章到章首。
+  - 每章 3 条、总数 30，输入 300ms 防抖，关闭即取消。
+- 验证：255 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 12（计划）
 

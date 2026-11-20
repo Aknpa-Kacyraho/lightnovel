@@ -112,6 +112,8 @@ fun ReaderRoute(
     val translationState by viewModel.translationState.collectAsStateWithLifecycle()
     val worldlineState by viewModel.worldlineState.collectAsStateWithLifecycle()
     val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val searching by viewModel.searching.collectAsStateWithLifecycle()
     var bookmarkNotice by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -157,6 +159,18 @@ fun ReaderRoute(
         activeTask = activeTask,
         bookmarks = bookmarks,
         bookmarkNotice = bookmarkNotice,
+        searchResults = searchResults,
+        searching = searching,
+        searchScope = if (state.displayMode == "raw") "原文" else "译文",
+        onSearchQuery = viewModel::searchBook,
+        onClearSearch = viewModel::clearSearch,
+        onJumpSearchHit = { hit ->
+            if (hit.chapterIndex == state.chapterIndex) {
+                viewModel.jumpToAnchor(ReaderAnchor(hit.chapterIndex, hit.paragraphId, 0))
+            } else {
+                onOpenChapter(hit.chapterIndex)
+            }
+        },
         onAddBookmark = viewModel::addBookmark,
         onRemoveBookmark = viewModel::removeBookmark,
         onJumpBookmark = { bookmark ->
@@ -218,6 +232,12 @@ private fun ReaderContent(
     activeTask: TranslationTaskSnapshot?,
     bookmarks: List<com.kacyraho.lightnovel.data.local.BookmarkEntity>,
     bookmarkNotice: String?,
+    searchResults: List<BookSearchHit>,
+    searching: Boolean,
+    searchScope: String,
+    onSearchQuery: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    onJumpSearchHit: (BookSearchHit) -> Unit,
     onAddBookmark: () -> Unit,
     onRemoveBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
     onJumpBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
@@ -264,6 +284,7 @@ private fun ReaderContent(
     var showWorldline by remember { mutableStateOf(false) }
     var showParagraph by remember { mutableStateOf(false) }
     var showBookmarks by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     var showSlowPagination by remember { mutableStateOf(false) }
     var showImmersiveHint by remember { mutableStateOf(false) }
@@ -392,6 +413,7 @@ private fun ReaderContent(
             },
             onAddBookmark = onAddBookmark,
             onOpenBookmarks = { showBookmarks = true },
+            onOpenSearch = { showSearch = true },
         )
 
         if (bookmarkNotice != null) {
@@ -738,6 +760,25 @@ private fun ReaderContent(
                     onJumpBookmark(bookmark)
                 },
                 onDelete = onRemoveBookmark,
+            )
+        }
+
+        if (showSearch) {
+            BookSearchSheet(
+                results = searchResults,
+                searching = searching,
+                scope = searchScope,
+                theme = readerTheme,
+                onSearch = onSearchQuery,
+                onDismiss = {
+                    showSearch = false
+                    onClearSearch()
+                },
+                onJump = { hit ->
+                    showSearch = false
+                    onClearSearch()
+                    onJumpSearchHit(hit)
+                },
             )
         }
 

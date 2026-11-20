@@ -247,6 +247,7 @@ fun ReaderTopBar(
     hasBookmarkHere: Boolean = false,
     onAddBookmark: () -> Unit = {},
     onOpenBookmarks: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
@@ -297,6 +298,7 @@ fun ReaderTopBar(
             hasBookmarkHere = hasBookmarkHere,
             onAddBookmark = onAddBookmark,
             onOpenBookmarks = onOpenBookmarks,
+            onOpenSearch = onOpenSearch,
         )
     }
 }
@@ -422,6 +424,7 @@ private fun TranslationMenu(
     hasBookmarkHere: Boolean = false,
     onAddBookmark: () -> Unit = {},
     onOpenBookmarks: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -477,6 +480,7 @@ private fun TranslationMenu(
                             ReaderMenuAction.PARAGRAPH -> onShowParagraph()
                             ReaderMenuAction.ADD_BOOKMARK -> onAddBookmark()
                             ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
+                            ReaderMenuAction.SEARCH_BOOK -> onOpenSearch()
                             ReaderMenuAction.WORLDLINE -> onOpenWorldline()
                         }
                     },
