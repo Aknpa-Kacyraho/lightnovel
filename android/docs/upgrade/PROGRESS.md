@@ -25,7 +25,7 @@
 | Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ✅ | ✅ [v1.5.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.2) |
 | Round 16 | 1.6.0（53） | 行/段位置统一、滚动书签与跳转 | ✅ | ✅ | ✅ [v1.6.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.0) |
 | Round 17 | 1.6.1（54） | 加载竞态、跨章定位、提示替换 | ✅ | ✅ | ✅ [v1.6.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.1) |
-| Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ⏳ |
+| Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ✅ [v1.6.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.2) |
 
 ## 约束
 
