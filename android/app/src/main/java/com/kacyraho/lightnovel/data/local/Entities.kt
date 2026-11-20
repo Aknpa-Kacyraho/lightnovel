@@ -12,6 +12,7 @@ import androidx.room.Relation
     indices = [
         Index(value = ["slug"], unique = true),
         Index(value = ["source", "source_id"], unique = true),
+        Index(value = ["import_hash"], unique = true),
     ],
 )
 data class BookEntity(
@@ -29,6 +30,7 @@ data class BookEntity(
     val local: Boolean,
     @ColumnInfo(name = "created_at") val createdAt: String?,
     @ColumnInfo(name = "legacy_json") val legacyJson: String?,
+    @ColumnInfo(name = "import_hash") val importHash: String? = null,
 )
 
 @Entity(

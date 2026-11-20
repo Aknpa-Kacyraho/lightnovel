@@ -25,6 +25,7 @@ data class AppSettings(
     val readerTheme: String = "auto",
     val readerDisplayMode: String = "translated",
     val readerMode: String = "page",
+    val librarySort: String = "title",
     val deepSeekBaseUrl: String = "https://api.deepseek.com/chat/completions",
     val deepSeekModel: String = "deepseek-flash",
     val translationProviderId: String = "deepseek",
@@ -64,6 +65,7 @@ class SettingsStore(
             prefs[Keys.THEME] = merged.readerTheme
             prefs[Keys.DISPLAY_MODE] = merged.readerDisplayMode
             prefs[Keys.READER_MODE] = merged.readerMode
+            prefs[Keys.LIBRARY_SORT] = merged.librarySort
             prefs[Keys.BASE_URL] = merged.deepSeekBaseUrl
             prefs[Keys.MODEL] = merged.deepSeekModel
             prefs[Keys.TRANSLATION_PROVIDER] = merged.translationProviderId
@@ -94,6 +96,7 @@ class SettingsStore(
         readerTheme = this[Keys.THEME] ?: "auto",
         readerDisplayMode = this[Keys.DISPLAY_MODE] ?: "translated",
         readerMode = this[Keys.READER_MODE] ?: "page",
+        librarySort = this[Keys.LIBRARY_SORT] ?: "title",
         deepSeekBaseUrl = this[Keys.BASE_URL]
             ?: "https://api.deepseek.com/chat/completions",
         deepSeekModel = this[Keys.MODEL] ?: "deepseek-flash",
@@ -123,6 +126,7 @@ class SettingsStore(
         val THEME = stringPreferencesKey("reader_theme")
         val DISPLAY_MODE = stringPreferencesKey("reader_display_mode")
         val READER_MODE = stringPreferencesKey("reader_mode")
+        val LIBRARY_SORT = stringPreferencesKey("library_sort")
         val BASE_URL = stringPreferencesKey("deepseek_base_url")
         val MODEL = stringPreferencesKey("deepseek_model")
         val TRANSLATION_PROVIDER = stringPreferencesKey("translation_provider")

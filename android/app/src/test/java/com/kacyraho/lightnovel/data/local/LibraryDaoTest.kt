@@ -9,6 +9,7 @@ import java.nio.file.Files
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -123,8 +124,39 @@ class LibraryDaoTest {
         }
     }
 
-    private fun book(id: String, slug: String, title: String): BookEntity = BookEntity(
-        id = id,
+    @Test
+    fun findsBookByImportHashAndRejectsDuplicates() = runTest {
+        val db = database()
+        try {
+            val dao = db.libraryDao()
+            val first = book("local-1", "local-1", "Local").copy(
+                source = "local",
+                sourceId = "local-1",
+                local = true,
+                importHash = "abc",
+            )
+            dao.upsertBooks(listOf(first))
+
+            assertEquals("local-1", dao.bookByImportHash("abc")?.id)
+            assertNull(dao.bookByImportHash("missing"))
+
+            val duplicate = book("local-2", "local-2", "Local 2").copy(
+                source = "local",
+                sourceId = "local-2",
+                local = true,
+                importHash = "abc",
+            )
+            dao.upsertBooks(listOf(duplicate))
+
+            // 唯一索引让重复 hash 的插入被忽略，不会新增第二本。
+            assertEquals(1, dao.bookCount())
+            assertEquals("local-1", dao.bookByImportHash("abc")?.id)
+        } finally {
+            db.close()
+        }
+    }
+
+    private fun book(id: String, slug: String, title: String): BookEntity = BookEntity(        id = id,
         storageDir = id,
         slug = slug,
         source = "kakuyomu",

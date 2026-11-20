@@ -66,6 +66,7 @@ class AppContainer(
         .addMigrations(
             LightnovelDatabase.MIGRATION_1_2,
             LightnovelDatabase.MIGRATION_2_3,
+            LightnovelDatabase.MIGRATION_3_4,
         )
         .build()
 

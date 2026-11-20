@@ -318,3 +318,8 @@ Column
   - 底栏 2dp 本章进度线；书架「继续阅读」卡补进度线。
   - 首次进入沉浸 3 秒提示退出方式。
   - 新增 `ReaderProgressTest`（翻页/滚动/空章/越界/书架）。
+- 1.3.0（versionCode 44）：
+  - 本地导入按 SHA-256 去重（`books.import_hash` 唯一索引，DB v4 + `MIGRATION_3_4`）；
+    重复导入提示「已在书架」，已移出的书会恢复。
+  - 书架排序：标题 / 最近阅读 / 最近添加，`SettingsStore.librarySort` 持久化。
+  - 新增 `LibrarySort` / `sortLibrary(...)` 与 `LibrarySortTest`。

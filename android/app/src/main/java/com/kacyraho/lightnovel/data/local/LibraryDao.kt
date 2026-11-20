@@ -42,6 +42,9 @@ interface LibraryDao {
     @Query("SELECT * FROM books WHERE source = :source AND source_id = :sourceId LIMIT 1")
     suspend fun bookBySource(source: String, sourceId: String): BookEntity?
 
+    @Query("SELECT * FROM books WHERE import_hash = :hash LIMIT 1")
+    suspend fun bookByImportHash(hash: String): BookEntity?
+
     @Query(
         """
         UPDATE read_state

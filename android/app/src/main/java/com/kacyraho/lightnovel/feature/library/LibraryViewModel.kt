@@ -31,6 +31,7 @@ data class LibraryUiState(
     val query: String = "",
     val favoritesOnly: Boolean = false,
     val removedOnly: Boolean = false,
+    val sort: LibrarySort = LibrarySort.TITLE,
     val error: String? = null,
 )
 
@@ -45,6 +46,7 @@ private data class LibraryFilter(
     val query: String = "",
     val favoritesOnly: Boolean = false,
     val removedOnly: Boolean = false,
+    val sort: LibrarySort = LibrarySort.TITLE,
 )
 
 class LibraryViewModel(
@@ -52,7 +54,7 @@ class LibraryViewModel(
     private val importCoordinator: ImportCoordinator,
     private val safStager: SafStager,
     private val localDocumentImporter: LocalDocumentImporter,
-    settingsStore: SettingsStore,
+    private val settingsStore: SettingsStore,
     private val metadataService: MetadataTranslationService? = null,
     private val downloadScheduler: BookDownloadScheduler? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
@@ -60,6 +62,10 @@ class LibraryViewModel(
     private val filter = MutableStateFlow(LibraryFilter())
 
     init {
+        viewModelScope.launch {
+            val savedSort = settingsStore.settings.first().librarySort
+            filter.value = filter.value.copy(sort = LibrarySort.fromId(savedSort))
+        }
         viewModelScope.launch {
             val books = repository.observeBooks().first()
                 .filter { !it.local && it.titleZh.isNullOrBlank() }
@@ -86,11 +92,12 @@ class LibraryViewModel(
                 }
                 LibraryUiState(
                     loading = false,
-                    books = visible,
+                    books = sortLibrary(visible, current.sort),
                     shelf = current.shelf,
                     query = current.query,
                     favoritesOnly = current.favoritesOnly,
                     removedOnly = current.removedOnly,
+                    sort = current.sort,
                 )
             }
         }
@@ -138,6 +145,14 @@ class LibraryViewModel(
         filter.value = filter.value.copy(query = query)
     }
 
+    fun setSort(sort: LibrarySort) {
+        if (filter.value.sort == sort) return
+        filter.value = filter.value.copy(sort = sort)
+        viewModelScope.launch {
+            settingsStore.update { it.copy(librarySort = sort.id) }
+        }
+    }
+
     fun toggleFavorite(bookId: String, current: Boolean) {
         viewModelScope.launch {
             repository.setFavorite(bookId, !current)
@@ -177,10 +192,15 @@ class LibraryViewModel(
                 localDocumentImporter.import(uri, resolver) { phase ->
                     _importState.value = LibraryImportState(importing = true, message = phase)
                 }
-            }.onSuccess { book ->
+            }.onSuccess { result ->
+                val title = result.book.titleZh ?: result.book.title
                 _importState.value = LibraryImportState(
                     importing = false,
-                    message = "已导入《${book.titleZh ?: book.title}》",
+                    message = when {
+                        result.restored -> "《$title》已恢复到书架"
+                        result.existing -> "《$title》已在书架，没有重复添加"
+                        else -> "已导入《$title》"
+                    },
                 )
             }.onFailure {
                 _importState.value = LibraryImportState(

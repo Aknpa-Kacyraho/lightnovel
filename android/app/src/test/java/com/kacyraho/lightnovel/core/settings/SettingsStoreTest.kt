@@ -68,4 +68,15 @@ class SettingsStoreTest {
 
         assertEquals("paper", store.settings.first().readerTheme)
     }
+
+    @Test
+    fun librarySortDefaultsToTitleAndPersists() = runTest {
+        val store = SettingsStore(ApplicationProvider.getApplicationContext<Context>())
+
+        assertEquals("title", store.settings.first().librarySort)
+
+        store.update { it.copy(librarySort = "recent") }
+
+        assertEquals("recent", store.settings.first().librarySort)
+    }
 }

@@ -24,11 +24,17 @@ class LocalDocumentImporter(
     private val database: LightnovelDatabase,
     private val contentStore: ContentStore,
 ) {
+    data class Result(
+        val book: BookEntity,
+        val existing: Boolean,
+        val restored: Boolean,
+    )
+
     suspend fun import(
         uri: Uri,
         resolver: ContentResolver,
         onProgress: (String) -> Unit = {},
-    ): BookEntity = withContext(Dispatchers.IO) {
+    ): Result = withContext(Dispatchers.IO) {
         val name = displayName(resolver, uri) ?: "本地书籍"
         displaySize(resolver, uri)?.let { size ->
             require(size <= MAX_BYTES) { "文件超过 80 MB" }
@@ -37,6 +43,20 @@ class LocalDocumentImporter(
         val bytes = resolver.openInputStream(uri)?.use(::readLimited)
             ?: error("无法读取文件")
         require(bytes.isNotEmpty()) { "文件是空的" }
+
+        val importHash = sha256(bytes)
+        val existing = database.libraryDao().bookByImportHash(importHash)
+        if (existing != null) {
+            var restored = false
+            database.withTransaction {
+                val dao = database.libraryDao()
+                if (dao.readState(existing.id)?.hidden == true) {
+                    dao.updateHidden(existing.id, false, Instant.now().toString())
+                    restored = true
+                }
+            }
+            return@withContext Result(existing, existing = true, restored = restored)
+        }
 
         val extension = name.substringAfterLast('.', "").lowercase()
         val isEpub = extension == "epub" || (extension.isBlank() && bytes.size > 4 &&
@@ -76,6 +96,7 @@ class LocalDocumentImporter(
             local = true,
             createdAt = now,
             legacyJson = null,
+            importHash = importHash,
         )
         val chapters = parsed.chapters.mapIndexed { index, chapter ->
             val idx = index + 1
@@ -117,7 +138,12 @@ class LocalDocumentImporter(
             )
             dao.upsertChapters(chapters)
         }
-        book
+        Result(book, existing = false, restored = false)
+    }
+
+    private fun sha256(bytes: ByteArray): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+        return digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
     private fun displayName(resolver: ContentResolver, uri: Uri): String? =

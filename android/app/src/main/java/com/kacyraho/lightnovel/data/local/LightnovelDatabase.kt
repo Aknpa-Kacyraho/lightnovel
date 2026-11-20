@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AliasEntity::class,
         ChapterEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class LightnovelDatabase : RoomDatabase() {
@@ -72,6 +72,15 @@ abstract class LightnovelDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE INDEX IF NOT EXISTS index_catalog_books_title " +
                         "ON catalog_books(title)",
+                )
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE books ADD COLUMN import_hash TEXT")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_books_import_hash " +
+                        "ON books(import_hash)",
                 )
             }
         }

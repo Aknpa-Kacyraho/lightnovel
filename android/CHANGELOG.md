@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.3.0 — 2026-11-20
+
+### 用户可见
+
+- 本地 TXT / EPUB 重复导入不再新增一本书：按文件内容识别，已存在时提示
+  「已在书架，没有重复添加」；曾移出的书会恢复到原位置，进度与译文保留。
+- 书架新增排序：标题 / 最近阅读 / 最近添加，选择会记住。
+
+### 工程
+
+- 数据库 v4：`books.import_hash` + 唯一索引，新增 `MIGRATION_3_4`。
+- 本地导入先算 SHA-256 再解析；`LocalDocumentImporter.Result(existing, restored)`。
+- 新增 `LibrarySort` 与 `sortLibrary(...)` 纯函数；`SettingsStore.librarySort` 持久化。
+- 新增 `LibrarySortTest`，补迁移、DAO 去重与默认排序测试。
+- `versionCode 44` / `versionName 1.3.0`。
+
 ## 1.2.2 — 2026-11-20
 
 ### 用户可见

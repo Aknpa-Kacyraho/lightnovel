@@ -117,6 +117,7 @@ fun LibraryRoute(
         onShelfChange = viewModel::setShelf,
         onFavoritesOnlyChange = viewModel::setFavoritesOnly,
         onRemovedOnlyChange = viewModel::setRemovedOnly,
+        onSortChange = viewModel::setSort,
         onQueryChange = viewModel::setQuery,
         onRemoveBook = viewModel::removeBook,
         onRestoreBook = viewModel::restoreBook,
@@ -142,6 +143,7 @@ fun LibraryScreen(
     onShelfChange: (String?) -> Unit,
     onFavoritesOnlyChange: (Boolean) -> Unit,
     onRemovedOnlyChange: (Boolean) -> Unit,
+    onSortChange: (LibrarySort) -> Unit,
     onQueryChange: (String) -> Unit,
     onRemoveBook: (String) -> Unit,
     onRestoreBook: (String) -> Unit,
@@ -149,6 +151,7 @@ fun LibraryScreen(
     onImportDocument: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var sortMenuOpen by remember { mutableStateOf(false) }
     var showBackupNotice by rememberSaveable { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -288,6 +291,31 @@ fun LibraryScreen(
                     onClick = { onRemovedOnlyChange(!state.removedOnly) },
                     label = { Text("已移出") },
                 )
+                Box {
+                    BrandFilterChip(
+                        selected = true,
+                        onClick = { sortMenuOpen = true },
+                        label = { Text("排序：${state.sort.label}") },
+                    )
+                    DropdownMenu(
+                        expanded = sortMenuOpen,
+                        onDismissRequest = { sortMenuOpen = false },
+                    ) {
+                        LibrarySort.entries.forEach { sort ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        (if (sort == state.sort) "✓ " else "") + sort.label,
+                                    )
+                                },
+                                onClick = {
+                                    sortMenuOpen = false
+                                    onSortChange(sort)
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
             val note = importState.error?.let { "导入失败：$it" } ?: importState.message

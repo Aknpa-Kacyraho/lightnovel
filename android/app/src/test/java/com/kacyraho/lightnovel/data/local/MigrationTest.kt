@@ -127,4 +127,68 @@ class MigrationTest {
         assertTrue(indexes.contains("index_catalog_books_last_seen_at"))
         db.close()
     }
+
+    @Test
+    fun migration3To4AddsImportHashAndUniqueIndex() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(null)
+                .callback(
+                    object : SupportSQLiteOpenHelper.Callback(3) {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            db.execSQL(
+                                "CREATE TABLE books (" +
+                                    "id TEXT NOT NULL PRIMARY KEY, " +
+                                    "storage_dir TEXT NOT NULL, slug TEXT, source TEXT NOT NULL, " +
+                                    "source_id TEXT NOT NULL, title TEXT NOT NULL, title_zh TEXT, " +
+                                    "author TEXT, tags_json TEXT, genre TEXT, " +
+                                    "episodes INTEGER NOT NULL, local INTEGER NOT NULL, " +
+                                    "created_at TEXT, legacy_json TEXT)",
+                            )
+                            db.execSQL("CREATE UNIQUE INDEX index_books_slug ON books(slug)")
+                            db.execSQL(
+                                "CREATE UNIQUE INDEX index_books_source_source_id " +
+                                    "ON books(source, source_id)",
+                            )
+                            db.execSQL(
+                                "INSERT INTO books VALUES (" +
+                                    "'b1','b1','s1','local','l1','Title',NULL,NULL,NULL,NULL,1,1," +
+                                    "'2026-01-01T00:00:00Z',NULL)",
+                            )
+                        }
+
+                        override fun onUpgrade(
+                            db: SupportSQLiteDatabase,
+                            oldVersion: Int,
+                            newVersion: Int,
+                        ) = Unit
+                    },
+                )
+                .build(),
+        )
+
+        val db = helper.writableDatabase
+        LightnovelDatabase.MIGRATION_3_4.migrate(db)
+
+        val columns = mutableSetOf<String>()
+        db.query("PRAGMA table_info(books)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) columns += cursor.getString(name)
+        }
+        assertTrue(columns.contains("import_hash"))
+
+        val indexes = mutableSetOf<String>()
+        db.query("PRAGMA index_list(books)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) indexes += cursor.getString(name)
+        }
+        assertTrue(indexes.contains("index_books_import_hash"))
+
+        db.query("SELECT import_hash FROM books WHERE id='b1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertNull(cursor.getString(0))
+        }
+        db.close()
+    }
 }

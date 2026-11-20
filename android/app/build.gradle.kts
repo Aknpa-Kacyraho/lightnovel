@@ -40,8 +40,8 @@ android {
         applicationId = "com.kacyraho.lightnovel"
         minSdk = 26
         targetSdk = 36
-        versionCode = 43
-        versionName = "1.2.2"
+        versionCode = 44
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
