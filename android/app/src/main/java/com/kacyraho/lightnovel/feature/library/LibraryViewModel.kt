@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kacyraho.lightnovel.core.settings.SettingsStore
+import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.core.storage.SafStager
 import com.kacyraho.lightnovel.data.import.ImportCoordinator
 import com.kacyraho.lightnovel.data.import.LocalDocumentImporter
@@ -15,8 +16,11 @@ import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -55,6 +59,8 @@ class LibraryViewModel(
     private val safStager: SafStager,
     private val localDocumentImporter: LocalDocumentImporter,
     private val settingsStore: SettingsStore,
+    private val contentStore: ContentStore,
+    private val onBookRemoved: ((String) -> Unit)? = null,
     private val metadataService: MetadataTranslationService? = null,
     private val downloadScheduler: BookDownloadScheduler? = null,
     private val taskRegistry: TranslationTaskRegistry? = null,
@@ -172,6 +178,29 @@ class LibraryViewModel(
             repository.restoreBook(bookId)
         }
     }
+
+    fun deleteBook(bookId: String) {
+        viewModelScope.launch {
+            downloadScheduler?.cancel(bookId)
+            taskRegistry?.cancelBook(bookId)
+            onBookRemoved?.invoke(bookId)
+            val book = repository.deleteBook(bookId) ?: return@launch
+            val title = book.titleZh ?: book.title
+            val error = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { contentStore.deleteBook(book.storageDir) }.exceptionOrNull()
+            }
+            _messages.tryEmit(
+                if (error == null) {
+                    "已删除《$title》与本地文件"
+                } else {
+                    "已删除《$title》记录，但文件清理失败：${error.message}"
+                },
+            )
+        }
+    }
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     val lastBackupAt = settingsStore.settings
         .map { it.lastBackupAt }

@@ -5,6 +5,7 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.Comparator
 
 class FileContentStore(
     override val root: Path,
@@ -39,6 +40,16 @@ class FileContentStore(
             paths(storageDir).sidecar(idx),
             SidecarJson.encodeToString(ChapterSidecar.serializer(), sidecar),
         )
+    }
+
+    override fun deleteBook(storageDir: String) {
+        val dir = paths(storageDir).bookDir
+        if (!Files.exists(dir)) return
+        Files.walk(dir).use { stream ->
+            stream.sorted(Comparator.reverseOrder()).forEach { path ->
+                runCatching { Files.deleteIfExists(path) }
+            }
+        }
     }
 
     private fun readText(path: Path): String? {

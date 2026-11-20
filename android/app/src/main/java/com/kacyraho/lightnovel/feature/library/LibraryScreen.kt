@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +85,8 @@ fun LibraryRoute(
             safStager = container.safStager,
             localDocumentImporter = container.localDocumentImporter,
             settingsStore = container.settingsStore,
+            contentStore = container.contentStore,
+            onBookRemoved = { container.readingTranslationCoordinator.stop(it) },
             metadataService = container.metadataTranslationService,
             downloadScheduler = container.bookDownloadScheduler,
             taskRegistry = container.translationTaskRegistry,
@@ -121,6 +124,8 @@ fun LibraryRoute(
         onQueryChange = viewModel::setQuery,
         onRemoveBook = viewModel::removeBook,
         onRestoreBook = viewModel::restoreBook,
+        onDeleteBook = viewModel::deleteBook,
+        messages = viewModel.messages,
         onImport = { launcher.launch(arrayOf("*/*")) },
         onImportDocument = {
             documentLauncher.launch(arrayOf("*/*"))
@@ -147,6 +152,8 @@ fun LibraryScreen(
     onQueryChange: (String) -> Unit,
     onRemoveBook: (String) -> Unit,
     onRestoreBook: (String) -> Unit,
+    onDeleteBook: (String) -> Unit,
+    messages: kotlinx.coroutines.flow.Flow<String>,
     onImport: () -> Unit,
     onImportDocument: () -> Unit,
 ) {
@@ -155,6 +162,12 @@ fun LibraryScreen(
     var showBackupNotice by rememberSaveable { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(messages) {
+        messages.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -431,6 +444,8 @@ fun LibraryScreen(
                                 }
                             },
                             onRestore = { onRestoreBook(item.book.id) },
+                            showDelete = state.removedOnly,
+                            onDelete = { onDeleteBook(item.book.id) },
                         )
                     }
                 }
@@ -507,10 +522,13 @@ private fun BookRow(
     onClick: () -> Unit,
     onRemove: () -> Unit,
     onRestore: () -> Unit,
+    showDelete: Boolean,
+    onDelete: () -> Unit,
 ) {
     val removed = item.state?.hidden == true
     var menuOpen by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -579,6 +597,20 @@ private fun BookRow(
                             if (removed) onRestore() else confirmRemove = true
                         },
                     )
+                    if (showDelete) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "删除本地数据…",
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                menuOpen = false
+                                confirmDelete = true
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -600,6 +632,35 @@ private fun BookRow(
             },
             dismissButton = {
                 TextButton(onClick = { confirmRemove = false }) { Text("取消") }
+            },
+        )
+    }
+    if (confirmDelete) {
+        val title = item.book.titleZh ?: item.book.title
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("删除《$title》的本地数据？") },
+            text = {
+                Text(
+                    "将删除：\n" +
+                        "· 正文与译文\n" +
+                        "· 世界线与资料库\n" +
+                        "· 阅读进度\n\n" +
+                        "删除后无法恢复。建议先在「设置 → 数据」导出备份。",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        onDelete()
+                    },
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("取消") }
             },
         )
     }

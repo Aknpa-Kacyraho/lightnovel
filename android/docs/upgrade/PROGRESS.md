@@ -15,7 +15,7 @@
 | Round 6 | 1.2.2（43） | 单击正文沉浸、底栏进度线、继续阅读进度 | ✅ | ✅ | ✅ [v1.2.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.2) |
 | Round 7 | 1.3.0（44） | 本地导入去重、书架排序、数据库 v4 | ✅ | ✅ | ⏳ |
 | Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ⏳ |
-| Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ⏳ | ⏳ |
+| Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -60,12 +60,15 @@ cd android
   - 任务页上限 100 → 300。
 - 验证：237 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 9（计划）
+## Round 9（已发布）
 
-- 指南：`round-9/`
+- 指南：`round-9/`；自检：`round-9/SELF-REVIEW.md`
 - 版本：1.3.2 / 46
-- 范围：已移出书「删除本地数据」（二次确认、仅已移出视图）、删除前停下载/翻译/预译、
-  `ContentStore.deleteBook` + DAO 级联删除。
+- 变更：
+  - 「已移出」视图可删除本地数据（二次确认，列出删除范围）。
+  - `ContentStore.deleteBook` + DAO 级联删除；删除前停 WorkManager/翻译/预译。
+  - 文件删除在 `Dispatchers.IO` 执行；失败提示但保留「记录已删」。
+- 验证：239 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 10 候选
 

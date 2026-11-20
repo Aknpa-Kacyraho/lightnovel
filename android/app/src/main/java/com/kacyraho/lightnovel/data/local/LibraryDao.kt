@@ -94,6 +94,15 @@ interface LibraryDao {
     @Query("UPDATE chapters SET title_zh = :titleZh WHERE book_id = :bookId AND idx = :idx")
     suspend fun updateChapterTitle(bookId: String, idx: Int, titleZh: String)
 
+    @Query("DELETE FROM chapters WHERE book_id = :bookId")
+    suspend fun deleteChapters(bookId: String)
+
+    @Query("DELETE FROM read_state WHERE book_id = :bookId")
+    suspend fun deleteReadState(bookId: String)
+
+    @Query("DELETE FROM books WHERE id = :bookId")
+    suspend fun deleteBook(bookId: String)
+
     @Query(
         """
         UPDATE chapters SET title = :title

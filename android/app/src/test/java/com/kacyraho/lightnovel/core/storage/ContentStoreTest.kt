@@ -75,4 +75,19 @@ class ContentStoreTest {
             store.paths("kakuyomu-1").zh(42).fileName.toString(),
         )
     }
+
+    @Test
+    fun deleteBookRemovesOnlyThatDirectory() {
+        val store = store()
+        store.writeRawAtomic("book-a", 1, "raw a")
+        store.writeZhAtomic("book-a", 1, "zh a")
+        store.writeRawAtomic("book-b", 1, "raw b")
+
+        store.deleteBook("book-a")
+
+        assertTrue(!Files.exists(store.paths("book-a").bookDir))
+        assertTrue(Files.isRegularFile(store.paths("book-b").raw(1)))
+        // 重复删除是幂等的。
+        store.deleteBook("book-a")
+    }
 }

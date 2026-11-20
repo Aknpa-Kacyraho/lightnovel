@@ -328,3 +328,7 @@ Column
   - 新增 `CostEstimator`，阅读器「翻译本章」与批量确认显示费用区间。
   - 队列 `TargetResult(success, retryable)`，可重试失败每章自动再试一次。
   - 任务页上限 100 → 300。
+- 1.3.2（versionCode 46）：
+  - 「已移出」视图可删除本地数据（二次确认，列出删除范围）。
+  - `ContentStore.deleteBook` + DAO 级联删除；删除前停 WorkManager/翻译/预译。
+  - `LibraryViewModel.messages` 驱动 Snackbar。

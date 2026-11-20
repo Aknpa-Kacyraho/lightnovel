@@ -269,5 +269,6 @@ class KnowledgeQueryServiceTest {
             idx: Int,
             sidecar: com.kacyraho.lightnovel.core.storage.ChapterSidecar,
         ) = Unit
+        override fun deleteBook(storageDir: String) = Unit
     }
 }

@@ -18,4 +18,7 @@ interface ContentStore {
     fun writeZhAtomic(storageDir: String, idx: Int, text: String)
 
     fun writeSidecar(storageDir: String, idx: Int, sidecar: ChapterSidecar)
+
+    /** 删除一本书的全部本地文件（novels/<storageDir>）；目录不存在时静默返回。 */
+    fun deleteBook(storageDir: String)
 }

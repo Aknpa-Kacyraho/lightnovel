@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.3.2 — 2026-11-20
+
+### 用户可见
+
+- 「已移出」视图新增「删除本地数据…」：二次确认后删除正文、译文、世界线、资料库与进度。
+  在读/想读/读完视图不显示该入口。
+- 删除前自动停止下载、翻译与预译队列；删除成功有 Snackbar，失败会提示原因。
+
+### 工程
+
+- `ContentStore.deleteBook(storageDir)` 递归删除 `novels/<storageDir>`，幂等且拒绝空目录名。
+- DAO 增加 `deleteChapters/deleteReadState/deleteBook`；`LibraryRepository.deleteBook` 事务删除。
+- `LibraryViewModel.messages` SharedFlow 驱动 Snackbar；`onBookRemoved` 停止预译队列。
+- 新增 `ContentStoreTest.deleteBookRemovesOnlyThatDirectory`、`LibraryDaoTest.deleteBookRemovesChaptersAndReadState`。
+- `versionCode 46` / `versionName 1.3.2`。
+
 ## 1.3.1 — 2026-11-20
 
 ### 用户可见

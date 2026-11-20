@@ -156,6 +156,56 @@ class LibraryDaoTest {
         }
     }
 
+    @Test
+    fun deleteBookRemovesChaptersAndReadState() = runTest {
+        val db = database()
+        try {
+            val dao = db.libraryDao()
+            dao.upsertBooks(listOf(book("local-1", "l1", "Local")))
+            dao.upsertChapters(
+                listOf(
+                    ChapterEntity(
+                        bookId = "local-1",
+                        idx = 1,
+                        title = "c1",
+                        titleZh = null,
+                        rawPath = null,
+                        zhPath = null,
+                        status = "complete",
+                        tokenIn = 0,
+                        tokenOut = 0,
+                        model = null,
+                        updatedAt = null,
+                    ),
+                ),
+            )
+            dao.upsertReadStates(
+                listOf(
+                    ReadStateEntity(
+                        bookId = "local-1",
+                        shelf = "reading",
+                        favorite = false,
+                        hidden = false,
+                        progressIdx = 1,
+                        openedAt = null,
+                        finishedAt = null,
+                        updatedAt = null,
+                    ),
+                ),
+            )
+
+            dao.deleteChapters("local-1")
+            dao.deleteReadState("local-1")
+            dao.deleteBook("local-1")
+
+            assertEquals(0, dao.bookCount())
+            assertEquals(0, dao.chapterCount())
+            assertNull(dao.readState("local-1"))
+        } finally {
+            db.close()
+        }
+    }
+
     private fun book(id: String, slug: String, title: String): BookEntity = BookEntity(        id = id,
         storageDir = id,
         slug = slug,

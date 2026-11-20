@@ -36,6 +36,9 @@ interface LibraryRepository {
     suspend fun removeBook(bookId: String)
 
     suspend fun restoreBook(bookId: String)
+
+    /** 删除书籍、章节与阅读状态；返回被删除的书（用于清理文件），不存在时返回 null。 */
+    suspend fun deleteBook(bookId: String): BookEntity?
 }
 
 class RoomLibraryRepository(
@@ -140,6 +143,16 @@ class RoomLibraryRepository(
 
     override suspend fun restoreBook(bookId: String) {
         setHidden(bookId, hidden = false)
+    }
+
+    override suspend fun deleteBook(bookId: String): BookEntity? {
+        val book = dao.book(bookId) ?: return null
+        db.withTransaction {
+            dao.deleteChapters(bookId)
+            dao.deleteReadState(bookId)
+            dao.deleteBook(bookId)
+        }
+        return book
     }
 
     private suspend fun setHidden(bookId: String, hidden: Boolean) {
