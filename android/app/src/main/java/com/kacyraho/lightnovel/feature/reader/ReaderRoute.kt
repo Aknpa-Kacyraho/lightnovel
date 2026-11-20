@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
@@ -119,7 +120,7 @@ fun ReaderRoute(
     var bookmarkNotice by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        viewModel.bookmarkNotice.collect { message ->
+        viewModel.bookmarkNotice.collectLatest { message ->
             bookmarkNotice = message
             delay(1_500)
             bookmarkNotice = null
@@ -140,6 +141,14 @@ fun ReaderRoute(
         if (autoRetry && !autoRetryConsumed && !state.loading && state.error == null) {
             autoRetryConsumed = true
             viewModel.translateChapter()
+        }
+    }
+
+    LaunchedEffect(state.loading, state.error) {
+        if (!state.loading && state.error == null) {
+            container.pendingReaderJump.take(bookId)?.let { anchor ->
+                viewModel.jumpToAnchor(anchor)
+            }
         }
     }
 
@@ -166,24 +175,30 @@ fun ReaderRoute(
         searchScope = if (state.displayMode == "raw") "原文" else "译文",
         onSearchQuery = viewModel::searchBook,
         onClearSearch = viewModel::clearSearch,
-        onJumpSearchHit = { hit ->
-            if (hit.chapterIndex == state.chapterIndex) {
-                viewModel.jumpToAnchor(ReaderAnchor(hit.chapterIndex, hit.paragraphId, 0))
+        onJumpBookmark = { bookmark ->
+            val anchor = ReaderAnchor(
+                bookmark.chapterIdx,
+                bookmark.paragraphId,
+                bookmark.charOffset,
+            )
+            if (bookmark.chapterIdx == state.chapterIndex) {
+                viewModel.jumpToAnchor(anchor)
             } else {
+                container.pendingReaderJump.put(bookId, anchor)
+                onOpenChapter(bookmark.chapterIdx)
+            }
+        },
+        onJumpSearchHit = { hit ->
+            val anchor = ReaderAnchor(hit.chapterIndex, hit.paragraphId, 0)
+            if (hit.chapterIndex == state.chapterIndex) {
+                viewModel.jumpToAnchor(anchor)
+            } else {
+                container.pendingReaderJump.put(bookId, anchor)
                 onOpenChapter(hit.chapterIndex)
             }
         },
         onAddBookmark = viewModel::addBookmark,
         onRemoveBookmark = viewModel::removeBookmark,
-        onJumpBookmark = { bookmark ->
-            if (bookmark.chapterIdx == state.chapterIndex) {
-                viewModel.jumpToAnchor(
-                    ReaderAnchor(bookmark.chapterIdx, bookmark.paragraphId, bookmark.charOffset),
-                )
-            } else {
-                onOpenChapter(bookmark.chapterIdx)
-            }
-        },
         onBack = onBack,
         onOpenCatalog = onOpenCatalog,
         onOpenChapter = onOpenChapter,

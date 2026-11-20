@@ -165,6 +165,9 @@ class AppContainer(
 
     val translationTaskRegistry: TranslationTaskRegistry = TranslationTaskRegistry()
 
+    val pendingReaderJump: com.kacyraho.lightnovel.feature.reader.PendingReaderJump =
+        com.kacyraho.lightnovel.feature.reader.PendingReaderJump()
+
     val translationService: TranslationService = TranslationService(
         contentStore = contentStore,
         dao = database.libraryDao(),

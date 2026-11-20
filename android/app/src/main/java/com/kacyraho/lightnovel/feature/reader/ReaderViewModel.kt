@@ -52,6 +52,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -155,6 +156,7 @@ class ReaderViewModel(
     private var anchorToRestore: ReaderAnchor? = null
     private var paginationJob: Job? = null
     private var saveJob: Job? = null
+    private var loadJob: Job? = null
     private var scrollStateJob: Job? = null
     private var translationJob: Job? = null
     private var extractionJob: Job? = null
@@ -846,7 +848,8 @@ class ReaderViewModel(
     }
 
     private fun load() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val loaded = runCatching {
                     val book = repository.book(bookId) ?: error("书不存在")
@@ -882,6 +885,7 @@ class ReaderViewModel(
                 }
 
                 loaded.onSuccess { (payload, restore) ->
+                    ensureActive()
                     val (book, readerChapter, chapters) = payload
                     anchorToRestore = restore ?: anchorToRestore
                     bookEntity = book

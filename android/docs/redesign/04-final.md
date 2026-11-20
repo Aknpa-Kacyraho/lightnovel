@@ -359,3 +359,7 @@ Column
   - 修复滚动模式进度存行号导致的跨模式错位；统一 `progress_block` 为段号。
   - 滚动书签/翻译锚点改用当前段；滚动列表响应跳转。
   - 新增 `ReaderScrollMapping` 与测试。
+- 1.6.1（versionCode 54）：
+  - `load()` 取消旧请求并 `ensureActive`，修复快速切模式错乱。
+  - `PendingReaderJump` 支持跨章书签/搜索定位到段落。
+  - 书签提示改 `collectLatest`，不再排队。

@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.6.1 — 2026-11-20
+
+### 修复
+
+- 快速切换原文/译文/双语时，旧加载请求会被取消，最终内容与最后一次选择一致。
+- 跨章书签/搜索结果会在目标章加载完成后自动定位到段落，不再只到章首。
+- 连续添加书签时，新提示立即替换旧提示，不再排队延迟。
+
+### 工程
+
+- `ReaderViewModel` 增加 `loadJob`，`load()` 取消旧请求并在写状态前 `ensureActive()`。
+- 新增 `PendingReaderJump`（内存一次性锚点），挂到 `AppContainer`；
+  `ReaderRoute` 跨章写入、目标章加载后消费。
+- 书签提示改用 `collectLatest`。
+- 新增 `PendingReaderJumpTest`；`versionCode 54` / `versionName 1.6.1`。
+
 ## 1.6.0 — 2026-11-20
 
 ### 修复
