@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -218,6 +219,14 @@ private fun TermsTab(
     var source by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("") }
     var aliases by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
+    var pendingDelete by remember {
+        mutableStateOf<com.kacyraho.lightnovel.data.glossary.GlossaryEntry?>(null)
+    }
+    val visible = filterGlossary(state.memory.glossary, query)
+    val duplicate = state.memory.glossary.any {
+        it.source.equals(source.trim(), ignoreCase = true)
+    }
     Text(
         "术语表用于锁定人名、地名、组织、物品的译名；修改后相关章节会标记过期。",
         style = MaterialTheme.typography.bodySmall,
@@ -226,6 +235,22 @@ private fun TermsTab(
     Text(
         "自动只收专有名词，普通技能和概念（如空手道）不会自动加入。",
         style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedTextField(
+        value = query,
+        onValueChange = { query = it },
+        label = { Text("搜索术语") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        if (query.isBlank()) {
+            "术语（共 ${state.memory.glossary.size} 条）"
+        } else {
+            "术语（${visible.size} / ${state.memory.glossary.size}）"
+        },
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     if (state.legacyGlossaryCount > 0) {
@@ -243,13 +268,20 @@ private fun TermsTab(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    state.memory.glossary.forEach { entry ->
+    if (state.memory.glossary.isNotEmpty() && visible.isEmpty()) {
+        Text(
+            "没有匹配的术语",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    visible.forEach { entry ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("${entry.source} → ${entry.target}", modifier = Modifier.weight(1f))
-            TextButton(onClick = { onDeleteGlossary(entry.id) }) { Text("删除") }
+            TextButton(onClick = { pendingDelete = entry }) { Text("删除") }
         }
     }
     if (state.memory.glossary.isNotEmpty()) HorizontalDivider()
@@ -274,6 +306,13 @@ private fun TermsTab(
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
     )
+    if (duplicate && source.isNotBlank()) {
+        Text(
+            "已存在同名术语，保存会覆盖译名。",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+    }
     Button(
         onClick = {
             onSaveGlossary(source, target, splitAliases(aliases))
@@ -285,6 +324,29 @@ private fun TermsTab(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text("保存术语")
+    }
+
+    pendingDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除术语「${entry.source} → ${entry.target}」？") },
+            text = {
+                Text("删除后相关章节会标记过期，后续翻译不再锁定该译名。")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteGlossary(entry.id)
+                        pendingDelete = null
+                    },
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("取消") }
+            },
+        )
     }
 }
 
