@@ -8,8 +8,6 @@ internal enum class ReaderMenuGroup(val label: String) {
 }
 
 internal enum class ReaderMenuAction {
-    FONT_DECREASE,
-    FONT_INCREASE,
     TOGGLE_THEME,
     IMMERSIVE,
     TRANSLATE,
@@ -24,6 +22,7 @@ internal enum class ReaderMenuAction {
     OPEN_BOOKMARKS,
     SEARCH_BOOK,
     TYPOGRAPHY,
+    TOGGLE_READER_MODE,
     WORLDLINE,
 }
 
@@ -47,6 +46,7 @@ internal fun readerMenuItems(
     charCount: Int = 0,
     costLabel: String? = null,
     hasBookmarkHere: Boolean = false,
+    readerMode: String = "page",
 ): List<ReaderMenuItem> = buildList {
     val reading = ReaderMenuGroup.READING
     val translation = ReaderMenuGroup.TRANSLATION
@@ -56,10 +56,15 @@ internal fun readerMenuItems(
         .joinToString(" · ")
     val detailSuffix = detail.takeIf { it.isNotBlank() }?.let { "（$it）" }.orEmpty()
 
-    add(ReaderMenuItem(reading, ReaderMenuAction.FONT_DECREASE, "字号 ${fontSizeSp.toInt()} · 减小"))
-    add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
     add(ReaderMenuItem(reading, ReaderMenuAction.TOGGLE_THEME, "切换纸色"))
     add(ReaderMenuItem(reading, ReaderMenuAction.TYPOGRAPHY, "排版"))
+    add(
+        ReaderMenuItem(
+            reading,
+            ReaderMenuAction.TOGGLE_READER_MODE,
+            if (readerMode == "scroll") "滚动模式" else "翻页模式",
+        ),
+    )
     add(ReaderMenuItem(reading, ReaderMenuAction.IMMERSIVE, "沉浸阅读"))
     add(
         ReaderMenuItem(

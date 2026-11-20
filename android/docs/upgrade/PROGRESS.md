@@ -20,6 +20,9 @@
 | Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ✅ [v1.4.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.0) |
 | Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ✅ [v1.4.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.1) |
 | Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ✅ [v1.4.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.2) |
+| Round 13 | 1.5.0（50） | 真沉浸、模式行精简、菜单去重 | ✅ | ✅ | ⏳ |
+| Round 14 | 1.5.1（51） | 术语表搜索、覆盖提示、删除确认 | ✅ | ⏳ | ⏳ |
+| Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ⏳ | ⏳ |
 
 ## 约束
 
@@ -75,6 +78,28 @@ cd android
   - 翻页模式底栏可拖进度（2dp 轨道 + 8dp thumb），拖动显示页码。
   - 分页前捕获锚点，调整排版尽量不丢位置。
 - 验证：258 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 13（已发布）
+
+- 指南：`round-13/`；自检：`round-13/SELF-REVIEW.md`
+- 版本：1.5.0 / 50
+- 变更：
+  - 沉浸隐藏系统栏/导航栏，`onDispose` 恢复；底部 12dp 间距。
+  - 模式行只留语言/朗读；滚动切换进菜单。
+  - 菜单移除字号 ±（排版 Sheet 统一调整）。
+- 验证：258 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 14（进行中）
+
+- 指南：`round-14/`
+- 版本：1.5.1 / 51
+- 范围：术语表搜索、条数、覆盖提示、删除确认。
+
+## Round 15（计划）
+
+- 指南：`round-15/`
+- 版本：1.5.2 / 52
+- 范围：书架筛选折叠（书架下拉）、阅读器菜单改 BottomSheet。
 
 ## Round 13 候选
 

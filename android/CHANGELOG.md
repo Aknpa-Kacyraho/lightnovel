@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.5.0 — 2026-11-20
+
+### 用户可见
+
+- 沉浸阅读现在是真全屏：隐藏系统状态栏与导航栏，从屏幕边缘上滑可临时唤出。
+- 阅读页常驻行只保留「语言」与「朗读」；滚动/翻页切换收进「更多 → 阅读」。
+- 菜单移除重复的「字号减小/增大」，字号统一在「更多 → 排版」调整。
+- 沉浸提示与退出按钮保留 12dp 底部间距，不贴屏幕边缘。
+
+### 工程
+
+- `DisposableEffect(immersive)` 控制 `WindowInsetsCompat.Type.systemBars()`，
+  `onDispose` 恢复；系统栏图标颜色仍由纸色 effect 管理。
+- `ReaderMenuAction` 移除 `FONT_DECREASE/FONT_INCREASE`，新增 `TOGGLE_READER_MODE`。
+- `ReaderMenuTest` 更新为 16 项（无故事记忆时 15 项）。
+- `versionCode 50` / `versionName 1.5.0`。
+
 ## 1.4.2 — 2026-11-20
 
 ### 用户可见

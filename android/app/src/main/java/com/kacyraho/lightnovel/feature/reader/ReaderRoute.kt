@@ -3,6 +3,9 @@ package com.kacyraho.lightnovel.feature.reader
 import android.app.Activity
 import android.graphics.Typeface
 import android.text.TextPaint
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +58,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -362,6 +364,21 @@ private fun ReaderContent(
         }
     }
 
+    DisposableEffect(immersive) {
+        val activity = view.context as? Activity
+        val controller = activity?.let { WindowCompat.getInsetsController(it.window, view) }
+        if (immersive) {
+            controller?.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller?.show(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            if (immersive) controller?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -424,6 +441,9 @@ private fun ReaderContent(
             onOpenBookmarks = { showBookmarks = true },
             onOpenSearch = { showSearch = true },
             onOpenTypography = { showTypography = true },
+            onToggleReaderMode = {
+                onReaderModeChange(if (state.readerMode == "scroll") "page" else "scroll")
+            },
         )
 
         if (bookmarkNotice != null) {
@@ -507,16 +527,6 @@ private fun ReaderContent(
                 textColor = textColor,
                 onSelect = onDisplayModeChange,
             )
-            TextButton(
-                onClick = {
-                    onReaderModeChange(
-                        if (state.readerMode == "scroll") "page" else "scroll",
-                    )
-                },
-                colors = buttonColors,
-            ) {
-                Text(if (state.readerMode == "scroll") "翻页" else "滚动")
-            }
             if (state.queryMode && state.readerMode != "scroll") {
                 val lastPage = (state.layout?.pages?.lastIndex ?: 0).coerceAtLeast(0)
                 TextButton(
@@ -877,7 +887,11 @@ private fun ReaderContent(
                 onSeekPage = if (state.readerMode == "scroll") null else onPageChanged,
             )
         } else {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+            ) {
                 if (showImmersiveHint) {
                     Text(
                         text = "单击正文或点下方按钮退出沉浸",

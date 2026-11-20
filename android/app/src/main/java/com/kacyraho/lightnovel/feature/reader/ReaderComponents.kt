@@ -252,6 +252,8 @@ fun ReaderTopBar(
     onOpenBookmarks: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onOpenTypography: () -> Unit = {},
+    onToggleReaderMode: () -> Unit = {},
+    readerMode: String = "page",
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
@@ -304,6 +306,8 @@ fun ReaderTopBar(
             onOpenBookmarks = onOpenBookmarks,
             onOpenSearch = onOpenSearch,
             onOpenTypography = onOpenTypography,
+            onToggleReaderMode = onToggleReaderMode,
+            readerMode = readerMode,
         )
     }
 }
@@ -506,6 +510,8 @@ private fun TranslationMenu(
     onOpenBookmarks: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onOpenTypography: () -> Unit = {},
+    onToggleReaderMode: () -> Unit = {},
+    readerMode: String = "page",
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -528,6 +534,7 @@ private fun TranslationMenu(
                 charCount = charCount,
                 costLabel = costLabel,
                 hasBookmarkHere = hasBookmarkHere,
+                readerMode = readerMode,
             )
             var renderedGroup: ReaderMenuGroup? = null
             items.forEach { item ->
@@ -547,8 +554,6 @@ private fun TranslationMenu(
                     onClick = {
                         expanded = false
                         when (item.action) {
-                            ReaderMenuAction.FONT_DECREASE -> onFontSizeChange(fontSizeSp - 1f)
-                            ReaderMenuAction.FONT_INCREASE -> onFontSizeChange(fontSizeSp + 1f)
                             ReaderMenuAction.TOGGLE_THEME -> onThemeChange()
                             ReaderMenuAction.IMMERSIVE -> onToggleImmersive()
                             ReaderMenuAction.TRANSLATE -> onRetranslate()
@@ -563,6 +568,7 @@ private fun TranslationMenu(
                             ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
                             ReaderMenuAction.SEARCH_BOOK -> onOpenSearch()
                             ReaderMenuAction.TYPOGRAPHY -> onOpenTypography()
+                            ReaderMenuAction.TOGGLE_READER_MODE -> onToggleReaderMode()
                             ReaderMenuAction.WORLDLINE -> onOpenWorldline()
                         }
                     },

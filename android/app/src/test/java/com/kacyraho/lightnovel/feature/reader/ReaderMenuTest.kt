@@ -12,7 +12,15 @@ class ReaderMenuTest {
         translationEnabled: Boolean = true,
         hasStoryMemory: Boolean = false,
         queryMode: Boolean = false,
-    ) = readerMenuItems(fontSizeSp, hasTranslation, translationEnabled, hasStoryMemory, queryMode)
+        readerMode: String = "page",
+    ) = readerMenuItems(
+        fontSizeSp,
+        hasTranslation,
+        translationEnabled,
+        hasStoryMemory,
+        queryMode,
+        readerMode = readerMode,
+    )
 
     @Test
     fun keepsEveryActionAndGroupOrder() {
@@ -24,8 +32,6 @@ class ReaderMenuTest {
         )
         assertEquals(
             setOf(
-                ReaderMenuAction.FONT_DECREASE,
-                ReaderMenuAction.FONT_INCREASE,
                 ReaderMenuAction.TOGGLE_THEME,
                 ReaderMenuAction.IMMERSIVE,
                 ReaderMenuAction.TRANSLATE,
@@ -40,11 +46,12 @@ class ReaderMenuTest {
                 ReaderMenuAction.OPEN_BOOKMARKS,
                 ReaderMenuAction.SEARCH_BOOK,
                 ReaderMenuAction.TYPOGRAPHY,
+                ReaderMenuAction.TOGGLE_READER_MODE,
                 ReaderMenuAction.WORLDLINE,
             ),
             menu.map { it.action }.toSet(),
         )
-        assertEquals(17, menu.size)
+        assertEquals(16, menu.size)
     }
 
     @Test
@@ -52,7 +59,7 @@ class ReaderMenuTest {
         val menu = items(hasStoryMemory = false)
 
         assertTrue(menu.none { it.action == ReaderMenuAction.STORY_MEMORY })
-        assertEquals(16, menu.size)
+        assertEquals(15, menu.size)
     }
 
     @Test
@@ -102,16 +109,16 @@ class ReaderMenuTest {
     }
 
     @Test
-    fun fontLabelShowsCurrentSize() {
-        val menu = items(fontSizeSp = 21f)
-
+    fun readerModeLabelReflectsState() {
         assertEquals(
-            "字号 21 · 减小",
-            menu.first { it.action == ReaderMenuAction.FONT_DECREASE }.label,
+            "翻页模式",
+            items(readerMode = "page")
+                .first { it.action == ReaderMenuAction.TOGGLE_READER_MODE }.label,
         )
         assertEquals(
-            "字号 21 · 增大",
-            menu.first { it.action == ReaderMenuAction.FONT_INCREASE }.label,
+            "滚动模式",
+            items(readerMode = "scroll")
+                .first { it.action == ReaderMenuAction.TOGGLE_READER_MODE }.label,
         )
     }
 
