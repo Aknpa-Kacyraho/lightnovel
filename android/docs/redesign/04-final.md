@@ -363,3 +363,7 @@ Column
   - `load()` 取消旧请求并 `ensureActive`，修复快速切模式错乱。
   - `PendingReaderJump` 支持跨章书签/搜索定位到段落。
   - 书签提示改 `collectLatest`，不再排队。
+- 1.6.2（versionCode 55）：
+  - 进度写入改为 `UNDISPATCHED + NonCancellable`，退出不丢最后一页。
+  - `applyShelfFilter` 一次 copy，书架下拉不再三连更新。
+  - 书名翻译 `Mutex.tryLock` + 进程内只请求一次。

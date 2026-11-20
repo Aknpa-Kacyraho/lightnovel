@@ -118,6 +118,7 @@ fun LibraryRoute(
         onOpenSettings = onOpenSettings,
         onOpenSettingsBackup = onOpenSettingsBackup,
         onShelfChange = viewModel::setShelf,
+        onShelfFilterChange = viewModel::applyShelfFilter,
         onFavoritesOnlyChange = viewModel::setFavoritesOnly,
         onRemovedOnlyChange = viewModel::setRemovedOnly,
         onSortChange = viewModel::setSort,
@@ -146,6 +147,7 @@ fun LibraryScreen(
     onOpenSettings: () -> Unit,
     onOpenSettingsBackup: () -> Unit,
     onShelfChange: (String?) -> Unit,
+    onShelfFilterChange: (String?) -> Unit,
     onFavoritesOnlyChange: (Boolean) -> Unit,
     onRemovedOnlyChange: (Boolean) -> Unit,
     onSortChange: (LibrarySort) -> Unit,
@@ -293,9 +295,7 @@ fun LibraryScreen(
                                 },
                                 onClick = {
                                     shelfMenuOpen = false
-                                    onShelfChange(value)
-                                    onFavoritesOnlyChange(false)
-                                    onRemovedOnlyChange(false)
+                                    onShelfFilterChange(value)
                                 },
                             )
                         }

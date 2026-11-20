@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.6.2 — 2026-11-20
+
+### 修复
+
+- 翻页后立即退出阅读器，最后一页的进度也会写入（不再丢一页）。
+- 书架下拉切换只更新一次筛选状态，不再出现中间态闪烁。
+- 同一进程内书架只请求一次书名翻译，避免重复请求同一批书。
+
+### 工程
+
+- `onPageChanged` / `onScrollParagraphChanged` 的写入改为
+  `launch(UNDISPATCHED) { withContext(NonCancellable) { ... } }`。
+- `LibraryViewModel.applyShelfFilter` 一次 copy；书架下拉只调用一次。
+- `MetadataTranslationService.translateTitles` 加 `Mutex.tryLock`；
+  `LibraryViewModel` 记录 `metadataTitlesRequested`。
+- `versionCode 55` / `versionName 1.6.2`。
+
 ## 1.6.1 — 2026-11-20
 
 ### 修复

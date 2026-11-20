@@ -23,6 +23,9 @@
 | Round 13 | 1.5.0（50） | 真沉浸、模式行精简、菜单去重 | ✅ | ✅ | ✅ [v1.5.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.0) |
 | Round 14 | 1.5.1（51） | 术语表搜索、覆盖提示、删除确认 | ✅ | ✅ | ✅ [v1.5.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.1) |
 | Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ✅ | ✅ [v1.5.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.2) |
+| Round 16 | 1.6.0（53） | 行/段位置统一、滚动书签与跳转 | ✅ | ✅ | ✅ [v1.6.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.0) |
+| Round 17 | 1.6.1（54） | 加载竞态、跨章定位、提示替换 | ✅ | ✅ | ✅ [v1.6.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.1) |
+| Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -108,7 +111,38 @@ cd android
   - 阅读器「更多」改为 `ReaderMenuSheet`（70% 高、可滚动、分组完整）。
 - 验证：264 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 13 候选
+
+## Round 16（已发布）
+
+- 指南：`round-16/`；自检：`round-16/SELF-REVIEW.md`
+- 版本：1.6.0 / 53
+- 变更：
+  - 滚动模式进度保存段号；恢复时换算起始行号。
+  - 滚动书签/翻译锚点用当前段；滚动列表响应跳转。
+  - 新增 `ReaderScrollMapping` 与测试。
+- 验证：270 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 17（已发布）
+
+- 指南：`round-17/`；自检：`round-17/SELF-REVIEW.md`
+- 版本：1.6.1 / 54
+- 变更：
+  - `load()` 取消旧请求并 `ensureActive`。
+  - `PendingReaderJump` 跨章定位到段落。
+  - 书签提示改 `collectLatest`。
+- 验证：274 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 18（已发布）
+
+- 指南：`round-18/`；自检：`round-18/SELF-REVIEW.md`
+- 版本：1.6.2 / 55
+- 变更：
+  - 进度写入改为 `UNDISPATCHED + NonCancellable`，退出不丢最后一页。
+  - `applyShelfFilter` 一次 copy，书架下拉不再三连更新。
+  - 书名翻译 `Mutex.tryLock` + 进程内只请求一次。
+- 验证：274 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 19 候选
 
 - 滚动阅读模式限宽 680dp。
 - 章节列表批量翻译确认显示总章数。

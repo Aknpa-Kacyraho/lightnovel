@@ -90,6 +90,7 @@ class MetadataTranslationService(
         DeepSeekClient(base, key)
     },
 ) {
+    private val titleMutex = kotlinx.coroutines.sync.Mutex()
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -338,6 +339,15 @@ class MetadataTranslationService(
 
     suspend fun translateTitles(books: List<BookEntity>): Map<String, String> {
         if (books.isEmpty()) return emptyMap()
+        if (!titleMutex.tryLock()) return emptyMap()
+        try {
+            return translateTitlesLocked(books)
+        } finally {
+            titleMutex.unlock()
+        }
+    }
+
+    private suspend fun translateTitlesLocked(books: List<BookEntity>): Map<String, String> {
         val settings = settingsStore.settings.first()
         val key = apiKeyStore.load(settings.translationKeyScope())?.trim().orEmpty()
         if (key.isBlank() && settings.translationRequiresKey()) return emptyMap()

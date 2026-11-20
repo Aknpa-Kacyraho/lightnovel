@@ -66,6 +66,7 @@ class LibraryViewModel(
     private val taskRegistry: TranslationTaskRegistry? = null,
 ) : ViewModel() {
     private val filter = MutableStateFlow(LibraryFilter())
+    private var metadataTitlesRequested = false
 
     init {
         viewModelScope.launch {
@@ -73,6 +74,8 @@ class LibraryViewModel(
             filter.value = filter.value.copy(sort = LibrarySort.fromId(savedSort))
         }
         viewModelScope.launch {
+            if (metadataTitlesRequested) return@launch
+            metadataTitlesRequested = true
             val books = repository.observeBooks().first()
                 .filter { !it.local && it.titleZh.isNullOrBlank() }
             if (books.isNotEmpty()) {
@@ -133,6 +136,14 @@ class LibraryViewModel(
 
     fun setShelf(shelf: String?) {
         filter.value = filter.value.copy(shelf = shelf, removedOnly = false)
+    }
+
+    fun applyShelfFilter(shelf: String?) {
+        filter.value = filter.value.copy(
+            shelf = shelf,
+            favoritesOnly = false,
+            removedOnly = false,
+        )
     }
 
     fun setFavoritesOnly(enabled: Boolean) {

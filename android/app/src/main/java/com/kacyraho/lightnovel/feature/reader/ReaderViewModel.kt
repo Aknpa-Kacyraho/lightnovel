@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 data class ReaderUiState(
@@ -842,8 +843,10 @@ class ReaderViewModel(
         refreshKnowledgeStatus()
         val anchor = layout.pages[pageIndex].startAnchor
         saveJob?.cancel()
-        saveJob = viewModelScope.launch {
-            repository.updateProgress(bookId, anchor)
+        saveJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            withContext(NonCancellable) {
+                repository.updateProgress(bookId, anchor)
+            }
         }
     }
 
@@ -1385,19 +1388,21 @@ class ReaderViewModel(
             scheduleKnowledgeStatusRefresh()
             val state = _state.value
             saveJob?.cancel()
-            saveJob = viewModelScope.launch {
-                repository.updateProgress(
-                    bookId,
-                    ReaderAnchor(
-                        chapterIndex = chapterIndex,
-                        paragraphId = paragraphIndexForLine(
-                            state.paragraphs,
-                            state.displayMode,
-                            safe,
+            saveJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                withContext(NonCancellable) {
+                    repository.updateProgress(
+                        bookId,
+                        ReaderAnchor(
+                            chapterIndex = chapterIndex,
+                            paragraphId = paragraphIndexForLine(
+                                state.paragraphs,
+                                state.displayMode,
+                                safe,
+                            ),
+                            charOffset = 0,
                         ),
-                        charOffset = 0,
-                    ),
-                )
+                    )
+                }
             }
         }
     }
