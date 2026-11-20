@@ -18,8 +18,8 @@
 | Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ✅ [v1.3.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.1) |
 | Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ✅ [v1.3.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.2) |
 | Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ✅ [v1.4.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.0) |
-| Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ⏳ |
-| Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ⏳ | ⏳ |
+| Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ✅ [v1.4.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.1) |
+| Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -66,11 +66,15 @@ cd android
   - 每章 3 条、总数 30，输入 300ms 防抖，关闭即取消。
 - 验证：255 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 12（计划）
+## Round 12（已发布）
 
-- 指南：`round-12/`
+- 指南：`round-12/`；自检：`round-12/SELF-REVIEW.md`
 - 版本：1.4.2 / 49
-- 范围：阅读器排版 Sheet（字号/行距/边距/段距）、翻页模式可拖进度、位置保持。
+- 变更：
+  - 阅读器「排版」BottomSheet：字号/行距/边距/段距；恢复默认。
+  - 翻页模式底栏可拖进度（2dp 轨道 + 8dp thumb），拖动显示页码。
+  - 分页前捕获锚点，调整排版尽量不丢位置。
+- 验证：258 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 13 候选
 

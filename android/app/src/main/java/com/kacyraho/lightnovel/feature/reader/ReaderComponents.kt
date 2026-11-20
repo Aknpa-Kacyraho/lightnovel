@@ -18,10 +18,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kacyraho.lightnovel.reader.engine.ReaderTheme
 import java.time.Instant
@@ -248,6 +251,7 @@ fun ReaderTopBar(
     onAddBookmark: () -> Unit = {},
     onOpenBookmarks: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
+    onOpenTypography: () -> Unit = {},
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
@@ -299,6 +303,7 @@ fun ReaderTopBar(
             onAddBookmark = onAddBookmark,
             onOpenBookmarks = onOpenBookmarks,
             onOpenSearch = onOpenSearch,
+            onOpenTypography = onOpenTypography,
         )
     }
 }
@@ -315,24 +320,36 @@ fun ReaderBottomBar(
     onNext: () -> Unit,
     onToc: () -> Unit,
     progress: Float = 0f,
+    pageIndex: Int = 0,
+    pageCount: Int = 0,
+    onSeekPage: ((Int) -> Unit)? = null,
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
         disabledContentColor = textColor.copy(alpha = 0.38f),
     )
     Column(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(textColor.copy(alpha = 0.10f)),
-        ) {
+        if (onSeekPage != null && pageCount > 1) {
+            ReaderSeekBar(
+                progress = progress,
+                pageCount = pageCount,
+                textColor = textColor,
+                onSeek = onSeekPage,
+            )
+        } else {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .fillMaxHeight()
-                    .background(textColor.copy(alpha = 0.28f)),
-            )
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(textColor.copy(alpha = 0.10f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(textColor.copy(alpha = 0.28f)),
+                )
+            }
         }
         Row(
             modifier = Modifier
@@ -362,6 +379,69 @@ fun ReaderBottomBar(
                 Text("下一章")
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReaderSeekBar(
+    progress: Float,
+    pageCount: Int,
+    textColor: Color,
+    onSeek: (Int) -> Unit,
+) {
+    var value by remember(progress) { mutableFloatStateOf(progress) }
+    var dragging by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (dragging) {
+            Text(
+                "第 ${progressToPage(value, pageCount) + 1} / $pageCount 页",
+                style = MaterialTheme.typography.labelSmall,
+                color = textColor.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = {
+                value = it
+                dragging = true
+            },
+            onValueChangeFinished = {
+                dragging = false
+                onSeek(progressToPage(value, pageCount))
+            },
+            valueRange = 0f..1f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp)
+                .padding(horizontal = 8.dp),
+            thumb = {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(textColor.copy(alpha = 0.7f), CircleShape),
+                )
+            },
+            track = { sliderState ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(textColor.copy(alpha = 0.10f)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(sliderState.value.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(textColor.copy(alpha = 0.28f)),
+                    )
+                }
+            },
+        )
     }
 }
 
@@ -425,6 +505,7 @@ private fun TranslationMenu(
     onAddBookmark: () -> Unit = {},
     onOpenBookmarks: () -> Unit = {},
     onOpenSearch: () -> Unit = {},
+    onOpenTypography: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -481,6 +562,7 @@ private fun TranslationMenu(
                             ReaderMenuAction.ADD_BOOKMARK -> onAddBookmark()
                             ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
                             ReaderMenuAction.SEARCH_BOOK -> onOpenSearch()
+                            ReaderMenuAction.TYPOGRAPHY -> onOpenTypography()
                             ReaderMenuAction.WORLDLINE -> onOpenWorldline()
                         }
                     },

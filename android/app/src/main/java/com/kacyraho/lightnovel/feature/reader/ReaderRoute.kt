@@ -186,6 +186,10 @@ fun ReaderRoute(
         onOpenCatalog = onOpenCatalog,
         onOpenChapter = onOpenChapter,
         onFontSizeChange = viewModel::setFontSize,
+        onLineHeightChange = viewModel::setLineHeight,
+        onMarginChange = viewModel::setReaderMargin,
+        onParagraphSpacingChange = viewModel::setParagraphSpacing,
+        onResetTypography = viewModel::resetTypography,
         onViewportChanged = viewModel::onViewportChanged,
         onPageChanged = viewModel::onPageChanged,
         onScrollParagraphChanged = viewModel::onScrollParagraphChanged,
@@ -238,6 +242,10 @@ private fun ReaderContent(
     onSearchQuery: (String) -> Unit,
     onClearSearch: () -> Unit,
     onJumpSearchHit: (BookSearchHit) -> Unit,
+    onLineHeightChange: (Float) -> Unit,
+    onMarginChange: (Float) -> Unit,
+    onParagraphSpacingChange: (Float) -> Unit,
+    onResetTypography: () -> Unit,
     onAddBookmark: () -> Unit,
     onRemoveBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
     onJumpBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
@@ -285,6 +293,7 @@ private fun ReaderContent(
     var showParagraph by remember { mutableStateOf(false) }
     var showBookmarks by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showTypography by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     var showSlowPagination by remember { mutableStateOf(false) }
     var showImmersiveHint by remember { mutableStateOf(false) }
@@ -414,6 +423,7 @@ private fun ReaderContent(
             onAddBookmark = onAddBookmark,
             onOpenBookmarks = { showBookmarks = true },
             onOpenSearch = { showSearch = true },
+            onOpenTypography = { showTypography = true },
         )
 
         if (bookmarkNotice != null) {
@@ -763,6 +773,22 @@ private fun ReaderContent(
             )
         }
 
+        if (showTypography) {
+            TypographySheet(
+                fontSizeSp = state.fontSizeSp,
+                lineHeight = state.lineHeight,
+                marginDp = state.marginDp,
+                paragraphSpacing = state.paragraphSpacing,
+                theme = readerTheme,
+                onFontSizeChange = onFontSizeChange,
+                onLineHeightChange = onLineHeightChange,
+                onMarginChange = onMarginChange,
+                onParagraphSpacingChange = onParagraphSpacingChange,
+                onReset = onResetTypography,
+                onDismiss = { showTypography = false },
+            )
+        }
+
         if (showSearch) {
             BookSearchSheet(
                 results = searchResults,
@@ -846,6 +872,9 @@ private fun ReaderContent(
                 onNext = { onOpenChapter(state.chapterIndex + 1) },
                 onToc = onOpenCatalog ?: onBack,
                 progress = chapterProgress,
+                pageIndex = state.pageIndex,
+                pageCount = state.layout?.pages?.size ?: 0,
+                onSeekPage = if (state.readerMode == "scroll") null else onPageChanged,
             )
         } else {
             Column(modifier = Modifier.fillMaxWidth()) {

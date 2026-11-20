@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.4.2 — 2026-11-20
+
+### 用户可见
+
+- 阅读器「更多 → 排版」：字号、行距、左右边距、段落间距四个滑块，即时生效。
+- 「恢复默认」一键回到 18 / 1.7 / 16 / 8，并持久化。
+- 翻页模式底栏进度可拖动：拖动时显示「第 x / y 页」，松手跳转。
+- 调整排版时按当前页锚点恢复，尽量不丢阅读位置。
+
+### 工程
+
+- `ReaderProgress` 增加 `progressToPage` / `pageToProgress` 与测试。
+- ViewModel 排版 setter 分页前捕获锚点；新增 `resetTypography()`。
+- 新增 `TypographySheet`；`ReaderBottomBar` 增加可拖进度。
+- `versionCode 49` / `versionName 1.4.2`。
+
 ## 1.4.1 — 2026-11-20
 
 ### 用户可见

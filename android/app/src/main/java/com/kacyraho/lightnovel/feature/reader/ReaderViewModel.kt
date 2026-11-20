@@ -239,13 +239,28 @@ class ReaderViewModel(
         }
     }
 
+    fun resetTypography() {
+        setFontSize(18f)
+        setLineHeight(1.7f)
+        setReaderMargin(16f)
+        setParagraphSpacing(8f)
+    }
+
+    private fun captureAnchorForRepagination() {
+        if (anchorToRestore == null) {
+            anchorToRestore = currentAnchor()
+        }
+    }
+
     fun setFontSize(sizeSp: Float) {
+        captureAnchorForRepagination()
         val value = sizeSp.coerceIn(12f, 30f)
         _state.value = _state.value.copy(fontSizeSp = value)
         persistSettings()
     }
 
     fun setLineHeight(lineHeight: Float) {
+        captureAnchorForRepagination()
         val value = lineHeight.coerceIn(1.2f, 2.4f)
         _state.value = _state.value.copy(lineHeight = value)
         persistSettings()
@@ -257,11 +272,13 @@ class ReaderViewModel(
     }
 
     fun setReaderMargin(value: Float) {
+        captureAnchorForRepagination()
         _state.value = _state.value.copy(marginDp = value.coerceIn(8f, 48f))
         persistSettings()
     }
 
     fun setParagraphSpacing(value: Float) {
+        captureAnchorForRepagination()
         _state.value = _state.value.copy(paragraphSpacing = value.coerceIn(0f, 32f))
         persistSettings()
     }

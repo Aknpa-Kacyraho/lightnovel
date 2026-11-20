@@ -93,4 +93,30 @@ class ReaderProgressTest {
         assertEquals(0.5f, shelfProgress(progressIdx = 10, episodes = 20), 0.001f)
         assertEquals(1f, shelfProgress(progressIdx = 25, episodes = 20), 0.001f)
     }
+
+    @Test
+    fun progressToPageHandlesEdges() {
+        assertEquals(0, progressToPage(0f, 0))
+        assertEquals(0, progressToPage(0.5f, 1))
+        assertEquals(0, progressToPage(0f, 10))
+        assertEquals(9, progressToPage(1f, 10))
+        assertEquals(5, progressToPage(0.5f, 10))
+    }
+
+    @Test
+    fun pageToProgressHandlesEdges() {
+        assertEquals(0f, pageToProgress(0, 0), 0.001f)
+        assertEquals(0f, pageToProgress(3, 1), 0.001f)
+        assertEquals(0f, pageToProgress(0, 10), 0.001f)
+        assertEquals(1f, pageToProgress(9, 10), 0.001f)
+    }
+
+    @Test
+    fun progressRoundTripIsStable() {
+        val pages = 37
+        for (page in 0 until pages) {
+            val progress = pageToProgress(page, pages)
+            assertEquals(page, progressToPage(progress, pages))
+        }
+    }
 }

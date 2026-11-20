@@ -23,6 +23,7 @@ internal enum class ReaderMenuAction {
     ADD_BOOKMARK,
     OPEN_BOOKMARKS,
     SEARCH_BOOK,
+    TYPOGRAPHY,
     WORLDLINE,
 }
 
@@ -58,6 +59,7 @@ internal fun readerMenuItems(
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_DECREASE, "字号 ${fontSizeSp.toInt()} · 减小"))
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
     add(ReaderMenuItem(reading, ReaderMenuAction.TOGGLE_THEME, "切换纸色"))
+    add(ReaderMenuItem(reading, ReaderMenuAction.TYPOGRAPHY, "排版"))
     add(ReaderMenuItem(reading, ReaderMenuAction.IMMERSIVE, "沉浸阅读"))
     add(
         ReaderMenuItem(

@@ -39,11 +39,12 @@ class ReaderMenuTest {
                 ReaderMenuAction.ADD_BOOKMARK,
                 ReaderMenuAction.OPEN_BOOKMARKS,
                 ReaderMenuAction.SEARCH_BOOK,
+                ReaderMenuAction.TYPOGRAPHY,
                 ReaderMenuAction.WORLDLINE,
             ),
             menu.map { it.action }.toSet(),
         )
-        assertEquals(16, menu.size)
+        assertEquals(17, menu.size)
     }
 
     @Test
@@ -51,7 +52,7 @@ class ReaderMenuTest {
         val menu = items(hasStoryMemory = false)
 
         assertTrue(menu.none { it.action == ReaderMenuAction.STORY_MEMORY })
-        assertEquals(15, menu.size)
+        assertEquals(16, menu.size)
     }
 
     @Test
