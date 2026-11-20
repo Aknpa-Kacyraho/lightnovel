@@ -313,3 +313,8 @@ Column
   - 书架 `ContinueCard`、`BookRow` 与任务卡统一 `surfaceContainerLow` +
     `outlineVariant` 0.6 alpha 描边。
   - 新增 `ThemeContrastTest`。
+- 1.2.2（versionCode 43）：
+  - 单击正文切换沉浸；查询模式点词优先，横向滑动只翻页。
+  - 底栏 2dp 本章进度线；书架「继续阅读」卡补进度线。
+  - 首次进入沉浸 3 秒提示退出方式。
+  - 新增 `ReaderProgressTest`（翻页/滚动/空章/越界/书架）。

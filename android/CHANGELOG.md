@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.2.2 — 2026-11-20
+
+### 用户可见
+
+- 阅读时单击正文即可隐藏/显示顶栏与底栏；查询模式下点词优先，不会误触。
+- 底栏新增 2dp 本章阅读进度线，翻页与滚动模式都随进度变化。
+- 书架「继续阅读」卡补进度线，与列表卡信息一致。
+- 第一次进入沉浸时提示「单击正文或点下方按钮退出沉浸」，3 秒后消失。
+
+### 工程
+
+- 新增 `readerChapterProgress(...)`、`shelfProgress(...)` 纯函数与 `ReaderProgressTest`。
+- `ReaderPageView` 增加 `onCenterTap`；普通模式点击空白切换沉浸。
+- `versionCode 43` / `versionName 1.2.2`。
+
 ## 1.2.1 — 2026-11-20
 
 ### 用户可见

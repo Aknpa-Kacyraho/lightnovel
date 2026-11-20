@@ -11,8 +11,8 @@
 | Round 2 | 1.1.0（39） | 空态主次、设置深链、菜单分组 | ✅ | ✅ | ✅ [v1.1.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.1.0) |
 | Round 3 | 1.1.1（40） | 横屏限宽、大字体换行、翻译字数、长章节提示 | ✅ | ✅ | ✅ [v1.1.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.1.1) |
 | Round 4 | 1.2.0（41） | 阅读纸色跟随系统、未翻译横幅降噪、夜间调光 | ✅ | ✅ | ✅ [v1.2.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.0) |
-| Round 5 | 1.2.1（42） | 深色次要文字降亮、标签降饱和、卡片去亮框 | ✅ | ⏳ | ⏳ |
-| Round 6 | 1.2.2（43） | 单击正文沉浸、底栏进度线、继续阅读进度 | ✅ | ⏳ | ⏳ |
+| Round 5 | 1.2.1（42） | 深色次要文字降亮、标签降饱和、卡片去亮框 | ✅ | ✅ | ✅ [v1.2.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.1) |
+| Round 6 | 1.2.2（43） | 单击正文沉浸、底栏进度线、继续阅读进度 | ✅ | ✅ | ✅ [v1.2.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.2) |
 
 ## 约束
 
@@ -46,19 +46,29 @@ cd android
   - 新增 `ReaderThemeTest`、`ReaderBannerTest`，补 `SettingsStoreTest` 默认值。
 - 验证：212 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 5（进行中）
+## Round 5（已发布）
 
-- 指南：`round-5/`
+- 指南：`round-5/`；自检：`round-5/SELF-REVIEW.md`
 - 版本：1.2.1 / 42
-- 范围：8 套 dark 的 `onSurfaceVariant` 降亮（7–10:1）、容器混合 0.30→0.24、
-  书架/任务卡统一 `surfaceContainerLow` + 0.6 alpha 描边、`ThemeContrastTest`。
+- 变更：
+  - 8 套 dark 的 `onSurfaceVariant` 降亮到 7–10:1；`surfaceVariant` 同步加深。
+  - 深色容器混合 0.30→0.24；抽 `DARK_CONTAINER_MIX` / `LIGHT_CONTAINER_MIX`。
+  - 书架 `ContinueCard`、`BookRow`、任务卡统一 `surfaceContainerLow` + 0.6 alpha 描边。
+  - 新增 `ThemeContrastTest`。
+- 验证：215 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 发布：tag `v1.2.1`，Release 含签名 APK。
 
-## Round 6（计划）
+## Round 6（已发布）
 
-- 指南：`round-6/`
+- 指南：`round-6/`；自检：`round-6/SELF-REVIEW.md`
 - 版本：1.2.2 / 43
-- 范围：单击正文切换沉浸（查询模式优先）、底栏 2dp 进度线、继续阅读卡进度、
-  首次沉浸 3 秒提示、`ReaderProgressTest`。
+- 变更：
+  - 单击正文切换沉浸；查询模式点词优先，横向滑动只翻页。
+  - 底栏 2dp 本章进度线（翻页/滚动）；书架「继续阅读」卡补进度线。
+  - 首次进入沉浸 3 秒提示退出方式。
+  - 新增 `ReaderProgressTest`。
+- 验证：220 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 发布：tag `v1.2.2`，Release 含签名 APK。
 
 ## Round 7 候选
 

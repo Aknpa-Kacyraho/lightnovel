@@ -46,6 +46,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -233,6 +234,17 @@ private fun ReaderContent(
     var showParagraph by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     var showSlowPagination by remember { mutableStateOf(false) }
+    var showImmersiveHint by remember { mutableStateOf(false) }
+
+    LaunchedEffect(immersive) {
+        if (!immersive) {
+            showImmersiveHint = false
+            return@LaunchedEffect
+        }
+        showImmersiveHint = true
+        delay(3_000)
+        showImmersiveHint = false
+    }
 
     LaunchedEffect(state.loading, state.layout) {
         if (state.loading || state.layout == null) {
@@ -573,10 +585,12 @@ private fun ReaderContent(
                             factory = { context ->
                                 ReaderPageView(context).also {
                                     it.onEntityClick = if (state.queryMode) onSelectEntity else null
+                                    it.onCenterTap = { immersive = !immersive }
                                 }
                             },
                             update = { view ->
                                 view.onEntityClick = if (state.queryMode) onSelectEntity else null
+                                view.onCenterTap = { immersive = !immersive }
                                 view.contentDescription =
                                     "第 ${index + 1} 页，共 ${layout.pages.size} 页"
                                 view.bind(layout.layout, page.slice)
@@ -599,6 +613,13 @@ private fun ReaderContent(
                 "${state.pageIndex.coerceIn(0, it.lastIndex) + 1}/${it.size}"
             }
         }
+        val chapterProgress = readerChapterProgress(
+            scrollMode = state.readerMode == "scroll",
+            pageIndex = state.pageIndex,
+            pageCount = state.layout?.pages?.size ?: 0,
+            scrollParagraph = state.scrollParagraph,
+            blockCount = state.chapterBlocks.size,
+        )
         if (showParagraph && currentParagraph != null) {
             ParagraphActionSheet(
                 paragraph = currentParagraph,
@@ -710,19 +731,33 @@ private fun ReaderContent(
                 onPrev = { onOpenChapter(state.chapterIndex - 1) },
                 onNext = { onOpenChapter(state.chapterIndex + 1) },
                 onToc = onOpenCatalog ?: onBack,
+                progress = chapterProgress,
             )
         } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(
-                    onClick = { immersive = false },
-                    colors = buttonColors,
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (showImmersiveHint) {
+                    Text(
+                        text = "单击正文或点下方按钮退出沉浸",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = secondaryColor.copy(alpha = 0.8f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Text("退出沉浸")
+                    TextButton(
+                        onClick = { immersive = false },
+                        colors = buttonColors,
+                    ) {
+                        Text("退出沉浸")
+                    }
                 }
             }
         }

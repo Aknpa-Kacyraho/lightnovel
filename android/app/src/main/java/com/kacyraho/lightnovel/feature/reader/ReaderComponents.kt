@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -302,37 +304,53 @@ fun ReaderBottomBar(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToc: () -> Unit,
+    progress: Float = 0f,
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
         disabledContentColor = textColor.copy(alpha = 0.38f),
     )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onPrev, enabled = chapterIndex > 1, colors = buttonColors) {
-            Text("上一章")
-        }
-        TextButton(onClick = onToc, colors = buttonColors) { Text("目录") }
-        Text(
-            text = listOfNotNull(
-                pageLabel,
-                if (chapterCount > 0) "$chapterIndex/$chapterCount" else null,
-                kindLabel(kind),
-            ).joinToString(" · "),
-            style = MaterialTheme.typography.labelSmall,
-            color = secondaryColor,
-        )
-        TextButton(
-            onClick = onNext,
-            enabled = chapterCount > 0 && chapterIndex < chapterCount,
-            colors = buttonColors,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(textColor.copy(alpha = 0.10f)),
         ) {
-            Text("下一章")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(textColor.copy(alpha = 0.28f)),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onPrev, enabled = chapterIndex > 1, colors = buttonColors) {
+                Text("上一章")
+            }
+            TextButton(onClick = onToc, colors = buttonColors) { Text("目录") }
+            Text(
+                text = listOfNotNull(
+                    pageLabel,
+                    if (chapterCount > 0) "$chapterIndex/$chapterCount" else null,
+                    kindLabel(kind),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryColor,
+            )
+            TextButton(
+                onClick = onNext,
+                enabled = chapterCount > 0 && chapterIndex < chapterCount,
+                colors = buttonColors,
+            ) {
+                Text("下一章")
+            }
         }
     }
 }

@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.feature.library
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.data.local.BookWithState
+import com.kacyraho.lightnovel.feature.reader.shelfProgress
 import com.kacyraho.lightnovel.ui.components.BookCover
 import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
@@ -448,6 +451,23 @@ private fun ContinueCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                val progress = shelfProgress(item.state?.progressIdx ?: 0, item.book.episodes)
+                if (progress > 0f) {
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+                        )
+                    }
+                }
             }
         }
     }

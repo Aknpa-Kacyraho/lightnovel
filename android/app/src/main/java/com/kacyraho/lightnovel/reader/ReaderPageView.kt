@@ -19,6 +19,7 @@ class ReaderPageView(context: Context) : View(context) {
     private var moved = false
 
     var onEntityClick: ((String) -> Unit)? = null
+    var onCenterTap: (() -> Unit)? = null
 
     fun bind(layout: StaticLayout, slice: PageSlice) {
         if (sourceLayout === layout && sourceSlice == slice) return
@@ -91,8 +92,12 @@ class ReaderPageView(context: Context) : View(context) {
     }
 
     private fun handleTap(event: MotionEvent) {
-        val id = entityAt(event.x, event.y) ?: return
-        onEntityClick?.invoke(id)
+        if (onEntityClick != null) {
+            val id = entityAt(event.x, event.y) ?: return
+            onEntityClick?.invoke(id)
+            return
+        }
+        onCenterTap?.invoke()
     }
 
     override fun performClick(): Boolean {
