@@ -355,3 +355,7 @@ Column
 - 1.5.2（versionCode 52）：
   - 书架筛选：书架下拉（全部/在读/想读/读完）+ 收藏 + 已移出 + 排序。
   - 阅读器「更多」改为 `ReaderMenuSheet`（70% 高、可滚动、分组完整）。
+- 1.6.0（versionCode 53）：
+  - 修复滚动模式进度存行号导致的跨模式错位；统一 `progress_block` 为段号。
+  - 滚动书签/翻译锚点改用当前段；滚动列表响应跳转。
+  - 新增 `ReaderScrollMapping` 与测试。

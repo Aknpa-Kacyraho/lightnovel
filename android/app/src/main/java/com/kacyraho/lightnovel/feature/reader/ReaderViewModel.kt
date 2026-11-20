@@ -379,7 +379,7 @@ class ReaderViewModel(
     fun addBookmark() {
         val anchor = currentAnchor()
             ?: if (_state.value.readerMode == "scroll") {
-                ReaderAnchor(chapterIndex, _state.value.scrollParagraph, 0)
+                ReaderAnchor(chapterIndex, currentParagraphIndex(), 0)
             } else {
                 null
             }
@@ -478,7 +478,7 @@ class ReaderViewModel(
                 ?.getOrNull(_state.value.pageIndex)
                 ?.startAnchor
                 ?: if (_state.value.readerMode == "scroll") {
-                    ReaderAnchor(chapterIndex, _state.value.scrollParagraph, 0)
+                    ReaderAnchor(chapterIndex, currentParagraphIndex(), 0)
                 } else {
                     null
                 }
@@ -903,6 +903,22 @@ class ReaderViewModel(
                     }
                     this@ReaderViewModel.readerChapter = readerChapter
                     lastKey = null
+                    val loadedParagraphs = buildParagraphs(
+                        raw,
+                        zh,
+                        sidecar?.incompleteParagraphs.orEmpty().toSet(),
+                    )
+                    val restoredLine = if (_state.value.readerMode == "scroll") {
+                        restore?.let {
+                            lineForParagraph(
+                                loadedParagraphs,
+                                _state.value.displayMode,
+                                it.paragraphId,
+                            )
+                        } ?: 0
+                    } else {
+                        restore?.paragraphId ?: 0
+                    }
                     _state.value = _state.value.copy(
                         loading = false,
                         error = null,
@@ -915,7 +931,7 @@ class ReaderViewModel(
                             .split("\n")
                             .map { it.trimEnd() }
                             .ifEmpty { listOf(readerChapter.text) },
-                        scrollParagraph = restore?.paragraphId ?: 0,
+                        scrollParagraph = restoredLine,
                         revision = _state.value.revision + 1,
                         translationStatus = statusFor(
                             zh = zh,
@@ -943,11 +959,7 @@ class ReaderViewModel(
                         },
                         glossaryEntries = currentStoryMemory?.glossary.orEmpty(),
                         knowledgeStatus = _state.value.knowledgeStatus,
-                        paragraphs = buildParagraphs(
-                            raw,
-                            zh,
-                            sidecar?.incompleteParagraphs.orEmpty().toSet(),
-                        ),
+                        paragraphs = loadedParagraphs,
                     )
                     prefetchAdjacent(book, chapters, _state.value.displayMode)
                     maybeStartTranslationWindow(book, chapters, zh)
@@ -1052,33 +1064,15 @@ class ReaderViewModel(
     private fun currentParagraphIndex(): Int {
         val state = _state.value
         if (state.readerMode == "scroll") {
-            return paragraphIndexForScrollLine(state, state.scrollParagraph)
+            return paragraphIndexForLine(state.paragraphs, state.displayMode, state.scrollParagraph)
         }
         return state.layout?.pages?.getOrNull(state.pageIndex)
             ?.startAnchor?.paragraphId
             ?: state.scrollParagraph
     }
 
-    private fun paragraphIndexForScrollLine(state: ReaderUiState, line: Int): Int {
-        if (state.paragraphs.isEmpty()) return 0
-        val safeLine = line.coerceAtLeast(0)
-        var cursor = 0
-        state.paragraphs.forEachIndexed { index, paragraph ->
-            val text = when (state.displayMode) {
-                "raw" -> paragraph.source
-                "bilingual" -> listOfNotNull(
-                    paragraph.source.takeIf(String::isNotBlank),
-                    paragraph.translated?.takeIf(String::isNotBlank),
-                ).joinToString("\n")
-                else -> paragraph.translated ?: paragraph.source
-            }
-            val lines = text.split("\n").size.coerceAtLeast(1)
-            if (safeLine < cursor + lines) return index
-            cursor += lines
-            if (index < state.paragraphs.lastIndex) cursor += 1
-        }
-        return state.paragraphs.lastIndex
-    }
+    private fun paragraphIndexForScrollLine(state: ReaderUiState, line: Int): Int =
+        paragraphIndexForLine(state.paragraphs, state.displayMode, line)
 
     fun openQuery() {
         refreshQueryEntries()
@@ -1385,13 +1379,18 @@ class ReaderViewModel(
             if (safe == _state.value.scrollParagraph) return@launch
             _state.value = _state.value.copy(scrollParagraph = safe, pageIndex = 0)
             scheduleKnowledgeStatusRefresh()
+            val state = _state.value
             saveJob?.cancel()
             saveJob = viewModelScope.launch {
                 repository.updateProgress(
                     bookId,
                     ReaderAnchor(
                         chapterIndex = chapterIndex,
-                        paragraphId = safe,
+                        paragraphId = paragraphIndexForLine(
+                            state.paragraphs,
+                            state.displayMode,
+                            safe,
+                        ),
                         charOffset = 0,
                     ),
                 )

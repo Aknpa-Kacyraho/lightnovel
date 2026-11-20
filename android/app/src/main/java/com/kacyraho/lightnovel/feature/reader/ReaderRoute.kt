@@ -1133,6 +1133,14 @@ private fun ScrollReader(
     }
     val names = state.queryNames
 
+    LaunchedEffect(state.scrollParagraph) {
+        if (state.scrollParagraph in blocks.indices &&
+            listState.firstVisibleItemIndex != state.scrollParagraph
+        ) {
+            listState.scrollToItem(state.scrollParagraph)
+        }
+    }
+
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()

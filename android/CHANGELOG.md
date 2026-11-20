@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.6.0 — 2026-11-20
+
+### 修复
+
+- 滚动模式与翻页模式的阅读进度不再错位：滚动模式保存段号，恢复时换算成起始行号。
+- 滚动模式添加书签使用当前段落（不再把行号当段号），预览与跳转正确。
+- 滚动模式下点击书签/搜索结果，列表会滚动到目标行（已在目标行时不重复滚动）。
+
+### 工程
+
+- 新增 `ReaderScrollMapping.kt`：`paragraphIndexForLine` / `lineForParagraph` 纯函数。
+- `ReaderViewModel` 的进度写入、恢复、书签与翻译锚点统一使用段号。
+- `ReaderScrollMappingTest` 覆盖多段多行、bilingual、越界与往返。
+- `versionCode 53` / `versionName 1.6.0`。
+
 ## 1.5.2 — 2026-11-20
 
 ### 用户可见
