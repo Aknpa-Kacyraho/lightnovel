@@ -306,3 +306,10 @@ Column
   - 未翻译章节不再常驻「本章还没翻译」横幅；只在翻译中/失败/预译队列时显示。
   - 夜间正文调暗为 `#BDBAB2`，并加 `contrastRatio` 回归断言（正文 ≥7:1）。
   - 新增 `ReaderThemeTest`、`ReaderBannerTest`。
+- 1.2.1（versionCode 42）：
+  - 8 套深色主题的 `onSurfaceVariant` 降亮到 7–10:1，`surfaceVariant` 同步加深，
+    保持标签文字 ≥4.5:1。
+  - 深色容器混合 0.30 → 0.24，抽 `DARK_CONTAINER_MIX` / `LIGHT_CONTAINER_MIX`。
+  - 书架 `ContinueCard`、`BookRow` 与任务卡统一 `surfaceContainerLow` +
+    `outlineVariant` 0.6 alpha 描边。
+  - 新增 `ThemeContrastTest`。

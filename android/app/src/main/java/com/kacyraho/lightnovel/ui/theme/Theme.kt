@@ -41,10 +41,13 @@ private data class Palette(
     val onError: Color,
 )
 
+private const val DARK_CONTAINER_MIX = 0.24f
+private const val LIGHT_CONTAINER_MIX = 0.14f
+
 private fun Palette.toScheme(dark: Boolean): ColorScheme {
-    val secondaryContainer = lerp(surface, secondary, if (dark) 0.30f else 0.14f)
-    val tertiaryContainer = lerp(surface, tertiary, if (dark) 0.30f else 0.14f)
-    val errorContainer = lerp(surface, error, if (dark) 0.30f else 0.14f)
+    val secondaryContainer = lerp(surface, secondary, if (dark) DARK_CONTAINER_MIX else LIGHT_CONTAINER_MIX)
+    val tertiaryContainer = lerp(surface, tertiary, if (dark) DARK_CONTAINER_MIX else LIGHT_CONTAINER_MIX)
+    val errorContainer = lerp(surface, error, if (dark) DARK_CONTAINER_MIX else LIGHT_CONTAINER_MIX)
     val outlineVariant = lerp(surface, outline, 0.45f)
     val surfaceContainerLowest = if (dark) background else surface
     val surfaceContainerLow = if (dark) lerp(background, surface, 0.55f) else
@@ -153,8 +156,8 @@ private val TealDark = Palette(
     secondary = Color(0xFFE7BE8D), onSecondary = Color(0xFF442A00),
     tertiary = Color(0xFFF0B3C2), onTertiary = Color(0xFF552434),
     background = Color(0xFF0E1619), surface = Color(0xFF151F23),
-    surfaceVariant = Color(0xFF3B474B), onSurface = Color(0xFFE3E2DD),
-    onSurfaceVariant = Color(0xFFC0C8C9), outline = Color(0xFF8B9597),
+    surfaceVariant = Color(0xFF333E42), onSurface = Color(0xFFE3E2DD),
+    onSurfaceVariant = Color(0xFFA9B2B3), outline = Color(0xFF8B9597),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -175,8 +178,8 @@ private val LavenderDark = Palette(
     secondary = Color(0xFFA7D8C8), onSecondary = Color(0xFF0E382D),
     tertiary = Color(0xFFFFB0CE), onTertiary = Color(0xFF5C1136),
     background = Color(0xFF14121B), surface = Color(0xFF1C1925),
-    surfaceVariant = Color(0xFF3A3645), onSurface = Color(0xFFE7E1EC),
-    onSurfaceVariant = Color(0xFFCAC4D3), outline = Color(0xFF958E9F),
+    surfaceVariant = Color(0xFF332F3D), onSurface = Color(0xFFE7E1EC),
+    onSurfaceVariant = Color(0xFFB4AEBE), outline = Color(0xFF958E9F),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -197,8 +200,8 @@ private val SakuraDark = Palette(
     secondary = Color(0xFFCFC1FF), onSecondary = Color(0xFF352A61),
     tertiary = Color(0xFFA8D5C4), onTertiary = Color(0xFF10382B),
     background = Color(0xFF1B1215), surface = Color(0xFF241A1D),
-    surfaceVariant = Color(0xFF47383C), onSurface = Color(0xFFF0DFE2),
-    onSurfaceVariant = Color(0xFFD7C1C6), outline = Color(0xFFA58C92),
+    surfaceVariant = Color(0xFF3E3034), onSurface = Color(0xFFF0DFE2),
+    onSurfaceVariant = Color(0xFFC0ACB1), outline = Color(0xFFA58C92),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -219,8 +222,8 @@ private val MatchaDark = Palette(
     secondary = Color(0xFFBCC6E0), onSecondary = Color(0xFF262F44),
     tertiary = Color(0xFFF0B6A1), onTertiary = Color(0xFF522014),
     background = Color(0xFF11140E), surface = Color(0xFF191D15),
-    surfaceVariant = Color(0xFF3B4034), onSurface = Color(0xFFE3E4D8),
-    onSurfaceVariant = Color(0xFFC5C7B8), outline = Color(0xFF8F9383),
+    surfaceVariant = Color(0xFF33372C), onSurface = Color(0xFFE3E4D8),
+    onSurfaceVariant = Color(0xFFAEB0A2), outline = Color(0xFF8F9383),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -241,8 +244,8 @@ private val AmberDark = Palette(
     secondary = Color(0xFF9FD6C9), onSecondary = Color(0xFF003731),
     tertiary = Color(0xFFE5BDE6), onTertiary = Color(0xFF48254C),
     background = Color(0xFF16120A), surface = Color(0xFF1F1A11),
-    surfaceVariant = Color(0xFF433C2E), onSurface = Color(0xFFEDE4D6),
-    onSurfaceVariant = Color(0xFFD0C6B6), outline = Color(0xFF9A9181),
+    surfaceVariant = Color(0xFF3A3427), onSurface = Color(0xFFEDE4D6),
+    onSurfaceVariant = Color(0xFFB8AF9F), outline = Color(0xFF9A9181),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -263,8 +266,8 @@ private val IndigoDark = Palette(
     secondary = Color(0xFFFFB59D), onSecondary = Color(0xFF5B1B05),
     tertiary = Color(0xFFE3C74E), onTertiary = Color(0xFF372F00),
     background = Color(0xFF10121A), surface = Color(0xFF181A23),
-    surfaceVariant = Color(0xFF383A44), onSurface = Color(0xFFE2E1E8),
-    onSurfaceVariant = Color(0xFFC6C5D0), outline = Color(0xFF90909B),
+    surfaceVariant = Color(0xFF31333C), onSurface = Color(0xFFE2E1E8),
+    onSurfaceVariant = Color(0xFFAFAEB9), outline = Color(0xFF90909B),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -285,8 +288,8 @@ private val SlateDark = Palette(
     secondary = Color(0xFFE8B7A1), onSecondary = Color(0xFF4F2414),
     tertiary = Color(0xFFC5C0F0), onTertiary = Color(0xFF2D2A57),
     background = Color(0xFF101314), surface = Color(0xFF181C1D),
-    surfaceVariant = Color(0xFF3B4042), onSurface = Color(0xFFE3E3E1),
-    onSurfaceVariant = Color(0xFFC6C7C5), outline = Color(0xFF909493),
+    surfaceVariant = Color(0xFF33373A), onSurface = Color(0xFFE3E3E1),
+    onSurfaceVariant = Color(0xFFAFB0AE), outline = Color(0xFF909493),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 
@@ -307,8 +310,8 @@ private val EmberDark = Palette(
     secondary = Color(0xFFB6CCB4), onSecondary = Color(0xFF223423),
     tertiary = Color(0xFFC4C3F0), onTertiary = Color(0xFF2D2D5F),
     background = Color(0xFF17110D), surface = Color(0xFF201915),
-    surfaceVariant = Color(0xFF453A33), onSurface = Color(0xFFEDE0D8),
-    onSurfaceVariant = Color(0xFFD2C4BB), outline = Color(0xFF9C8E85),
+    surfaceVariant = Color(0xFF3C322C), onSurface = Color(0xFFEDE0D8),
+    onSurfaceVariant = Color(0xFFBBADA4), outline = Color(0xFF9C8E85),
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
 )
 

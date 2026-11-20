@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.2.1 — 2026-11-20
+
+### 用户可见
+
+- 深色模式下作者、进度、说明等次要文字整体调暗，主次更清楚，夜里不刺眼。
+- 深色标签容器降低饱和度，题材/关键词/来源不再像荧光贴纸。
+- 书架卡片与任务卡统一容器色，描边减淡，列表不再被一圈圈亮框包围。
+
+### 工程
+
+- 8 套深色主题的 `onSurfaceVariant` 与 `surfaceVariant` 同步调整，保持 7–10:1。
+- 容器混合抽 `DARK_CONTAINER_MIX = 0.24f` / `LIGHT_CONTAINER_MIX = 0.14f`。
+- 新增 `ThemeContrastTest`：8 套深色的次要文字、主文字、标签文字对比度。
+- `versionCode 42` / `versionName 1.2.1`。
+
 ## 1.2.0 — 2026-11-20
 
 ### 用户可见
