@@ -61,6 +61,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
+import com.kacyraho.lightnovel.core.model.ReaderAnchor
 import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
 import com.kacyraho.lightnovel.data.translation.DEFAULT_PRICE_IN_CNY_PER_MILLION
@@ -110,6 +111,16 @@ fun ReaderRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val translationState by viewModel.translationState.collectAsStateWithLifecycle()
     val worldlineState by viewModel.worldlineState.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
+    var bookmarkNotice by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.bookmarkNotice.collect { message ->
+            bookmarkNotice = message
+            delay(1_500)
+            bookmarkNotice = null
+        }
+    }
     val queueFlow = remember(bookId) {
         container.readingTranslationCoordinator.states.map { it[bookId] }
     }
@@ -144,6 +155,19 @@ fun ReaderRoute(
         worldlineState = worldlineState,
         queueState = queueState,
         activeTask = activeTask,
+        bookmarks = bookmarks,
+        bookmarkNotice = bookmarkNotice,
+        onAddBookmark = viewModel::addBookmark,
+        onRemoveBookmark = viewModel::removeBookmark,
+        onJumpBookmark = { bookmark ->
+            if (bookmark.chapterIdx == state.chapterIndex) {
+                viewModel.jumpToAnchor(
+                    ReaderAnchor(bookmark.chapterIdx, bookmark.paragraphId, bookmark.charOffset),
+                )
+            } else {
+                onOpenChapter(bookmark.chapterIdx)
+            }
+        },
         onBack = onBack,
         onOpenCatalog = onOpenCatalog,
         onOpenChapter = onOpenChapter,
@@ -192,6 +216,11 @@ private fun ReaderContent(
     worldlineState: ReaderWorldlineState,
     queueState: ReadingTranslationQueueState?,
     activeTask: TranslationTaskSnapshot?,
+    bookmarks: List<com.kacyraho.lightnovel.data.local.BookmarkEntity>,
+    bookmarkNotice: String?,
+    onAddBookmark: () -> Unit,
+    onRemoveBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
+    onJumpBookmark: (com.kacyraho.lightnovel.data.local.BookmarkEntity) -> Unit,
     onBack: () -> Unit,
     onOpenCatalog: (() -> Unit)?,
     onOpenChapter: (Int) -> Unit,
@@ -234,6 +263,7 @@ private fun ReaderContent(
     var showQuery by remember { mutableStateOf(false) }
     var showWorldline by remember { mutableStateOf(false) }
     var showParagraph by remember { mutableStateOf(false) }
+    var showBookmarks by remember { mutableStateOf(false) }
     var immersive by remember { mutableStateOf(false) }
     var showSlowPagination by remember { mutableStateOf(false) }
     var showImmersiveHint by remember { mutableStateOf(false) }
@@ -357,7 +387,24 @@ private fun ReaderContent(
             } else {
                 null
             },
+            hasBookmarkHere = bookmarks.any {
+                it.chapterIdx == state.chapterIndex && it.paragraphId == currentParagraphId
+            },
+            onAddBookmark = onAddBookmark,
+            onOpenBookmarks = { showBookmarks = true },
         )
+
+        if (bookmarkNotice != null) {
+            Text(
+                text = bookmarkNotice,
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryColor,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
+            )
+        }
 
         if (!translationState.running && activeTask == null) {
             StaleBanner(
@@ -678,6 +725,19 @@ private fun ReaderContent(
                     showChapterInfo = false
                     onTranslate()
                 },
+            )
+        }
+
+        if (showBookmarks) {
+            BookmarkSheet(
+                bookmarks = bookmarks,
+                theme = readerTheme,
+                onDismiss = { showBookmarks = false },
+                onJump = { bookmark ->
+                    showBookmarks = false
+                    onJumpBookmark(bookmark)
+                },
+                onDelete = onRemoveBookmark,
             )
         }
 

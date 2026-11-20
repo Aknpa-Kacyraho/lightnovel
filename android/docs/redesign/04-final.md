@@ -332,3 +332,7 @@ Column
   - 「已移出」视图可删除本地数据（二次确认，列出删除范围）。
   - `ContentStore.deleteBook` + DAO 级联删除；删除前停 WorkManager/翻译/预译。
   - `LibraryViewModel.messages` 驱动 Snackbar。
+- 1.4.0（versionCode 47）：
+  - 数据库 v5 新增 `bookmarks`（book/chapter/paragraph 主键 + preview + createdAt）。
+  - 阅读器菜单「添加书签 / 书签列表」；同章跳转写进度并定位，跨章到章首。
+  - 新增 `BookmarkSheet` 与 `relativeTime(...)`。

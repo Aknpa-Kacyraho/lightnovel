@@ -45,6 +45,24 @@ interface LibraryDao {
     @Query("SELECT * FROM books WHERE import_hash = :hash LIMIT 1")
     suspend fun bookByImportHash(hash: String): BookEntity?
 
+    @Query("SELECT * FROM bookmarks WHERE book_id = :bookId ORDER BY chapter_idx, paragraph_id")
+    fun observeBookmarks(bookId: String): Flow<List<BookmarkEntity>>
+
+    @Upsert
+    suspend fun upsertBookmark(bookmark: BookmarkEntity)
+
+    @Query(
+        "DELETE FROM bookmarks WHERE book_id = :bookId " +
+            "AND chapter_idx = :chapterIdx AND paragraph_id = :paragraphId",
+    )
+    suspend fun deleteBookmark(bookId: String, chapterIdx: Int, paragraphId: Int)
+
+    @Query(
+        "SELECT * FROM bookmarks WHERE book_id = :bookId " +
+            "AND chapter_idx = :chapterIdx AND paragraph_id = :paragraphId LIMIT 1",
+    )
+    suspend fun bookmark(bookId: String, chapterIdx: Int, paragraphId: Int): BookmarkEntity?
+
     @Query(
         """
         UPDATE read_state
@@ -102,6 +120,9 @@ interface LibraryDao {
 
     @Query("DELETE FROM books WHERE id = :bookId")
     suspend fun deleteBook(bookId: String)
+
+    @Query("DELETE FROM bookmarks WHERE book_id = :bookId")
+    suspend fun deleteBookmarks(bookId: String)
 
     @Query(
         """

@@ -12,8 +12,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReadStateEntity::class,
         AliasEntity::class,
         ChapterEntity::class,
+        BookmarkEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class LightnovelDatabase : RoomDatabase() {
@@ -81,6 +82,25 @@ abstract class LightnovelDatabase : RoomDatabase() {
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS index_books_import_hash " +
                         "ON books(import_hash)",
+                )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS bookmarks (" +
+                        "book_id TEXT NOT NULL, " +
+                        "chapter_idx INTEGER NOT NULL, " +
+                        "paragraph_id INTEGER NOT NULL, " +
+                        "char_offset INTEGER NOT NULL, " +
+                        "preview TEXT NOT NULL, " +
+                        "created_at TEXT NOT NULL, " +
+                        "PRIMARY KEY(book_id, chapter_idx, paragraph_id))",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_bookmarks_book_id_chapter_idx " +
+                        "ON bookmarks(book_id, chapter_idx)",
                 )
             }
         }

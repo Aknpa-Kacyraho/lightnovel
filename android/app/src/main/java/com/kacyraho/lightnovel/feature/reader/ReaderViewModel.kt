@@ -21,6 +21,7 @@ import com.kacyraho.lightnovel.data.knowledge.KnowledgeStatus
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
 import com.kacyraho.lightnovel.data.knowledge.QueryEntry
 import com.kacyraho.lightnovel.data.local.BookEntity
+import com.kacyraho.lightnovel.data.local.BookmarkEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.ChapterFetcher
 import com.kacyraho.lightnovel.data.repository.LibraryRepository
@@ -52,9 +53,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -313,13 +319,64 @@ class ReaderViewModel(
         load()
     }
 
+    val bookmarks: StateFlow<List<BookmarkEntity>> = repository
+        .observeBookmarks(bookId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _bookmarkNotice = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val bookmarkNotice: SharedFlow<String> = _bookmarkNotice.asSharedFlow()
+
+    fun addBookmark() {
+        val anchor = currentAnchor()
+            ?: if (_state.value.readerMode == "scroll") {
+                ReaderAnchor(chapterIndex, _state.value.scrollParagraph, 0)
+            } else {
+                null
+            }
+            ?: return
+        val paragraph = _state.value.paragraphs.getOrNull(anchor.paragraphId)
+        val text = if (_state.value.displayMode == "raw") {
+            paragraph?.source
+        } else {
+            paragraph?.translated ?: paragraph?.source
+        }
+        val preview = text.orEmpty().trim().take(40)
+        viewModelScope.launch {
+            repository.upsertBookmark(
+                BookmarkEntity(
+                    bookId = bookId,
+                    chapterIdx = chapterIndex,
+                    paragraphId = anchor.paragraphId,
+                    charOffset = anchor.charOffset,
+                    preview = preview.ifBlank { "第 ${anchor.paragraphId + 1} 段" },
+                    createdAt = java.time.Instant.now().toString(),
+                ),
+            )
+            _bookmarkNotice.emit("已添加书签")
+        }
+    }
+
+    fun removeBookmark(bookmark: BookmarkEntity) {
+        viewModelScope.launch {
+            repository.deleteBookmark(bookmark.bookId, bookmark.chapterIdx, bookmark.paragraphId)
+        }
+    }
+
+    fun jumpToAnchor(anchor: ReaderAnchor) {
+        viewModelScope.launch {
+            repository.updateProgress(bookId, anchor)
+            anchorToRestore = anchor
+            lastKey = null
+            load()
+        }
+    }
+
     fun onViewportChanged(
         viewport: Viewport,
         paint: TextPaint,
         fontSizeSp: Float,
         lineHeight: Float,
-    ) {
-        val chapter = readerChapter ?: return
+    ) {        val chapter = readerChapter ?: return
         val key = "${viewport.widthPx}x${viewport.heightPx}:$fontSizeSp:$lineHeight:" +
             "${paint.typeface}:${paint.color}:${chapter.text.hashCode()}:" +
             _state.value.queryNames.hashCode()

@@ -36,11 +36,13 @@ class ReaderMenuTest {
                 ReaderMenuAction.QUERY_MODE,
                 ReaderMenuAction.GLOSSARY,
                 ReaderMenuAction.PARAGRAPH,
+                ReaderMenuAction.ADD_BOOKMARK,
+                ReaderMenuAction.OPEN_BOOKMARKS,
                 ReaderMenuAction.WORLDLINE,
             ),
             menu.map { it.action }.toSet(),
         )
-        assertEquals(13, menu.size)
+        assertEquals(15, menu.size)
     }
 
     @Test
@@ -48,7 +50,26 @@ class ReaderMenuTest {
         val menu = items(hasStoryMemory = false)
 
         assertTrue(menu.none { it.action == ReaderMenuAction.STORY_MEMORY })
-        assertEquals(12, menu.size)
+        assertEquals(14, menu.size)
+    }
+
+    @Test
+    fun bookmarkLabelReflectsCurrentParagraph() {
+        assertEquals(
+            "添加书签",
+            items().first { it.action == ReaderMenuAction.ADD_BOOKMARK }.label,
+        )
+        assertEquals(
+            "已添加书签",
+            readerMenuItems(
+                fontSizeSp = 18f,
+                hasTranslation = false,
+                translationEnabled = true,
+                hasStoryMemory = false,
+                queryMode = false,
+                hasBookmarkHere = true,
+            ).first { it.action == ReaderMenuAction.ADD_BOOKMARK }.label,
+        )
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.data.repository
 import androidx.room.withTransaction
 import com.kacyraho.lightnovel.core.model.ReaderAnchor
 import com.kacyraho.lightnovel.data.local.BookEntity
+import com.kacyraho.lightnovel.data.local.BookmarkEntity
 import com.kacyraho.lightnovel.data.local.BookTags
 import com.kacyraho.lightnovel.data.local.BookWithState
 import com.kacyraho.lightnovel.data.local.ChapterEntity
@@ -39,6 +40,14 @@ interface LibraryRepository {
 
     /** 删除书籍、章节与阅读状态；返回被删除的书（用于清理文件），不存在时返回 null。 */
     suspend fun deleteBook(bookId: String): BookEntity?
+
+    fun observeBookmarks(bookId: String): Flow<List<BookmarkEntity>>
+
+    suspend fun upsertBookmark(bookmark: BookmarkEntity)
+
+    suspend fun deleteBookmark(bookId: String, chapterIdx: Int, paragraphId: Int)
+
+    suspend fun bookmark(bookId: String, chapterIdx: Int, paragraphId: Int): BookmarkEntity?
 }
 
 class RoomLibraryRepository(
@@ -150,10 +159,28 @@ class RoomLibraryRepository(
         db.withTransaction {
             dao.deleteChapters(bookId)
             dao.deleteReadState(bookId)
+            dao.deleteBookmarks(bookId)
             dao.deleteBook(bookId)
         }
         return book
     }
+
+    override fun observeBookmarks(bookId: String): Flow<List<BookmarkEntity>> =
+        dao.observeBookmarks(bookId)
+
+    override suspend fun upsertBookmark(bookmark: BookmarkEntity) {
+        dao.upsertBookmark(bookmark)
+    }
+
+    override suspend fun deleteBookmark(bookId: String, chapterIdx: Int, paragraphId: Int) {
+        dao.deleteBookmark(bookId, chapterIdx, paragraphId)
+    }
+
+    override suspend fun bookmark(
+        bookId: String,
+        chapterIdx: Int,
+        paragraphId: Int,
+    ): BookmarkEntity? = dao.bookmark(bookId, chapterIdx, paragraphId)
 
     private suspend fun setHidden(bookId: String, hidden: Boolean) {
         if (dao.book(bookId) == null) return

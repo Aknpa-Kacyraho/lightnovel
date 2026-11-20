@@ -129,8 +129,7 @@ class MigrationTest {
     }
 
     @Test
-    fun migration3To4AddsImportHashAndUniqueIndex() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+    fun migration3To4AddsImportHashAndUniqueIndex() {        val context = ApplicationProvider.getApplicationContext<Context>()
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)
                 .name(null)
@@ -189,6 +188,49 @@ class MigrationTest {
             assertTrue(cursor.moveToFirst())
             assertNull(cursor.getString(0))
         }
+        db.close()
+    }
+
+    @Test
+    fun migration4To5CreatesBookmarksTable() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(null)
+                .callback(
+                    object : SupportSQLiteOpenHelper.Callback(4) {
+                        override fun onCreate(db: SupportSQLiteDatabase) = Unit
+
+                        override fun onUpgrade(
+                            db: SupportSQLiteDatabase,
+                            oldVersion: Int,
+                            newVersion: Int,
+                        ) = Unit
+                    },
+                )
+                .build(),
+        )
+
+        val db = helper.writableDatabase
+        LightnovelDatabase.MIGRATION_4_5.migrate(db)
+
+        val columns = mutableSetOf<String>()
+        db.query("PRAGMA table_info(bookmarks)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) columns += cursor.getString(name)
+        }
+        assertTrue(
+            columns.containsAll(
+                setOf("book_id", "chapter_idx", "paragraph_id", "char_offset", "preview", "created_at"),
+            ),
+        )
+
+        val indexes = mutableSetOf<String>()
+        db.query("PRAGMA index_list(bookmarks)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) indexes += cursor.getString(name)
+        }
+        assertTrue(indexes.contains("index_bookmarks_book_id_chapter_idx"))
         db.close()
     }
 }

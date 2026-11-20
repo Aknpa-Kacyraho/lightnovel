@@ -102,8 +102,7 @@ data class AliasEntity(
 @Entity(
     tableName = "chapters",
     primaryKeys = ["book_id", "idx"],
-)
-data class ChapterEntity(
+)data class ChapterEntity(
     @ColumnInfo(name = "book_id") val bookId: String,
     val idx: Int,
     val title: String?,
@@ -115,4 +114,18 @@ data class ChapterEntity(
     @ColumnInfo(name = "token_out") val tokenOut: Int,
     val model: String?,
     @ColumnInfo(name = "updated_at") val updatedAt: String?,
+)
+
+@Entity(
+    tableName = "bookmarks",
+    primaryKeys = ["book_id", "chapter_idx", "paragraph_id"],
+    indices = [Index(value = ["book_id", "chapter_idx"])],
+)
+data class BookmarkEntity(
+    @ColumnInfo(name = "book_id") val bookId: String,
+    @ColumnInfo(name = "chapter_idx") val chapterIdx: Int,
+    @ColumnInfo(name = "paragraph_id") val paragraphId: Int,
+    @ColumnInfo(name = "char_offset") val charOffset: Int,
+    val preview: String,
+    @ColumnInfo(name = "created_at") val createdAt: String,
 )

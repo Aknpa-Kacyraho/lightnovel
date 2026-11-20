@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kacyraho.lightnovel.data.import.BackupImportService
 import com.kacyraho.lightnovel.fixture.SyntheticBackup
 import java.nio.file.Files
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -201,6 +202,35 @@ class LibraryDaoTest {
             assertEquals(0, dao.bookCount())
             assertEquals(0, dao.chapterCount())
             assertNull(dao.readState("local-1"))
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun bookmarkUpsertDeduplicatesAndDeletes() = runTest {
+        val db = database()
+        try {
+            val dao = db.libraryDao()
+            dao.upsertBooks(listOf(book("local-1", "l1", "Local")))
+            val bookmark = BookmarkEntity(
+                bookId = "local-1",
+                chapterIdx = 1,
+                paragraphId = 2,
+                charOffset = 0,
+                preview = "preview",
+                createdAt = "2026-11-20T00:00:00Z",
+            )
+
+            dao.upsertBookmark(bookmark)
+            dao.upsertBookmark(bookmark.copy(preview = "updated"))
+
+            val all = dao.observeBookmarks("local-1").first()
+            assertEquals(1, all.size)
+            assertEquals("updated", dao.bookmark("local-1", 1, 2)?.preview)
+
+            dao.deleteBookmark("local-1", 1, 2)
+            assertEquals(0, dao.observeBookmarks("local-1").first().size)
         } finally {
             db.close()
         }

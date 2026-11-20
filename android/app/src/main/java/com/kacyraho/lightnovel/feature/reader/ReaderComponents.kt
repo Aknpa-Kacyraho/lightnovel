@@ -244,6 +244,9 @@ fun ReaderTopBar(
     onToggleImmersive: () -> Unit,
     charCount: Int = 0,
     costLabel: String? = null,
+    hasBookmarkHere: Boolean = false,
+    onAddBookmark: () -> Unit = {},
+    onOpenBookmarks: () -> Unit = {},
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
@@ -291,6 +294,9 @@ fun ReaderTopBar(
             onToggleImmersive = onToggleImmersive,
             charCount = charCount,
             costLabel = costLabel,
+            hasBookmarkHere = hasBookmarkHere,
+            onAddBookmark = onAddBookmark,
+            onOpenBookmarks = onOpenBookmarks,
         )
     }
 }
@@ -413,6 +419,9 @@ private fun TranslationMenu(
     onToggleImmersive: () -> Unit,
     charCount: Int = 0,
     costLabel: String? = null,
+    hasBookmarkHere: Boolean = false,
+    onAddBookmark: () -> Unit = {},
+    onOpenBookmarks: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -434,6 +443,7 @@ private fun TranslationMenu(
                 queryMode = queryMode,
                 charCount = charCount,
                 costLabel = costLabel,
+                hasBookmarkHere = hasBookmarkHere,
             )
             var renderedGroup: ReaderMenuGroup? = null
             items.forEach { item ->
@@ -465,6 +475,8 @@ private fun TranslationMenu(
                             ReaderMenuAction.QUERY_MODE -> onToggleQueryMode()
                             ReaderMenuAction.GLOSSARY -> onShowGlossary()
                             ReaderMenuAction.PARAGRAPH -> onShowParagraph()
+                            ReaderMenuAction.ADD_BOOKMARK -> onAddBookmark()
+                            ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
                             ReaderMenuAction.WORLDLINE -> onOpenWorldline()
                         }
                     },

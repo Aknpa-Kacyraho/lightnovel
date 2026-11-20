@@ -1,7 +1,8 @@
 # Android 升级进度
 
-> 基线：`main` Android-only。升级分三批：
-> 1.0.4–1.1.1 可用性；1.2.0–1.2.2 视觉疲劳；1.3.0–1.3.2 翻译与书库。
+> 基线：`main` Android-only。升级分四批：
+> 1.0.4–1.1.1 可用性；1.2.0–1.2.2 视觉疲劳；1.3.0–1.3.2 翻译与书库；
+> 1.4.0–1.4.2 阅读功能（书签、书内搜索、排版与跳页）。
 
 ## 轮次总览
 
@@ -13,9 +14,12 @@
 | Round 4 | 1.2.0（41） | 纸色跟随系统、未翻译横幅降噪、夜间调光 | ✅ | ✅ | ✅ [v1.2.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.0) |
 | Round 5 | 1.2.1（42） | 深色次要文字降亮、标签降饱和、卡片去亮框 | ✅ | ✅ | ✅ [v1.2.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.1) |
 | Round 6 | 1.2.2（43） | 单击正文沉浸、底栏进度线、继续阅读进度 | ✅ | ✅ | ✅ [v1.2.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.2) |
-| Round 7 | 1.3.0（44） | 本地导入去重、书架排序、数据库 v4 | ✅ | ✅ | ⏳ |
-| Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ⏳ |
-| Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ⏳ |
+| Round 7 | 1.3.0（44） | 本地导入去重、书架排序、数据库 v4 | ✅ | ✅ | ✅ [v1.3.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.0) |
+| Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ✅ [v1.3.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.1) |
+| Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ✅ [v1.3.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.2) |
+| Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ⏳ |
+| Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ⏳ | ⏳ |
+| Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ⏳ | ⏳ |
 
 ## 约束
 
@@ -30,50 +34,44 @@ cd android
 .\gradlew.bat --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-## 历史摘要（Round 1–6）
+## 历史摘要（Round 1–9）
 
-- 1.0.4：任务忽略可撤销、阅读器页码语义、lint 三件套、`TaskIgnoreStoreTest`。
-- 1.1.0：空态两条路径、备份提醒直达数据分组、菜单四组、任务筛选带数量。
-- 1.1.1：横屏 680dp、FlowRow、翻译字数、长章节提示、`PrimaryTabRow`。
-- 1.2.0：`ReaderTheme.AUTO` 跟随系统、未翻译横幅降噪、夜间正文 `#BDBAB2`。
-- 1.2.1：8 套深色 `onSurfaceVariant` 7–10:1、容器 0.24、卡片去亮框。
-- 1.2.2：单击正文沉浸、底栏/继续阅读进度线、首次沉浸提示。
+- 1.0.4：任务忽略可撤销、阅读器页码语义、lint 三件套。
+- 1.1.0：空态两条路径、备份提醒直达数据分组、菜单四组。
+- 1.1.1：横屏 680dp、FlowRow、翻译字数、长章节提示。
+- 1.2.0：纸色跟随系统、未翻译横幅降噪、夜间正文 `#BDBAB2`。
+- 1.2.1：8 套深色 `onSurfaceVariant` 7–10:1、卡片去亮框。
+- 1.2.2：单击正文沉浸、阅读进度线。
+- 1.3.0：本地导入 SHA-256 去重（DB v4）、书架排序。
+- 1.3.1：单段重译指纹、费用预估、队列重试。
+- 1.3.2：已移出书删除本地数据（DB 级联 + 文件清理）。
 
-## Round 7（已发布）
+## Round 10（已发布）
 
-- 指南：`round-7/`；自检：`round-7/SELF-REVIEW.md`
-- 版本：1.3.0 / 44
+- 指南：`round-10/`；自检：`round-10/SELF-REVIEW.md`
+- 版本：1.4.0 / 47
 - 变更：
-  - 数据库 v4：`books.import_hash` + 唯一索引 + `MIGRATION_3_4`。
-  - 本地导入按 SHA-256 去重；重复导入提示已存在，已移出的书恢复。
-  - 书架排序：标题 / 最近阅读 / 最近添加，`SettingsStore.librarySort` 持久化。
-- 验证：228 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+  - 数据库 v5 `bookmarks`（book/chapter/paragraph 主键 + preview + createdAt）。
+  - 阅读器菜单「添加书签 / 书签列表」；同章跳转写进度并定位，跨章到章首。
+  - 新增 `BookmarkSheet`、`relativeTime(...)`；删除书时级联删除书签。
+- 验证：249 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 8（已发布）
+## Round 11（进行中）
 
-- 指南：`round-8/`；自检：`round-8/SELF-REVIEW.md`
-- 版本：1.3.1 / 45
-- 变更：
-  - 单段重译 sidecar 补齐 `translationConfigHash/modelProvider/modelId/promptVersion`。
-  - 新增 `CostEstimator`；阅读器「翻译本章」与批量确认显示费用区间/单价。
-  - 队列 `TargetResult(success, retryable)`，可重试失败每章自动再试一次。
-  - 任务页上限 100 → 300。
-- 验证：237 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 指南：`round-11/`
+- 版本：1.4.1 / 48
+- 范围：书内搜索（逐章扫描、每章 3 条/总 30、上下文、同章定位）。
 
-## Round 9（已发布）
+## Round 12（计划）
 
-- 指南：`round-9/`；自检：`round-9/SELF-REVIEW.md`
-- 版本：1.3.2 / 46
-- 变更：
-  - 「已移出」视图可删除本地数据（二次确认，列出删除范围）。
-  - `ContentStore.deleteBook` + DAO 级联删除；删除前停 WorkManager/翻译/预译。
-  - 文件删除在 `Dispatchers.IO` 执行；失败提示但保留「记录已删」。
-- 验证：239 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+- 指南：`round-12/`
+- 版本：1.4.2 / 49
+- 范围：阅读器排版 Sheet（字号/行距/边距/段距）、翻页模式可拖进度、位置保持。
 
-## Round 10 候选
+## Round 13 候选
 
 - 滚动阅读模式限宽 680dp。
-- 章节列表批量翻译确认显示总章数与单价（当前只有单价）。
+- 章节列表批量翻译确认显示总章数。
 - 导入完成摘要（书 N 本、进度 M 条、译文 K 章）。
 - `ClickableText` → `LinkAnnotation`。
 - 依赖升级与 `UseKtx` 清理。

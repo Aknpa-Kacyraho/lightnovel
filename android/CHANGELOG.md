@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.4.0 — 2026-11-20
+
+### 用户可见
+
+- 阅读器「更多」新增「添加书签」与「书签列表」：记录章节、段落、40 字预览。
+- 同一段重复添加是幂等的；列表可跳转、可删除，空态给出添加路径。
+- 同章书签点击直接回到原段落；跨章书签先跳到目标章（V1 限制）。
+
+### 工程
+
+- 数据库 v5：`bookmarks` 表 + `MIGRATION_4_5` + `schemas/5.json`。
+- DAO/Repository 增加书签观察、upsert、删除、查询。
+- `ReaderViewModel` 增加 `bookmarks`、`addBookmark`、`removeBookmark`、`jumpToAnchor`。
+- 新增 `BookmarkSheet`、`relativeTime(...)` 与 `BookmarkTimeTest`。
+- `versionCode 47` / `versionName 1.4.0`。
+
 ## 1.3.2 — 2026-11-20
 
 ### 用户可见

@@ -20,6 +20,8 @@ internal enum class ReaderMenuAction {
     QUERY_MODE,
     GLOSSARY,
     PARAGRAPH,
+    ADD_BOOKMARK,
+    OPEN_BOOKMARKS,
     WORLDLINE,
 }
 
@@ -42,6 +44,7 @@ internal fun readerMenuItems(
     queryMode: Boolean,
     charCount: Int = 0,
     costLabel: String? = null,
+    hasBookmarkHere: Boolean = false,
 ): List<ReaderMenuItem> = buildList {
     val reading = ReaderMenuGroup.READING
     val translation = ReaderMenuGroup.TRANSLATION
@@ -55,6 +58,13 @@ internal fun readerMenuItems(
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
     add(ReaderMenuItem(reading, ReaderMenuAction.TOGGLE_THEME, "切换纸色"))
     add(ReaderMenuItem(reading, ReaderMenuAction.IMMERSIVE, "沉浸阅读"))
+    add(
+        ReaderMenuItem(
+            reading,
+            ReaderMenuAction.ADD_BOOKMARK,
+            if (hasBookmarkHere) "已添加书签" else "添加书签",
+        ),
+    )
 
     add(
         ReaderMenuItem(
@@ -87,6 +97,7 @@ internal fun readerMenuItems(
     )
     add(ReaderMenuItem(reference, ReaderMenuAction.GLOSSARY, "术语表"))
     add(ReaderMenuItem(reference, ReaderMenuAction.PARAGRAPH, "当前段落"))
+    add(ReaderMenuItem(reference, ReaderMenuAction.OPEN_BOOKMARKS, "书签列表"))
 
     add(ReaderMenuItem(worldline, ReaderMenuAction.WORLDLINE, "编辑并生成世界线"))
 }
