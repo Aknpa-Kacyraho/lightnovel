@@ -159,6 +159,7 @@ fun LibraryScreen(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var sortMenuOpen by remember { mutableStateOf(false) }
+    var shelfMenuOpen by remember { mutableStateOf(false) }
     var showBackupNotice by rememberSaveable { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -270,30 +271,36 @@ fun LibraryScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                BrandFilterChip(
-                    selected = state.shelf == null && !state.favoritesOnly && !state.removedOnly,
-                    onClick = {
-                        onShelfChange(null)
-                        onFavoritesOnlyChange(false)
-                        onRemovedOnlyChange(false)
-                    },
-                    label = { Text("全部") },
-                )
-                BrandFilterChip(
-                    selected = state.shelf == "reading",
-                    onClick = { onShelfChange("reading") },
-                    label = { Text("在读") },
-                )
-                BrandFilterChip(
-                    selected = state.shelf == "want",
-                    onClick = { onShelfChange("want") },
-                    label = { Text("想读") },
-                )
-                BrandFilterChip(
-                    selected = state.shelf == "finished",
-                    onClick = { onShelfChange("finished") },
-                    label = { Text("读完") },
-                )
+                Box {
+                    BrandFilterChip(
+                        selected = true,
+                        onClick = { shelfMenuOpen = true },
+                        label = { Text("书架：${shelfLabel(state.shelf) ?: "全部"}") },
+                    )
+                    DropdownMenu(
+                        expanded = shelfMenuOpen,
+                        onDismissRequest = { shelfMenuOpen = false },
+                    ) {
+                        listOf<Pair<String?, String>>(
+                            null to "全部",
+                            "reading" to "在读",
+                            "want" to "想读",
+                            "finished" to "读完",
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text((if (state.shelf == value) "✓ " else "") + label)
+                                },
+                                onClick = {
+                                    shelfMenuOpen = false
+                                    onShelfChange(value)
+                                    onFavoritesOnlyChange(false)
+                                    onRemovedOnlyChange(false)
+                                },
+                            )
+                        }
+                    }
+                }
                 BrandFilterChip(
                     selected = state.favoritesOnly,
                     onClick = { onFavoritesOnlyChange(!state.favoritesOnly) },

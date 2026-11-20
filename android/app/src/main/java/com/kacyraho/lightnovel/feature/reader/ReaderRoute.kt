@@ -400,6 +400,7 @@ private fun ReaderContent(
             hasTranslation = state.hasTranslation,
             textColor = textColor,
             secondaryColor = secondaryColor,
+            backgroundColor = readerTheme.background,
             translationRunning = translationState.running || activeTask != null,
             onBack = onBack,
             onFontSizeChange = onFontSizeChange,

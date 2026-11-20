@@ -230,6 +230,7 @@ fun ReaderTopBar(
     hasTranslation: Boolean,
     textColor: Color,
     secondaryColor: Color,
+    backgroundColor: Color,
     translationRunning: Boolean,
     onBack: () -> Unit,
     onFontSizeChange: (Float) -> Unit,
@@ -285,6 +286,7 @@ fun ReaderTopBar(
             enabled = !translationRunning,
             hasTranslation = hasTranslation,
             textColor = textColor,
+            backgroundColor = backgroundColor,
             fontSizeSp = fontSizeSp,
             onFontSizeChange = onFontSizeChange,
             onThemeChange = onThemeChange,
@@ -489,6 +491,7 @@ private fun TranslationMenu(
     enabled: Boolean,
     hasTranslation: Boolean,
     textColor: Color,
+    backgroundColor: Color,
     fontSizeSp: Float,
     onFontSizeChange: (Float) -> Unit,
     onThemeChange: () -> Unit,
@@ -513,10 +516,10 @@ private fun TranslationMenu(
     onToggleReaderMode: () -> Unit = {},
     readerMode: String = "page",
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var sheetOpen by remember { mutableStateOf(false) }
     Box {
         TextButton(
-            onClick = { expanded = true },
+            onClick = { sheetOpen = true },
             colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
                 contentColor = textColor,
                 disabledContentColor = textColor.copy(alpha = 0.38f),
@@ -524,56 +527,46 @@ private fun TranslationMenu(
         ) {
             Text("更多")
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            val items = readerMenuItems(
-                fontSizeSp = fontSizeSp,
-                hasTranslation = hasTranslation,
-                translationEnabled = enabled,
-                hasStoryMemory = onOpenMemory != null,
-                queryMode = queryMode,
-                charCount = charCount,
-                costLabel = costLabel,
-                hasBookmarkHere = hasBookmarkHere,
-                readerMode = readerMode,
+        val items = readerMenuItems(
+            fontSizeSp = fontSizeSp,
+            hasTranslation = hasTranslation,
+            translationEnabled = enabled,
+            hasStoryMemory = onOpenMemory != null,
+            queryMode = queryMode,
+            charCount = charCount,
+            costLabel = costLabel,
+            hasBookmarkHere = hasBookmarkHere,
+            readerMode = readerMode,
+        )
+        if (sheetOpen) {
+            ReaderMenuSheet(
+                items = items,
+                backgroundColor = backgroundColor,
+                textColor = textColor,
+                secondaryColor = textColor.copy(alpha = 0.6f),
+                onDismiss = { sheetOpen = false },
+                onSelect = { item ->
+                    sheetOpen = false
+                    when (item.action) {
+                        ReaderMenuAction.TOGGLE_THEME -> onThemeChange()
+                        ReaderMenuAction.IMMERSIVE -> onToggleImmersive()
+                        ReaderMenuAction.TRANSLATE -> onRetranslate()
+                        ReaderMenuAction.POLISH -> onPolish()
+                        ReaderMenuAction.CHAPTER_INFO -> onShowInfo()
+                        ReaderMenuAction.STORY_MEMORY -> onOpenMemory?.invoke()
+                        ReaderMenuAction.NEARBY_ENTITIES -> onOpenQuery()
+                        ReaderMenuAction.QUERY_MODE -> onToggleQueryMode()
+                        ReaderMenuAction.GLOSSARY -> onShowGlossary()
+                        ReaderMenuAction.PARAGRAPH -> onShowParagraph()
+                        ReaderMenuAction.ADD_BOOKMARK -> onAddBookmark()
+                        ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
+                        ReaderMenuAction.SEARCH_BOOK -> onOpenSearch()
+                        ReaderMenuAction.TYPOGRAPHY -> onOpenTypography()
+                        ReaderMenuAction.TOGGLE_READER_MODE -> onToggleReaderMode()
+                        ReaderMenuAction.WORLDLINE -> onOpenWorldline()
+                    }
+                },
             )
-            var renderedGroup: ReaderMenuGroup? = null
-            items.forEach { item ->
-                if (item.group != renderedGroup) {
-                    if (renderedGroup != null) HorizontalDivider()
-                    Text(
-                        text = item.group.label,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 2.dp),
-                    )
-                    renderedGroup = item.group
-                }
-                DropdownMenuItem(
-                    text = { Text(item.label) },
-                    enabled = item.enabled,
-                    onClick = {
-                        expanded = false
-                        when (item.action) {
-                            ReaderMenuAction.TOGGLE_THEME -> onThemeChange()
-                            ReaderMenuAction.IMMERSIVE -> onToggleImmersive()
-                            ReaderMenuAction.TRANSLATE -> onRetranslate()
-                            ReaderMenuAction.POLISH -> onPolish()
-                            ReaderMenuAction.CHAPTER_INFO -> onShowInfo()
-                            ReaderMenuAction.STORY_MEMORY -> onOpenMemory?.invoke()
-                            ReaderMenuAction.NEARBY_ENTITIES -> onOpenQuery()
-                            ReaderMenuAction.QUERY_MODE -> onToggleQueryMode()
-                            ReaderMenuAction.GLOSSARY -> onShowGlossary()
-                            ReaderMenuAction.PARAGRAPH -> onShowParagraph()
-                            ReaderMenuAction.ADD_BOOKMARK -> onAddBookmark()
-                            ReaderMenuAction.OPEN_BOOKMARKS -> onOpenBookmarks()
-                            ReaderMenuAction.SEARCH_BOOK -> onOpenSearch()
-                            ReaderMenuAction.TYPOGRAPHY -> onOpenTypography()
-                            ReaderMenuAction.TOGGLE_READER_MODE -> onToggleReaderMode()
-                            ReaderMenuAction.WORLDLINE -> onOpenWorldline()
-                        }
-                    },
-                )
-            }
         }
     }
 }

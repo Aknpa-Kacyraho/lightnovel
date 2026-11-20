@@ -20,9 +20,9 @@
 | Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ✅ [v1.4.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.0) |
 | Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ✅ [v1.4.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.1) |
 | Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ✅ [v1.4.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.2) |
-| Round 13 | 1.5.0（50） | 真沉浸、模式行精简、菜单去重 | ✅ | ✅ | ⏳ |
-| Round 14 | 1.5.1（51） | 术语表搜索、覆盖提示、删除确认 | ✅ | ⏳ | ⏳ |
-| Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ⏳ | ⏳ |
+| Round 13 | 1.5.0（50） | 真沉浸、模式行精简、菜单去重 | ✅ | ✅ | ✅ [v1.5.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.0) |
+| Round 14 | 1.5.1（51） | 术语表搜索、覆盖提示、删除确认 | ✅ | ✅ | ✅ [v1.5.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.5.1) |
+| Round 15 | 1.5.2（52） | 书架筛选折叠、阅读器菜单 Sheet | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -89,17 +89,24 @@ cd android
   - 菜单移除字号 ±（排版 Sheet 统一调整）。
 - 验证：258 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 14（进行中）
+## Round 14（已发布）
 
-- 指南：`round-14/`
+- 指南：`round-14/`；自检：`round-14/SELF-REVIEW.md`
 - 版本：1.5.1 / 51
-- 范围：术语表搜索、条数、覆盖提示、删除确认。
+- 变更：
+  - 术语表搜索（原文/译名/别名）、条数统计、空态区分。
+  - 同名原文覆盖提示；删除术语二次确认（说明过期影响）。
+  - 新增 `filterGlossary` 纯函数与 `GlossaryFilterTest`。
+- 验证：264 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 15（计划）
+## Round 15（已发布）
 
-- 指南：`round-15/`
+- 指南：`round-15/`；自检：`round-15/SELF-REVIEW.md`
 - 版本：1.5.2 / 52
-- 范围：书架筛选折叠（书架下拉）、阅读器菜单改 BottomSheet。
+- 变更：
+  - 书架筛选：书架下拉（全部/在读/想读/读完）+ 收藏 + 已移出 + 排序。
+  - 阅读器「更多」改为 `ReaderMenuSheet`（70% 高、可滚动、分组完整）。
+- 验证：264 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 13 候选
 

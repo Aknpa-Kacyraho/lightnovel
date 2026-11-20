@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.5.2 — 2026-11-20
+
+### 用户可见
+
+- 书架筛选行从 7 个控件减到 4 个：书架（全部/在读/想读/读完）、收藏、已移出、排序。
+- 阅读器「更多」改为底部 Sheet：分组标题完整、内容可滚动、点击一项立即关闭。
+- 功能与顺序不变，禁用条件不变。
+
+### 工程
+
+- `LibraryScreen` 用书架下拉替代三个状态 chip，切换时清收藏/已移除（与旧「全部」一致）。
+- 新增 `ReaderMenuSheet`（ModalBottomSheet + 70% 高度），`TranslationMenu` 不再用 DropdownMenu。
+- `ReaderTopBar`/`TranslationMenu` 增加 `backgroundColor` 以匹配纸色。
+- `versionCode 52` / `versionName 1.5.2`。
+
 ## 1.5.1 — 2026-11-20
 
 ### 用户可见
