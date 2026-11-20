@@ -19,7 +19,7 @@
 | Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ✅ | ✅ [v1.3.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.2) |
 | Round 10 | 1.4.0（47） | 阅读书签：添加、列表、同章定位 | ✅ | ✅ | ✅ [v1.4.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.0) |
 | Round 11 | 1.4.1（48） | 书内搜索：逐章扫描、上下文、跳转 | ✅ | ✅ | ✅ [v1.4.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.1) |
-| Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ⏳ |
+| Round 12 | 1.4.2（49） | 排版 Sheet、可拖进度 | ✅ | ✅ | ✅ [v1.4.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.4.2) |
 
 ## 约束
 
