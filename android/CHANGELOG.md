@@ -3,6 +3,24 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.3.1 — 2026-11-20
+
+### 用户可见
+
+- 单段重译后会写入当前模型/提示词指纹，不再误报「译文过期」。
+- 翻译章节确认框显示每千字费用区间（按当前模型价格估算，实际以 token 计费）。
+- 阅读器「翻译本章」显示当前章字数与预估费用区间。
+- 可重试的翻译失败（429 / 超时 / 503）会在队列里自动再试一次。
+- 任务页最多显示 300 条（原 100 条），旧失败不再被挤出。
+
+### 工程
+
+- `retranslateParagraph` 的 sidecar 补齐 `translationConfigHash/modelProvider/modelId/promptVersion/storyRevision`。
+- 新增 `CostEstimator`（`estimateTranslationCost` / `formatCostRange`）与测试。
+- `ReadingTranslationCoordinator` 返回 `TargetResult(success, retryable)`；
+  `shouldRetryAfterFailure(...)` 每章最多重试一次。
+- `versionCode 45` / `versionName 1.3.1`。
+
 ## 1.3.0 — 2026-11-20
 
 ### 用户可见

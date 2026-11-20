@@ -70,7 +70,11 @@ import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.BookTags
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.source.SourceDetail
+import com.kacyraho.lightnovel.data.translation.DEFAULT_PRICE_IN_CNY_PER_MILLION
+import com.kacyraho.lightnovel.data.translation.DEFAULT_PRICE_OUT_CNY_PER_MILLION
 import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
+import com.kacyraho.lightnovel.feature.reader.estimateTranslationCost
+import com.kacyraho.lightnovel.feature.reader.formatCostRange
 import com.kacyraho.lightnovel.ui.components.BookCover
 import com.kacyraho.lightnovel.ui.components.BookCoverSize
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
@@ -477,6 +481,13 @@ private fun TranslationBatchDialog(
         TranslationBatchScope.AHEAD -> aheadCount
         TranslationBatchScope.ALL -> allUntranslated
     }
+    val perThousandCny = formatCostRange(
+        estimateTranslationCost(
+            charCount = 1_000,
+            priceInCnyPerMillion = DEFAULT_PRICE_IN_CNY_PER_MILLION,
+            priceOutCnyPerMillion = DEFAULT_PRICE_OUT_CNY_PER_MILLION,
+        ),
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("翻译章节") },
@@ -526,6 +537,11 @@ private fun TranslationBatchDialog(
                             "将翻译当前章及后续 $ahead 章，共 $count 章，可能产生 API 费用。"
                         else -> "将翻译 $count 章，可能产生 API 费用。"
                     },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "按每千字约 $perThousandCny 估算，实际以 token 计费。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

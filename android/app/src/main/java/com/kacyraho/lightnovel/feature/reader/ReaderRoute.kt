@@ -63,6 +63,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.core.text.Paragraphs
 import com.kacyraho.lightnovel.data.knowledge.EntityHighlighter
+import com.kacyraho.lightnovel.data.translation.DEFAULT_PRICE_IN_CNY_PER_MILLION
+import com.kacyraho.lightnovel.data.translation.DEFAULT_PRICE_OUT_CNY_PER_MILLION
 import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
 import com.kacyraho.lightnovel.data.translation.TranslationTaskSnapshot
@@ -344,6 +346,17 @@ private fun ReaderContent(
             onShowParagraph = { showParagraph = currentParagraph != null },
             onToggleImmersive = { immersive = true },
             charCount = state.chapterText.length,
+            costLabel = if (state.chapterText.isNotBlank()) {
+                formatCostRange(
+                    estimateTranslationCost(
+                        charCount = state.chapterText.length,
+                        priceInCnyPerMillion = DEFAULT_PRICE_IN_CNY_PER_MILLION,
+                        priceOutCnyPerMillion = DEFAULT_PRICE_OUT_CNY_PER_MILLION,
+                    ),
+                )
+            } else {
+                null
+            },
         )
 
         if (!translationState.running && activeTask == null) {

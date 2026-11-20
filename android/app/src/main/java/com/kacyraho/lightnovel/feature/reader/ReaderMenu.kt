@@ -41,12 +41,15 @@ internal fun readerMenuItems(
     hasStoryMemory: Boolean,
     queryMode: Boolean,
     charCount: Int = 0,
+    costLabel: String? = null,
 ): List<ReaderMenuItem> = buildList {
     val reading = ReaderMenuGroup.READING
     val translation = ReaderMenuGroup.TRANSLATION
     val reference = ReaderMenuGroup.REFERENCE
     val worldline = ReaderMenuGroup.WORLDLINE
-    val charSuffix = formatCharCount(charCount)?.let { "（$it）" }.orEmpty()
+    val detail = listOfNotNull(formatCharCount(charCount), costLabel?.takeIf { it.isNotBlank() })
+        .joinToString(" · ")
+    val detailSuffix = detail.takeIf { it.isNotBlank() }?.let { "（$it）" }.orEmpty()
 
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_DECREASE, "字号 ${fontSizeSp.toInt()} · 减小"))
     add(ReaderMenuItem(reading, ReaderMenuAction.FONT_INCREASE, "字号 ${fontSizeSp.toInt()} · 增大"))
@@ -57,7 +60,7 @@ internal fun readerMenuItems(
         ReaderMenuItem(
             translation,
             ReaderMenuAction.TRANSLATE,
-            (if (hasTranslation) "重译本章" else "翻译本章") + charSuffix,
+            (if (hasTranslation) "重译本章" else "翻译本章") + detailSuffix,
             enabled = translationEnabled,
         ),
     )

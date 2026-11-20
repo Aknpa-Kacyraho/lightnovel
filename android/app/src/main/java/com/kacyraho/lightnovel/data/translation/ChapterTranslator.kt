@@ -11,6 +11,9 @@ import com.kacyraho.lightnovel.data.story.StoryStyle
 import java.time.Instant
 import kotlinx.coroutines.delay
 
+const val DEFAULT_PRICE_IN_CNY_PER_MILLION = 2.0
+const val DEFAULT_PRICE_OUT_CNY_PER_MILLION = 8.0
+
 data class TranslationConfig(
     val model: String = "deepseek-flash",
     val maxChars: Int = 3_000,
@@ -19,8 +22,8 @@ data class TranslationConfig(
     val promptVersion: String = "android-a2-v3",
     val mode: TranslationMode = TranslationMode.BATCH,
     val provider: String = "deepseek",
-    val priceInCnyPerMillion: Double = 2.0,
-    val priceOutCnyPerMillion: Double = 8.0,
+    val priceInCnyPerMillion: Double = DEFAULT_PRICE_IN_CNY_PER_MILLION,
+    val priceOutCnyPerMillion: Double = DEFAULT_PRICE_OUT_CNY_PER_MILLION,
     val glossary: List<GlossaryEntry> = emptyList(),
     val glossaryRevision: String = "",
     val workId: String = "",

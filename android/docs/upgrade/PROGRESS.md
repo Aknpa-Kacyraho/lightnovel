@@ -14,7 +14,7 @@
 | Round 5 | 1.2.1（42） | 深色次要文字降亮、标签降饱和、卡片去亮框 | ✅ | ✅ | ✅ [v1.2.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.1) |
 | Round 6 | 1.2.2（43） | 单击正文沉浸、底栏进度线、继续阅读进度 | ✅ | ✅ | ✅ [v1.2.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.2.2) |
 | Round 7 | 1.3.0（44） | 本地导入去重、书架排序、数据库 v4 | ✅ | ✅ | ⏳ |
-| Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ⏳ | ⏳ |
+| Round 8 | 1.3.1（45） | 单段重译指纹、费用预估、队列重试 | ✅ | ✅ | ⏳ |
 | Round 9 | 1.3.2（46） | 已移出书彻底删除、删除前停后台 | ✅ | ⏳ | ⏳ |
 
 ## 约束
@@ -49,12 +49,16 @@ cd android
   - 书架排序：标题 / 最近阅读 / 最近添加，`SettingsStore.librarySort` 持久化。
 - 验证：228 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 8（进行中）
+## Round 8（已发布）
 
-- 指南：`round-8/`
+- 指南：`round-8/`；自检：`round-8/SELF-REVIEW.md`
 - 版本：1.3.1 / 45
-- 范围：单段重译补齐 sidecar 指纹、费用区间预估、队列可重试失败自动再试一次、
-  任务页上限 300。
+- 变更：
+  - 单段重译 sidecar 补齐 `translationConfigHash/modelProvider/modelId/promptVersion`。
+  - 新增 `CostEstimator`；阅读器「翻译本章」与批量确认显示费用区间/单价。
+  - 队列 `TargetResult(success, retryable)`，可重试失败每章自动再试一次。
+  - 任务页上限 100 → 300。
+- 验证：237 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 9（计划）
 

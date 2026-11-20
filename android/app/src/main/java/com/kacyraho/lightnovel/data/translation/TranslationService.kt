@@ -163,12 +163,17 @@ class TranslationService(
         val sidecar = old.copy(
             status = if (incomplete.isEmpty()) "complete" else "partial",
             contentSha256 = Hashes.sha256(newText),
+            translationConfigHash = config.cacheKey(),
+            modelProvider = config.provider,
+            modelId = config.model,
+            promptVersion = config.promptVersion,
             translatedAt = java.time.Instant.now().toString(),
             tokens = tokens,
             cost = ChapterCost(cost, "CNY", estimated = true),
             incompleteParagraphs = incomplete,
             incompleteReason = if (incomplete.isEmpty()) null else old.incompleteReason,
             glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
+            storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
         )
         val outcome = if (sidecar.status == "partial") {
             TranslationOutcome.Partial(newText, sidecar)

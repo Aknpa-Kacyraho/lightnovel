@@ -176,7 +176,7 @@ interface LibraryDao {
         WHERE COALESCE(r.hidden, 0) = 0
           AND c.status IN ('translating', 'failed', 'partial')
         ORDER BY c.updated_at DESC
-        LIMIT 100
+        LIMIT 300
         """,
     )
     fun observeActiveTasks(): Flow<List<ChapterTaskRow>>

@@ -243,6 +243,7 @@ fun ReaderTopBar(
     onShowParagraph: () -> Unit,
     onToggleImmersive: () -> Unit,
     charCount: Int = 0,
+    costLabel: String? = null,
 ) {
     val buttonColors = androidx.compose.material3.ButtonDefaults.textButtonColors(
         contentColor = textColor,
@@ -289,6 +290,7 @@ fun ReaderTopBar(
             onShowParagraph = onShowParagraph,
             onToggleImmersive = onToggleImmersive,
             charCount = charCount,
+            costLabel = costLabel,
         )
     }
 }
@@ -410,6 +412,7 @@ private fun TranslationMenu(
     onShowParagraph: () -> Unit,
     onToggleImmersive: () -> Unit,
     charCount: Int = 0,
+    costLabel: String? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -430,6 +433,7 @@ private fun TranslationMenu(
                 hasStoryMemory = onOpenMemory != null,
                 queryMode = queryMode,
                 charCount = charCount,
+                costLabel = costLabel,
             )
             var renderedGroup: ReaderMenuGroup? = null
             items.forEach { item ->

@@ -323,3 +323,8 @@ Column
     重复导入提示「已在书架」，已移出的书会恢复。
   - 书架排序：标题 / 最近阅读 / 最近添加，`SettingsStore.librarySort` 持久化。
   - 新增 `LibrarySort` / `sortLibrary(...)` 与 `LibrarySortTest`。
+- 1.3.1（versionCode 45）：
+  - 单段重译 sidecar 写入 `translationConfigHash/modelProvider/modelId/promptVersion`。
+  - 新增 `CostEstimator`，阅读器「翻译本章」与批量确认显示费用区间。
+  - 队列 `TargetResult(success, retryable)`，可重试失败每章自动再试一次。
+  - 任务页上限 100 → 300。

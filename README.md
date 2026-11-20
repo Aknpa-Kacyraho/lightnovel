@@ -5,12 +5,12 @@
 `main` 现在只维护 Kotlin + Jetpack Compose 原生客户端。旧 Web/Python 实现不再参与构建、测试或发布，最终源码仅保留在远端只读归档分支：
 
 - 归档分支：<https://github.com/Aknpa-Kacyraho/lightnovel/tree/archive/web>
-- 当前发布：[v1.3.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.0)
+- 当前发布：[v1.3.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.3.1)
 - 变更记录：[android/CHANGELOG.md](android/CHANGELOG.md)
 
 ## 当前版本
 
-Android **1.3.0**（versionCode 44）：
+Android **1.3.1**（versionCode 45）：
 
 - 书架、发现、任务、设置四个一级入口。
 - 本地 TXT / EPUB 导入，Kakuyomu 与成为小说家吧搜索和下载。
@@ -27,6 +27,7 @@ Android **1.3.0**（versionCode 44）：
 - 深色模式次要文字与标签降噪，卡片描边减淡。
 - 单击正文切换沉浸；底栏与继续阅读卡有阅读进度线。
 - 本地导入按内容去重；书架支持按标题 / 最近阅读 / 最近添加排序。
+- 单段重译不再误报过期；翻译确认显示费用区间；可重试失败自动再试一次。
 
 ## 环境要求
 

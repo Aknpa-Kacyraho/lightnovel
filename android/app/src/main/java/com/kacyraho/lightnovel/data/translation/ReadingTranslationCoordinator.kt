@@ -81,6 +81,20 @@ object ReadingTranslationPlanner {
     private val TRANSLATED_STATUSES = setOf("complete", "translated")
 }
 
+/**
+ * 队列级重试策略：只重试「可重试」错误，且每章最多自动重试一次。
+ */
+internal fun shouldRetryAfterFailure(
+    index: Int,
+    retried: Set<Int>,
+    retryable: Boolean,
+): Boolean = retryable && index !in retried
+
+private data class TargetResult(
+    val success: Boolean,
+    val retryable: Boolean = false,
+)
+
 class ReadingTranslationCoordinator(
     private val scope: CoroutineScope,
     private val translationService: TranslationService,
@@ -92,6 +106,7 @@ class ReadingTranslationCoordinator(
     private class BookQueue {
         val autoTargets = linkedSetOf<Int>()
         val manualTargets = linkedSetOf<Int>()
+        val retriedTargets = mutableSetOf<Int>()
         var runningIndex: Int? = null
         var completed: Int = 0
         var failed: Int = 0
@@ -173,6 +188,7 @@ class ReadingTranslationCoordinator(
             val queue = queues[bookId] ?: return
             queue.autoTargets.clear()
             queue.manualTargets.clear()
+            queue.retriedTargets.clear()
             queue.stopRequested = true
             queue.paused = false
             queue.worker?.cancel()
@@ -212,17 +228,24 @@ class ReadingTranslationCoordinator(
                     queue.runningIndex = target
                     publishLocked()
                 }
-                val translated = try {
+                val result = try {
                     translateTarget(queue, target)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (_: Exception) {
                     synchronized(lock) { queue.lastError = "第 $target 话翻译异常" }
-                    false
+                    TargetResult(success = false, retryable = true)
                 }
                 synchronized(lock) {
                     queue.runningIndex = null
-                    if (translated) queue.completed++ else queue.failed++
+                    if (result.success) {
+                        queue.completed++
+                    } else if (shouldRetryAfterFailure(target, queue.retriedTargets, result.retryable)) {
+                        queue.retriedTargets += target
+                        queue.manualTargets += target
+                    } else {
+                        queue.failed++
+                    }
                     publishLocked()
                 }
             }
@@ -241,32 +264,32 @@ class ReadingTranslationCoordinator(
         }
     }
 
-    private suspend fun translateTarget(queue: BookQueue, index: Int): Boolean {
-        val book = queue.book ?: return false
+    private suspend fun translateTarget(queue: BookQueue, index: Int): TargetResult {
+        val book = queue.book ?: return TargetResult(false)
         if (dao.readState(book.id)?.hidden == true) {
             synchronized(lock) {
                 queue.stopRequested = true
                 queue.autoTargets.clear()
                 queue.manualTargets.clear()
             }
-            return false
+            return TargetResult(false)
         }
-        if (contentStore.readZh(book.storageDir, index) != null) return true
+        if (contentStore.readZh(book.storageDir, index) != null) return TargetResult(true)
         if (contentStore.readRaw(book.storageDir, index) == null && !book.local) {
             val fetched = runCatching { chapterFetcher?.ensureChapter(book, index) }
                 .getOrNull() == true
             if (!fetched) {
                 synchronized(lock) { queue.lastError = "第 $index 话原文下载失败" }
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
-                return false
+                return TargetResult(false, retryable = true)
             }
         }
         if (contentStore.readRaw(book.storageDir, index) == null) {
             synchronized(lock) { queue.lastError = "第 $index 话缺少原文" }
             _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
-            return false
+            return TargetResult(false)
         }
-        if (taskRegistry.isRunning(book.id, index)) return true
+        if (taskRegistry.isRunning(book.id, index)) return TargetResult(true)
 
         val outcome = coroutineScope {
             var result: TranslationOutcome? = null
@@ -287,19 +310,19 @@ class ReadingTranslationCoordinator(
             is TranslationOutcome.Complete -> {
                 synchronized(lock) { queue.lastError = null }
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index))
-                true
+                TargetResult(true)
             }
             is TranslationOutcome.Partial -> {
                 synchronized(lock) { queue.lastError = null }
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index))
-                true
+                TargetResult(true)
             }
             is TranslationOutcome.Failed -> {
                 synchronized(lock) { queue.lastError = outcome.reason }
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
-                false
+                TargetResult(false, retryable = outcome.retryable)
             }
-            null -> false
+            null -> TargetResult(false)
         }
     }
 
