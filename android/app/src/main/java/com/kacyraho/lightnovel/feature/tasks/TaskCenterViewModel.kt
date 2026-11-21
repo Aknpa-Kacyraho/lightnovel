@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.stateIn
@@ -99,9 +100,10 @@ class TaskCenterViewModel(
 
     fun retryAllFailed() {
         viewModelScope.launch {
-            val tasks = state.value.groups
-                .flatMap { it.tasks }
-                .filter { it.status == "failed" || it.status == "partial" }
+            val tasks = retryableRows(
+                dao.observeActiveTasks().first(),
+                ignored.value,
+            )
             tasks.groupBy { it.bookId }.forEach { (bookId, rows) ->
                 val book = dao.book(bookId) ?: return@forEach
                 val indices = rows.map { it.idx }
@@ -126,6 +128,14 @@ class TaskCenterViewModel(
             translationService.markCancelled(book, task.idx)
         }
     }
+}
+
+internal fun retryableRows(
+    tasks: List<ChapterTaskRow>,
+    ignoredKeys: Set<String>,
+): List<ChapterTaskRow> = tasks.filter {
+    (it.status == "failed" || it.status == "partial") &&
+        "${it.bookId}/${it.idx}" !in ignoredKeys
 }
 
 object TaskGrouping {

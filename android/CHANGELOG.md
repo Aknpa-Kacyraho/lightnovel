@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.8.3 — 2026-11-21
+
+### 修复
+
+- 任务中心「重试全部失败」不再受当前筛选影响，任何筛选下都能重试全部失败/未译全章节。
+- 快速连续搜索时，旧搜索的卡片翻译不再提前关闭新搜索的加载提示。
+- 清空搜索会让进行中的翻译请求失效，旧结果不再写回已清空的列表。
+- 世界线「重新生成最后一章」保存失败时恢复旧知识，避免正文与知识不一致。
+
+### 工程
+
+- 新增 `retryableRows(tasks, ignoredKeys)`；`retryAllFailed` 从 DAO 取全部任务。
+- `DiscoverViewModel.translateCards` 旧 token 分支不修改 `metadataLoading`；
+  `clearSearch` 递增 `searchToken`。
+- `WorldlineService.regenerateLastChapter` 保存失败/取消时恢复旧知识。
+- `versionCode 62` / `versionName 1.8.3`。
+
 ## 1.8.2 — 2026-11-21
 
 ### 修复

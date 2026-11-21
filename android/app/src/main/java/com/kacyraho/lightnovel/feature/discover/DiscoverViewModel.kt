@@ -216,6 +216,7 @@ class DiscoverViewModel(
 
     fun clearSearch() {
         searchJob?.cancel()
+        searchToken++
         _state.value = _state.value.copy(
             query = "",
             results = emptyList(),
@@ -312,7 +313,6 @@ class DiscoverViewModel(
                 return@launch
             }
             if (token != null && token != searchToken) {
-                _state.value = _state.value.copy(metadataLoading = false)
                 if (!translated.isNullOrEmpty()) {
                     runCatching { catalog?.remember(translated) }
                 }

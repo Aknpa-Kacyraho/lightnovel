@@ -200,7 +200,15 @@ class WorldlineService(
             knowledgeStatus = generated.knowledgeStatus,
             updatedAt = Instant.now().toString(),
         )
-        return Result.success(worldlineStore.save(book.storageDir, updated))
+        return try {
+            Result.success(worldlineStore.save(book.storageDir, updated))
+        } catch (error: CancellationException) {
+            oldKnowledge?.let { runCatching { worldlineStore.saveKnowledge(book.storageDir, it) } }
+            throw error
+        } catch (error: Exception) {
+            oldKnowledge?.let { runCatching { worldlineStore.saveKnowledge(book.storageDir, it) } }
+            Result.failure(error)
+        }
     }
 
     private fun applyOptions(
