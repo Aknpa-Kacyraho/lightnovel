@@ -73,6 +73,22 @@ class TranslationService(
                 markCancelled(book, chapterIndex)
             }
             throw error
+        } catch (error: Exception) {
+            withContext(NonCancellable) {
+                dao.updateChapterTranslation(
+                    bookId = book.id,
+                    idx = chapterIndex,
+                    status = "failed",
+                    model = settings.deepSeekModel,
+                    tokenIn = 0,
+                    tokenOut = 0,
+                    updatedAt = java.time.Instant.now().toString(),
+                )
+            }
+            return TranslationOutcome.Failed(
+                "翻译异常：${error.message?.take(120) ?: "未知错误"}",
+                true,
+            )
         }
         return when (outcome) {
             is TranslationOutcome.Complete -> commit(book, chapterIndex, outcome)
@@ -149,10 +165,18 @@ class TranslationService(
             contentStore.readSidecar(book.storageDir, chapterIndex)
         }.getOrNull()
             ?: return TranslationOutcome.Failed("缺少章节翻译信息，无法安全写回", false)
-        val newParagraphs = zhParagraphs.toMutableList().apply {
-            this[paragraphIndex] = result.text
+        val oldParagraph = zhParagraphs[paragraphIndex]
+        val start = Paragraphs.startOffset(zh, paragraphIndex)
+        val newText = if (start >= 0 && zh.startsWith(oldParagraph, start)) {
+            // Replace only this paragraph's text; keep every other character (and separators) intact.
+            zh.replaceRange(start, start + oldParagraph.length, result.text)
+        } else {
+            val separator = if (Regex("""\n[ \t]*\n""").containsMatchIn(raw)) "\n\n" else "\n"
+            val newParagraphs = zhParagraphs.toMutableList().apply {
+                this[paragraphIndex] = result.text
+            }
+            newParagraphs.joinToString(separator)
         }
-        val newText = newParagraphs.joinToString("\n\n")
         val tokens = ChapterTokens(
             input = old.tokens.input + result.tokensIn,
             output = old.tokens.output + result.tokensOut,

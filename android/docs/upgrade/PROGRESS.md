@@ -26,6 +26,7 @@
 | Round 16 | 1.6.0（53） | 行/段位置统一、滚动书签与跳转 | ✅ | ✅ | ✅ [v1.6.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.0) |
 | Round 17 | 1.6.1（54） | 加载竞态、跨章定位、提示替换 | ✅ | ✅ | ✅ [v1.6.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.1) |
 | Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ✅ [v1.6.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.2) |
+| Round 19 | 1.7.0（56） | 翻译异常出口、重译本段布局、重试策略 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -142,10 +143,20 @@ cd android
   - 书名翻译 `Mutex.tryLock` + 进程内只请求一次。
 - 验证：274 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 19 候选
+## Round 19（已发布）
 
-- 滚动阅读模式限宽 680dp。
-- 章节列表批量翻译确认显示总章数。
+- 指南：`round-19/`；自检：`round-19/SELF-REVIEW.md`
+- 版本：1.7.0 / 56
+- 变更：
+  - 翻译异常兜底为 `failed`，不再永久停留「翻译中」。
+  - 重译本段按字符区间替换，保留原分隔符与空行。
+  - 单段重译尊重 `retryable`，不可重试错误立即失败。
+- 验证：277 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 22 候选
+
+- 翻译失败原因持久化到章节（任务中心显示原因）。
+- 任务中心显示章内翻译进度百分比。
+- 术语变更后的「影响章节」批量重译入口。
 - 导入完成摘要（书 N 本、进度 M 条、译文 K 章）。
 - `ClickableText` → `LinkAnnotation`。
-- 依赖升级与 `UseKtx` 清理。

@@ -367,3 +367,7 @@ Column
   - 进度写入改为 `UNDISPATCHED + NonCancellable`，退出不丢最后一页。
   - `applyShelfFilter` 一次 copy，书架下拉不再三连更新。
   - 书名翻译 `Mutex.tryLock` + 进程内只请求一次。
+- 1.7.0（versionCode 56）：
+  - 翻译异常兜底为 `failed`，不再永久停留「翻译中」。
+  - 重译本段按字符区间替换，保留原文分隔符与空行。
+  - 单段重译尊重 `retryable`，不可重试错误立即失败。

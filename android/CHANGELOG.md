@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.7.0 — 2026-11-21
+
+### 修复
+
+- 翻译过程中出现非接口类异常时，章节不再永久停留在「翻译中」，会标记失败并允许重试。
+- 阅读器「重译本段」只替换目标段落文字，不再把单换行章节改成空行分隔。
+- 单段重译遇到不可重试错误（如 401/402）时立即失败，不再空转重试。
+
+### 工程
+
+- `TranslationService.translate` 增加非取消异常兜底：`NonCancellable` 写 `failed` 并返回可读原因。
+- `retranslateParagraph` 使用 `Paragraphs.startOffset` + `replaceRange` 保留原分隔符。
+- `ChapterTranslator.translateOne` 尊重 `TranslationException.retryable`。
+- `versionCode 56` / `versionName 1.7.0`。
+
 ## 1.6.2 — 2026-11-20
 
 ### 修复

@@ -362,8 +362,9 @@ class ChapterTranslator(
                 if (TranslationValidators.paragraphIssue(sourceText, zh) == null) {
                     return ParagraphResult(zh, result.tokensIn, result.tokensOut)
                 }
-            } catch (_: TranslationException) {
-                // retry once; the caller reports a single failure
+            } catch (error: TranslationException) {
+                // Retry only transient errors; auth/quota/parameter errors will not improve.
+                if (!error.retryable) return null
             }
             delay(400)
         }
