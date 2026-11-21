@@ -33,7 +33,7 @@
 | Round 23 | 1.8.1（60） | 单段重译版本、EPUB 注音、备份路径 | ✅ | ✅ | ⏳ |
 | Round 24 | 1.8.2（61） | 滚动锚点、模式切换、导入哈希备份 | ✅ | ✅ | ⏳ |
 | Round 25 | 1.8.3（62） | 批量重试范围、搜索加载、世界线回滚 | ✅ | ✅ | ✅ [v1.8.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.3) |
-| Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ⏳ |
+| Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ✅ [v1.8.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.4) |
 
 ## 约束
 
