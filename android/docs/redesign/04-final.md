@@ -383,3 +383,7 @@ Column
   - `mergeBook` 现有非空优先，重复导入不退化书名/标签。
   - `mergeReadState` 按 `updated_at` 取新，收藏并集，hidden 保留。
   - `missingChapters` 只补缺失章节，保留标题与 token 统计。
+- 1.8.1（versionCode 60）：
+  - 单段重译保留整章的配置/术语版本，过期提示不被掩盖。
+  - `stripHtml` 移除 `<rt>/<rp>` 注音，EPUB 正文更干净。
+  - 备份导出跳过 `.bak-*` 与 `cache` 路径。

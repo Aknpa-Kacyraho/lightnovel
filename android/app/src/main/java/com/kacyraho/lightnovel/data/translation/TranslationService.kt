@@ -184,22 +184,12 @@ class TranslationService(
         val incomplete = old.incompleteParagraphs.filterNot { it == paragraphIndex }
         val cost = tokens.input / 1_000_000.0 * config.priceInCnyPerMillion +
             tokens.output / 1_000_000.0 * config.priceOutCnyPerMillion
-        val sidecar = old.copy(
-            status = if (incomplete.isEmpty()) "complete" else "partial",
-            contentSha256 = Hashes.sha256(newText),
-            translationConfigHash = config.cacheKey(),
-            modelProvider = config.provider,
-            modelId = config.model,
-            promptVersion = config.promptVersion,
-            translatedAt = java.time.Instant.now().toString(),
+        val sidecar = retranslatedParagraphSidecar(
+            old = old,
+            newText = newText,
             tokens = tokens,
             cost = ChapterCost(cost, "CNY", estimated = true),
-            incompleteParagraphs = incomplete,
-            incompleteReason = if (incomplete.isEmpty()) null else old.incompleteReason,
-            glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
-            storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
-            glossaryHash = config.glossaryHash.takeIf { it.isNotBlank() }
-                ?: old.glossaryHash,
+            incomplete = incomplete,
         )
         val outcome = if (sidecar.status == "partial") {
             TranslationOutcome.Partial(newText, sidecar)

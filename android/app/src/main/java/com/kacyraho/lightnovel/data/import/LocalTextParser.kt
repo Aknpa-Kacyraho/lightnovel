@@ -19,6 +19,10 @@ object LocalTextParser {
         """^\s*(第[0-9零一二三四五六七八九十百千万两]+[章回节卷部篇].*|Chapter\s+\d+.*|序章.*|楔子.*|终章.*|尾声.*)\s*$""",
         RegexOption.IGNORE_CASE,
     )
+    private val RUBY_OPTIONS = setOf(
+        RegexOption.IGNORE_CASE,
+        RegexOption.DOT_MATCHES_ALL,
+    )
 
     fun parseTxt(fileName: String, raw: String): ParsedDocument {
         val text = raw.removePrefix("\uFEFF")
@@ -187,8 +191,13 @@ object LocalTextParser {
             getInputStream(entry).bufferedReader(Charsets.UTF_8).use { it.readText() }
         }
 
-    private fun stripHtml(html: String): String {
-        val withBreaks = html
+    internal fun stripHtml(html: String): String {
+        // Ruby annotations (`<rt>`) and their parentheses (`<rp>`) are pronunciation,
+        // not body text. Drop them before stripping the remaining tags.
+        val withoutRuby = html
+            .replace(Regex("""<rt\b[^>]*>.*?</rt>""", RUBY_OPTIONS), "")
+            .replace(Regex("""<rp\b[^>]*>.*?</rp>""", RUBY_OPTIONS), "")
+        val withBreaks = withoutRuby
             .replace(Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE), "\n")
             .replace(Regex("""</p\s*>""", RegexOption.IGNORE_CASE), "\n\n")
             .replace(Regex("""</h[1-6]\s*>""", RegexOption.IGNORE_CASE), "\n\n")

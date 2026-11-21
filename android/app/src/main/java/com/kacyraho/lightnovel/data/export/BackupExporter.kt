@@ -99,13 +99,9 @@ class BackupExporter(
         return Files.walk(root).use { stream ->
             stream.filter { Files.isRegularFile(it) }
                 .filter { file ->
-                    val name = file.fileName.toString()
-                    val rel = root.relativize(file).toString().replace('\\', '/')
-                    !rel.contains("/cache/") &&
-                        !name.contains(".tmp-") &&
-                        !name.contains(".bak-") &&
-                        !name.endsWith(".part") &&
-                        !name.endsWith(".restore-tmp")
+                    isExportableRelativePath(
+                        root.relativize(file).toString().replace('\\', '/'),
+                    )
                 }
                 .sorted()
                 .collect(java.util.stream.Collectors.toList())
@@ -206,5 +202,15 @@ class BackupExporter(
     private fun randomSuffix(): String =
         java.util.UUID.randomUUID().toString().replace("-", "").take(8)
 
+}
+
+internal fun isExportableRelativePath(rel: String): Boolean {
+    val parts = rel.split('/')
+    if (parts.any { it.contains(".bak-") }) return false
+    if (parts.any { it == "cache" }) return false
+    val name = parts.lastOrNull().orEmpty()
+    return !name.contains(".tmp-") &&
+        !name.endsWith(".part") &&
+        !name.endsWith(".restore-tmp")
 }
 

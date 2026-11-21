@@ -69,4 +69,18 @@ class LocalTextParserTest {
         assertEquals("第一章", parsed.chapters.single().title)
         assertTrue(parsed.chapters.single().text.contains("正文第二段"))
     }
+
+    @Test
+    fun stripsRubyAnnotations() {
+        assertEquals(
+            "漢字",
+            LocalTextParser.stripHtml("<ruby>漢字<rt>かんじ</rt></ruby>"),
+        )
+        assertEquals(
+            "東京",
+            LocalTextParser.stripHtml(
+                "<ruby>東京<rp>(</rp><rt>とうきょう</rt><rp>)</rp></ruby>",
+            ),
+        )
+    }
 }

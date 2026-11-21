@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.8.1 — 2026-11-21
+
+### 修复
+
+- 单段重译不再把整章标成「已应用新术语/新配置」；过期提示保留到整章重译。
+- EPUB 导入移除 `<rt>` / `<rp>` 注音节点，正文不再夹带假名与注音括号。
+- 备份导出跳过路径中的 `.bak-*` 旧目录与 `cache` 目录，备份体积更小。
+
+### 工程
+
+- 新增 `retranslatedParagraphSidecar`：只更新正文 hash、token、费用、时间与未完成段。
+- `LocalTextParser.stripHtml` 先移除注音节点，改为 `internal` 便于测试。
+- 新增 `isExportableRelativePath` 纯函数，`BackupExporter.filesUnder` 使用。
+- `versionCode 60` / `versionName 1.8.1`。
+
 ## 1.8.0 — 2026-11-21
 
 ### 修复
