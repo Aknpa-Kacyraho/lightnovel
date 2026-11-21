@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.7.1 — 2026-11-21
+
+### 修复
+
+- 手动加入的翻译章节优先于自动预译，点「翻译全书/本卷」后不再被插队。
+- 同一章已在翻译时，队列把它记为「跳过」，不再计入失败数。
+- 点「暂停」立即取消当前请求并停止计费；已翻译段落保留，恢复后继续。
+
+### 工程
+
+- 新增 `pickNextIndex(manual, auto)` 与 `TargetDisposition` / `dispositionOf`。
+- `runWorker` 按手动优先出队，`SKIPPED` 不更新完成/失败计数。
+- `pause` 总是取消 worker；`finally` 的 `worker === self` 保护保持不变。
+- `versionCode 57` / `versionName 1.7.1`。
+
 ## 1.7.0 — 2026-11-21
 
 ### 修复

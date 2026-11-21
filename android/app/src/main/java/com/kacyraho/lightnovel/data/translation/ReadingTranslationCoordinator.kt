@@ -90,9 +90,37 @@ internal fun shouldRetryAfterFailure(
     retryable: Boolean,
 ): Boolean = retryable && index !in retried
 
+/**
+ * 手动加入的章节优先于自动预译；自动预译在手动队列清空后继续。
+ */
+internal fun pickNextIndex(
+    manual: Collection<Int>,
+    auto: Collection<Int>,
+): Int? = manual.firstOrNull() ?: auto.firstOrNull()
+
+internal enum class TargetDisposition {
+    COMPLETED,
+    RETRY,
+    FAILED,
+    SKIPPED,
+}
+
+internal fun dispositionOf(
+    success: Boolean,
+    skipped: Boolean,
+    retryable: Boolean,
+    alreadyRetried: Boolean,
+): TargetDisposition = when {
+    success -> TargetDisposition.COMPLETED
+    skipped -> TargetDisposition.SKIPPED
+    retryable && !alreadyRetried -> TargetDisposition.RETRY
+    else -> TargetDisposition.FAILED
+}
+
 private data class TargetResult(
     val success: Boolean,
     val retryable: Boolean = false,
+    val skipped: Boolean = false,
 )
 
 class ReadingTranslationCoordinator(
@@ -165,10 +193,9 @@ class ReadingTranslationCoordinator(
         synchronized(lock) {
             val queue = queues[bookId] ?: return
             queue.paused = true
-            if (queue.runningIndex == null) {
-                queue.worker?.cancel()
-                queue.worker = null
-            }
+            queue.worker?.cancel()
+            queue.worker = null
+            queue.runningIndex = null
             publishLocked()
         }
     }
@@ -218,8 +245,7 @@ class ReadingTranslationCoordinator(
                     if (queue.paused || queue.stopRequested) {
                         null
                     } else {
-                        queue.autoTargets.firstOrNull()
-                            ?: queue.manualTargets.firstOrNull()
+                        pickNextIndex(queue.manualTargets, queue.autoTargets)
                     }
                 } ?: break
                 synchronized(lock) {
@@ -238,13 +264,21 @@ class ReadingTranslationCoordinator(
                 }
                 synchronized(lock) {
                     queue.runningIndex = null
-                    if (result.success) {
-                        queue.completed++
-                    } else if (shouldRetryAfterFailure(target, queue.retriedTargets, result.retryable)) {
-                        queue.retriedTargets += target
-                        queue.manualTargets += target
-                    } else {
-                        queue.failed++
+                    when (
+                        dispositionOf(
+                            success = result.success,
+                            skipped = result.skipped,
+                            retryable = result.retryable,
+                            alreadyRetried = target in queue.retriedTargets,
+                        )
+                    ) {
+                        TargetDisposition.COMPLETED -> queue.completed++
+                        TargetDisposition.RETRY -> {
+                            queue.retriedTargets += target
+                            queue.manualTargets += target
+                        }
+                        TargetDisposition.FAILED -> queue.failed++
+                        TargetDisposition.SKIPPED -> Unit
                     }
                     publishLocked()
                 }
@@ -322,7 +356,7 @@ class ReadingTranslationCoordinator(
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
                 TargetResult(false, retryable = outcome.retryable)
             }
-            null -> TargetResult(false)
+            null -> TargetResult(success = false, skipped = true)
         }
     }
 

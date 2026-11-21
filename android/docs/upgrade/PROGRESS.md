@@ -27,6 +27,7 @@
 | Round 17 | 1.6.1（54） | 加载竞态、跨章定位、提示替换 | ✅ | ✅ | ✅ [v1.6.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.1) |
 | Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ✅ [v1.6.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.2) |
 | Round 19 | 1.7.0（56） | 翻译异常出口、重译本段布局、重试策略 | ✅ | ✅ | ⏳ |
+| Round 20 | 1.7.1（57） | 手动优先、跳过统计、暂停立即生效 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -152,6 +153,16 @@ cd android
   - 重译本段按字符区间替换，保留原分隔符与空行。
   - 单段重译尊重 `retryable`，不可重试错误立即失败。
 - 验证：277 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 20（已发布）
+
+- 指南：`round-20/`；自检：`round-20/SELF-REVIEW.md`
+- 版本：1.7.1 / 57
+- 变更：
+  - 手动翻译优先于自动预译。
+  - 重复任务归为跳过，不计完成/失败。
+  - 暂停立即取消当前请求。
+- 验证：284 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## Round 22 候选
 
