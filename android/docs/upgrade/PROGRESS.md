@@ -34,6 +34,7 @@
 | Round 24 | 1.8.2（61） | 滚动锚点、模式切换、导入哈希备份 | ✅ | ✅ | ⏳ |
 | Round 25 | 1.8.3（62） | 批量重试范围、搜索加载、世界线回滚 | ✅ | ✅ | ✅ [v1.8.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.3) |
 | Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ✅ [v1.8.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.4) |
+| Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -213,6 +214,12 @@ cd android
   - `KnowledgeExtractionService` 显式重抛取消。
   - 取消后不再写摘要、人物、知识或卡片缓存。
 - 验证：313 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 27（进行中）
+
+- 指南：`round-27/`
+- 版本：1.9.0 / 64
+- 范围：中文排版尺度、五档圆角、列表描边。
 
 ## 审计结论（2026-11-21）
 

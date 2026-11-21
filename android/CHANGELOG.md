@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.0 — 2026-11-21
+
+### 视觉
+
+- 全 App 使用统一的中文排版尺度：20sp 标题、16sp/26sp 正文、13sp 辅助、12sp 标签。
+- 圆角收敛为 4/8/12/16/20 五档；卡片 12、封面 8、标签 6、Sheet 20。
+- 列表卡片描边从 0.6 降到 0.35，设置分组降到 0.5，减少「描边卡片海」。
+
+### 工程
+
+- 新增 `LnTypography` / `LnShapes`，注入 `LightnovelTheme`。
+- 替换 `BookCover`、`BrandChips`、`SettingsScreen`、`ChapterListScreen`、
+  `QuerySheet`、`ReaderRoute` 的硬编码圆角。
+- 新增 `ThemeTokensTest`。
+- `versionCode 64` / `versionName 1.9.0`。
+
 ## 1.8.4 — 2026-11-21
 
 ### 修复

@@ -146,7 +146,7 @@ fun QuerySheet(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = theme.secondary.copy(alpha = 0.07f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                     ) {
                         Column {
                             groupEntries.forEachIndexed { index, entry ->
@@ -269,7 +269,7 @@ fun EntityCardSheet(
                 Spacer(Modifier.width(12.dp))
                 Surface(
                     color = theme.secondary.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                 ) {
                     Text(
                         typeLabel(card.entity.type),
@@ -379,7 +379,7 @@ private fun FactCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = theme.secondary.copy(alpha = 0.06f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -401,7 +401,7 @@ private fun FactCard(
             if (!quote.isNullOrBlank()) {
                 Surface(
                     color = theme.background.copy(alpha = 0.55f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                 ) {
                     Text(
                         quote.take(200),

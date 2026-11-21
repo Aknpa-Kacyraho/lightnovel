@@ -404,6 +404,8 @@ fun LightnovelTheme(
     CompositionLocalProvider(LocalLnColors provides extended) {
         MaterialTheme(
             colorScheme = colors,
+            typography = LnTypography,
+            shapes = LnShapes,
             content = content,
         )
     }

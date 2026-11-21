@@ -76,7 +76,7 @@ fun BookCover(
     }
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(brush)
             .semantics { contentDescription = "《$title》封面" },
         contentAlignment = Alignment.Center,

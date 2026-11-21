@@ -1049,7 +1049,7 @@ private fun TranslationStatusBanner(
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .background(
                 color = textColor.copy(alpha = if (isError) 0.10f else 0.06f),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.small,
             )
             .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

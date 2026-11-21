@@ -44,7 +44,7 @@ fun BrandFilterChip(
         selected = selected,
         onClick = onClick,
         label = label,
-        shape = RoundedCornerShape(9.dp),
+        shape = MaterialTheme.shapes.small,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -91,7 +91,7 @@ fun LnTag(
     }
     Surface(
         modifier = modifier.then(clickModifier),
-        shape = RoundedCornerShape(if (kind == LnTagKind.SOURCE) 50 else 8),
+        shape = RoundedCornerShape(if (kind == LnTagKind.SOURCE) 50 else 6),
         color = container,
         contentColor = content,
         border = border,
@@ -127,7 +127,7 @@ fun StatusBadge(
     }
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(6.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         color = color.copy(alpha = 0.12f),
         contentColor = color,
     ) {
