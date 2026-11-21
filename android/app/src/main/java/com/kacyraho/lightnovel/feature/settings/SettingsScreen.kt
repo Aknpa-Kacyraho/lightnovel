@@ -617,25 +617,26 @@ private fun SettingsGroup(
 ) {
     val containerColor by animateColorAsState(
         targetValue = if (highlighted) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
         } else {
-            MaterialTheme.colorScheme.surface
+            Color.Transparent
         },
         label = "settings-group-highlight",
     )
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-        ),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp),
+        )
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(containerColor, MaterialTheme.shapes.medium)
+                .padding(if (highlighted) 12.dp else 0.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
             content()
         }
     }

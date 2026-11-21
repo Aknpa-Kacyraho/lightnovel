@@ -5,12 +5,12 @@
 `main` 现在只维护 Kotlin + Jetpack Compose 原生客户端。旧 Web/Python 实现不再参与构建、测试或发布，最终源码仅保留在远端只读归档分支：
 
 - 归档分支：<https://github.com/Aknpa-Kacyraho/lightnovel/tree/archive/web>
-- 当前发布：[v1.9.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.0)
+- 当前发布：[v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1)
 - 变更记录：[android/CHANGELOG.md](android/CHANGELOG.md)
 
 ## 当前版本
 
-Android **1.9.0**（versionCode 64）：
+Android **1.9.1**（versionCode 65）：
 
 - 书架、发现、任务、设置四个一级入口。
 - 本地 TXT / EPUB 导入，Kakuyomu 与成为小说家吧搜索和下载。
@@ -47,6 +47,7 @@ Android **1.9.0**（versionCode 64）：
 - 批量重试不受筛选影响；搜索加载状态正确；世界线失败回滚知识。
 - 取消翻译/搜索/世界线后，后台请求不再继续写摘要、人物、知识或缓存。
 - 统一中文排版与五档圆角；卡片描边减淡，页面更安静。
+- 书架改为书单；封面统一 2:3；设置分组去掉描边卡片。
 
 ## 环境要求
 

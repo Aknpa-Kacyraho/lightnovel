@@ -34,7 +34,8 @@
 | Round 24 | 1.8.2（61） | 滚动锚点、模式切换、导入哈希备份 | ✅ | ✅ | ⏳ |
 | Round 25 | 1.8.3（62） | 批量重试范围、搜索加载、世界线回滚 | ✅ | ✅ | ✅ [v1.8.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.3) |
 | Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ✅ [v1.8.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.4) |
-| Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ⏳ |
+| Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ✅ [v1.9.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.0) |
+| Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -215,11 +216,21 @@ cd android
   - 取消后不再写摘要、人物、知识或卡片缓存。
 - 验证：313 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 27（进行中）
+## Round 27（已发布）
 
-- 指南：`round-27/`
+- 指南：`round-27/`；自检：`round-27/SELF-REVIEW.md`
 - 版本：1.9.0 / 64
-- 范围：中文排版尺度、五档圆角、列表描边。
+- 变更：
+  - `LnTypography`：20sp 标题、16/26 正文、13 辅助、12 标签。
+  - `LnShapes`：4/8/12/16/20；卡片 12、封面 8、标签 6、Sheet 20。
+  - 列表描边 0.6 → 0.35，设置分组 0.5。
+- 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 28（进行中）
+
+- 指南：`round-28/`
+- 版本：1.9.1 / 65
+- 范围：书架去卡片、封面 2:3、设置分组去卡片。
 
 ## 审计结论（2026-11-21）
 

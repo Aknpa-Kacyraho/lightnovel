@@ -575,14 +575,14 @@ private fun RecommendationCard(
 ) {
     Column(
         modifier = Modifier
-            .width(148.dp)
+            .width(140.dp)
             .clickable(onClick = onClick),
     ) {
         BookCover(
             title = (book.titleZh ?: book.title).ifBlank { book.id },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(188.dp),
+                .height(210.dp),
             size = BookCoverSize.LARGE,
         )
         Spacer(Modifier.height(6.dp))
@@ -627,7 +627,7 @@ private fun SourceResultCard(
         ) {
             BookCover(
                 title = (item.titleZh ?: item.title).ifBlank { item.id },
-                modifier = Modifier.size(width = 64.dp, height = 88.dp),
+                modifier = Modifier.size(width = 60.dp, height = 90.dp),
                 size = BookCoverSize.SMALL,
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -699,11 +699,19 @@ private fun SourceResultCard(
                 if (pairs.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        pairs.take(3).forEach { pair ->
+                        pairs.take(2).forEach { pair ->
                             LnTag(
                                 text = pair.second,
                                 kind = LnTagKind.TYPE,
                                 onClick = { onTagClick(pair.first) },
+                            )
+                        }
+                        if (pairs.size > 2) {
+                            Text(
+                                text = "+${pairs.size - 2}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.align(Alignment.CenterVertically),
                             )
                         }
                     }

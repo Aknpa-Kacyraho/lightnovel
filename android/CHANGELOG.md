@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.1 — 2026-11-21
+
+### 视觉
+
+- 书架改为无卡片书单：行间淡分隔线，封面 48×72，进度改 2dp 细线。
+- 推荐卡封面 140×210、搜索结果封面 60×90，统一 2:3 比例。
+- 搜索结果标签最多 2 个，其余显示 `+N`，减少横向拥挤。
+- 设置分组去掉描边卡片，改为分组标题 + 行内容；备份提醒用浅色底。
+
+### 工程
+
+- `BookRow` 移除 `Card`，使用 `HorizontalDivider` 与自绘进度线。
+- `LibraryScreen` 列表改为垂直 8dp padding、0 间距。
+- `SettingsGroup` 用 `Column` + `background` + `labelLarge` 标题。
+- `versionCode 65` / `versionName 1.9.1`。
+
 ## 1.9.0 — 2026-11-21
 
 ### 视觉

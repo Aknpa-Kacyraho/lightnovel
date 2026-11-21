@@ -429,8 +429,8 @@ fun LibraryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     items(state.books, key = { it.book.id }) { item ->
                         BookRow(
@@ -536,25 +536,17 @@ private fun BookRow(
     var menuOpen by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-        ),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BookCover(
                 title = item.book.titleZh ?: item.book.title,
-                modifier = Modifier.size(width = 52.dp, height = 72.dp),
+                modifier = Modifier.size(width = 48.dp, height = 72.dp),
                 size = BookCoverSize.TINY,
             )
             Spacer(Modifier.width(12.dp))
@@ -579,11 +571,24 @@ private fun BookRow(
                 )
                 val progress = item.state?.progressIdx ?: 0
                 if (progress > 0 && item.book.episodes > 0) {
-                    Spacer(Modifier.height(5.dp))
-                    LinearProgressIndicator(
-                        progress = { (progress.toFloat() / item.book.episodes).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(
+                                    (progress.toFloat() / item.book.episodes).coerceIn(0f, 1f),
+                                )
+                                .fillMaxHeight()
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                ),
+                        )
+                    }
                 }
             }
             Box {
@@ -621,6 +626,11 @@ private fun BookRow(
                 }
             }
         }
+        androidx.compose.material3.HorizontalDivider(
+            modifier = Modifier.padding(start = 76.dp, end = 16.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
+        )
     }
     if (confirmRemove) {
         AlertDialog(
