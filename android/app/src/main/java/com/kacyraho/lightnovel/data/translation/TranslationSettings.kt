@@ -4,6 +4,7 @@ import com.kacyraho.lightnovel.core.settings.AppSettings
 import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.settings.TranslationProviders
 import com.kacyraho.lightnovel.data.story.StoryMemory
+import com.kacyraho.lightnovel.data.story.StoryMemoryStore
 
 fun AppSettings.toTranslationConfig(
     memory: StoryMemory? = null,
@@ -22,6 +23,7 @@ fun AppSettings.toTranslationConfig(
         provider = TranslationProviders.providerName(deepSeekBaseUrl),
         glossary = memory?.glossary.orEmpty(),
         glossaryRevision = revision,
+        glossaryHash = memory?.let(StoryMemoryStore::glossaryRevision).orEmpty(),
         workId = memory?.workId.orEmpty(),
         workTitle = memory?.title.orEmpty(),
         characters = memory?.characters.orEmpty(),

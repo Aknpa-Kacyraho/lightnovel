@@ -113,4 +113,97 @@ class MetadataTranslationServiceTest {
             db.close()
         }
     }
+
+    @Test
+    fun retriesWhenTitleIsCachedButSynopsisIsMissing() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = db.libraryDao()
+            val book = BookEntity(
+                id = "kakuyomu-2",
+                storageDir = "kakuyomu-2",
+                slug = "kakuyomu-2",
+                source = "kakuyomu",
+                sourceId = "2",
+                title = "さよならアイリス",
+                titleZh = null,
+                author = "作者",
+                tagsJson = null,
+                genre = null,
+                episodes = 1,
+                local = false,
+                createdAt = null,
+                legacyJson = null,
+            )
+            val chapter = ChapterEntity(
+                bookId = book.id,
+                idx = 1,
+                title = "第1話",
+                titleZh = null,
+                rawPath = null,
+                zhPath = null,
+                status = "online",
+                tokenIn = 0,
+                tokenOut = 0,
+                model = null,
+                updatedAt = null,
+            )
+            dao.upsertBooks(listOf(book))
+            dao.upsertChapters(listOf(chapter))
+
+            var calls = 0
+            val fake = object : TranslationClient {
+                override suspend fun complete(
+                    messages: List<ChatMessage>,
+                    model: String,
+                    maxTokens: Int,
+                    temperature: Double,
+                ): ChatResult {
+                    calls++
+                    val content = if (calls == 1) {
+                        """{"titleZh":"再见爱丽丝","synopsisZh":"","tagsZh":[],"chaptersZh":[]}"""
+                    } else {
+                        """{"titleZh":"再见爱丽丝","synopsisZh":"补上的简介","tagsZh":[],"chaptersZh":[]}"""
+                    }
+                    return ChatResult(
+                        content = content,
+                        tokensIn = 1,
+                        tokensOut = 1,
+                        model = model,
+                        finishReason = "stop",
+                    )
+                }
+            }
+            val service = MetadataTranslationService(
+                contentStore = FileContentStore(tmp.newFolder("data-2").toPath()),
+                dao = dao,
+                settingsStore = SettingsStore(context),
+                apiKeyStore = InMemoryApiKeyStore("key"),
+                clientFactory = { _, _ -> fake },
+            )
+            val detail = SourceDetail(
+                book = SourceBook(
+                    provider = "kakuyomu",
+                    id = "2",
+                    title = "さよならアイリス",
+                    author = "作者",
+                    tags = listOf("百合"),
+                    episodes = 1,
+                ),
+                chapters = listOf(SourceChapterRef("1", "第1話")),
+                synopsis = "简介",
+            )
+
+            service.translateBook(book, detail, listOf(chapter))
+            val second = service.translateBook(book, detail, listOf(chapter))
+
+            assertEquals(2, calls)
+            assertEquals("补上的简介", second?.synopsisZh)
+        } finally {
+            db.close()
+        }
+    }
 }

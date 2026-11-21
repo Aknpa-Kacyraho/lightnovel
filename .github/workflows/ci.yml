@@ -33,4 +33,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Run JVM tests, lint and debug assembly
         working-directory: android
+        env:
+          ROBOLECTRIC_REPO_URL: https://maven.aliyun.com/repository/public
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug

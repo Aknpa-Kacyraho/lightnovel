@@ -218,7 +218,12 @@ class MetadataTranslationService(
                 .joinToString("\n"),
         )
         val cached = store.loadBook(book.id)
-        if (cached?.sourceHash == sourceHash && cached.metadata.titleZh.isNotBlank()) {
+        val missingSynopsis = synopsis.isNotBlank() &&
+            cached?.metadata?.synopsisZh.isNullOrBlank()
+        if (cached?.sourceHash == sourceHash &&
+            cached.metadata.titleZh.isNotBlank() &&
+            !missingSynopsis
+        ) {
             return cached.metadata
         }
         val settings = settingsStore.settings.first()

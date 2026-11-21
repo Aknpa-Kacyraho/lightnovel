@@ -136,4 +136,30 @@ class StoryMemoryStore(
 
     private fun path(storageDir: String) =
         contentStore.paths(storageDir).bookDir.resolve("story.json")
+
+    companion object {
+        /**
+         * 纯术语版本：只对术语的原文/译名/别名做 hash。
+         * 摘要、人物、风格变化不会改变它，避免误报「术语已更新」。
+         */
+        fun glossaryRevision(memory: StoryMemory): String {
+            val glossary = memory.glossary
+                .filter { it.source.isNotBlank() && it.target.isNotBlank() }
+                .distinctBy { it.source.trim() }
+                .map {
+                    it.copy(
+                        id = it.id.ifBlank { it.source.trim() },
+                        source = it.source.trim(),
+                        target = it.target.trim(),
+                        aliases = it.aliases.map(String::trim)
+                            .filter(String::isNotBlank)
+                            .distinct(),
+                    )
+                }
+                .joinToString("\n") {
+                    "${it.source}\t${it.target}\t${it.aliases.joinToString(",")}"
+                }
+            return if (glossary.isBlank()) "" else Hashes.sha256(glossary)
+        }
+    }
 }

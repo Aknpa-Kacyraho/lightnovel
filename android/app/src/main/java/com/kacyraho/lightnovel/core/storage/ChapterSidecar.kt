@@ -35,6 +35,7 @@ data class ChapterSidecar(
     @SerialName("incomplete_reason") val incompleteReason: String? = null,
     @SerialName("glossary_revision") val glossaryRevision: String? = null,
     @SerialName("story_revision") val storyRevision: String? = null,
+    @SerialName("glossary_hash") val glossaryHash: String? = null,
 )
 
 internal val SidecarJson = Json {

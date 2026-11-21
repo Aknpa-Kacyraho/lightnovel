@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.7.2 — 2026-11-21
+
+### 修复
+
+- 生成章节摘要、更新人物或风格后，旧章节不再被误报「术语已更新，需要重译」。
+- 翻译期间修改术语表，完成后该章仍会提示术语过期，不再被事后追平掩盖。
+- 书籍已有中文标题但简介为空时，再次进入详情页会补翻简介。
+
+### 工程
+
+- `StoryMemoryStore.glossaryRevision(memory)`：只对术语原文/译名/别名做 hash。
+- `ChapterSidecar` 新增 `glossary_hash`；新译文记录翻译时实际使用的术语版本。
+- `syncSidecarRevision` 不再覆盖术语字段，只追平上下文版本。
+- `staleReasons` 用 `glossaryOutdated` 优先比较术语 hash，旧数据回退综合 revision。
+- `MetadataTranslationService.translateBook` 缓存要求源简介非空时译文简介也非空。
+- `versionCode 58` / `versionName 1.7.2`。
+
 ## 1.7.1 — 2026-11-21
 
 ### 修复

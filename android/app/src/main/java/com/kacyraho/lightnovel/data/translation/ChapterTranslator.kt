@@ -26,6 +26,7 @@ data class TranslationConfig(
     val priceOutCnyPerMillion: Double = DEFAULT_PRICE_OUT_CNY_PER_MILLION,
     val glossary: List<GlossaryEntry> = emptyList(),
     val glossaryRevision: String = "",
+    val glossaryHash: String = "",
     val workId: String = "",
     val workTitle: String = "",
     val characters: List<CharacterCard> = emptyList(),
@@ -529,6 +530,7 @@ class ChapterTranslator(
             glossaryRevision = config.storyRevision.takeIf { it.isNotBlank() }
                 ?: config.glossaryRevision.takeIf { it.isNotBlank() },
             storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
+            glossaryHash = config.glossaryHash.takeIf { it.isNotBlank() },
         )
     }
 

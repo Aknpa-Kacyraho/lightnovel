@@ -198,6 +198,8 @@ class TranslationService(
             incompleteReason = if (incomplete.isEmpty()) null else old.incompleteReason,
             glossaryRevision = config.glossaryRevision.takeIf { it.isNotBlank() },
             storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
+            glossaryHash = config.glossaryHash.takeIf { it.isNotBlank() }
+                ?: old.glossaryHash,
         )
         val outcome = if (sidecar.status == "partial") {
             TranslationOutcome.Partial(newText, sidecar)
@@ -259,6 +261,8 @@ class TranslationService(
             glossaryRevision = config.storyRevision.takeIf { it.isNotBlank() }
                 ?: config.glossaryRevision.takeIf { it.isNotBlank() },
             storyRevision = config.storyRevision.takeIf { it.isNotBlank() },
+            glossaryHash = config.glossaryHash.takeIf { it.isNotBlank() }
+                ?: oldSidecar.glossaryHash,
         )
         return if (sidecar.status == "partial") {
             commit(book, chapterIndex, TranslationOutcome.Partial(cleaned, sidecar))

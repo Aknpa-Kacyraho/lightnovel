@@ -170,6 +170,7 @@ class ReaderViewModel(
     private var currentLegacyConfigHash: String? = null
     private var currentTranslationConfig: TranslationConfig? = null
     private var currentGlossaryRevision: String = ""
+    private var currentGlossaryHash: String = ""
     private var currentStoryMemory: StoryMemory? = null
     private var currentKnowledge: KnowledgeFile? = null
     private var currentReadAnchor: FactAnchor? = null
@@ -596,7 +597,6 @@ class ReaderViewModel(
                 chapterIndex,
                 sidecar.copy(
                     translationConfigHash = config.cacheKey(),
-                    glossaryRevision = revision,
                     storyRevision = revision,
                 ),
             )
@@ -705,6 +705,7 @@ class ReaderViewModel(
     private fun applyMemory(book: BookEntity, memory: StoryMemory) {
         currentStoryMemory = memory
         currentGlossaryRevision = memory.revision
+        currentGlossaryHash = StoryMemoryStore.glossaryRevision(memory)
         val settings = currentSettings ?: return
         val previousTail = if (chapterIndex > 1) {
             contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
@@ -984,6 +985,7 @@ class ReaderViewModel(
         val memory = storyMemoryStore?.load(book.storageDir, book.id, book.title)
         currentStoryMemory = memory
         currentGlossaryRevision = memory?.revision.orEmpty()
+        currentGlossaryHash = memory?.let(StoryMemoryStore::glossaryRevision).orEmpty()
         val settings = currentSettings ?: return
         val previousTail = if (chapterIndex > 1) {
             contentStore.readZh(book.storageDir, chapterIndex - 1)?.takeLast(400).orEmpty()
@@ -1248,8 +1250,12 @@ class ReaderViewModel(
                 if (displayMode == "raw") add(StaleReason.ORIGINAL_REFRESH)
             }
             val sidecarRevision = sidecar.storyRevision ?: sidecar.glossaryRevision
-            val glossaryChanged = currentGlossaryRevision.isNotBlank() &&
-                sidecarRevision != currentGlossaryRevision
+            val glossaryChanged = glossaryOutdated(
+                sidecarGlossaryHash = sidecar.glossaryHash,
+                sidecarRevision = sidecarRevision,
+                currentGlossaryHash = currentGlossaryHash,
+                currentCombinedRevision = currentGlossaryRevision,
+            )
             if (glossaryChanged) {
                 add(StaleReason.GLOSSARY)
             } else {

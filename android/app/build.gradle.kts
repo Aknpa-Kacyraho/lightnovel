@@ -40,8 +40,8 @@ android {
         applicationId = "com.kacyraho.lightnovel"
         minSdk = 26
         targetSdk = 36
-        versionCode = 57
-        versionName = "1.7.1"
+        versionCode = 58
+        versionName = "1.7.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -91,6 +91,11 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
+            System.getenv("ROBOLECTRIC_REPO_URL")?.takeIf { it.isNotBlank() }?.let { repo ->
+                all {
+                    it.systemProperty("robolectric.dependency.repo.url", repo)
+                }
+            }
         }
     }
 
