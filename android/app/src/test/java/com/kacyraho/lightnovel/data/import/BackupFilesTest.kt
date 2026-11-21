@@ -76,7 +76,7 @@ class BackupFilesTest {
     }
 
     @Test
-    fun existingDifferentBookGetsBakAndIsReplaced() {
+    fun existingDifferentBookMergesAndKeepsLocalFiles() {
         val (zip, plan) = prepared()
         val dataRoot = tmp.newFolder("data-root-bak").toPath()
         val first = extract(zip, plan, "staging-bak-1")
@@ -87,16 +87,12 @@ class BackupFilesTest {
         val second = extract(zip, plan, "staging-bak-2")
         val result = LibraryCommitter().commit(second, dataRoot, plan.report.backupId, plan.report)
 
-        assertEquals(1, result.moved)
+        assertEquals(0, result.moved)
         assertEquals(18, result.unchanged)
-        assertEquals(1, result.backups.size)
-        assertEquals("中文译文 1", read(chapter))
-        assertTrue(hasBak(dataRoot.resolve("novels")))
-        val bakDir = bakDirs(dataRoot.resolve("novels")).single()
-        assertEquals(
-            "dirty-local-content",
-            read(bakDir.resolve("chapters/0001.txt")),
-        )
+        assertEquals(0, result.merged)
+        assertEquals(0, result.backups.size)
+        assertEquals("dirty-local-content", read(chapter))
+        assertFalse(hasBak(dataRoot.resolve("novels")))
     }
 
     private fun hasBak(root: Path): Boolean = bakDirs(root).isNotEmpty()

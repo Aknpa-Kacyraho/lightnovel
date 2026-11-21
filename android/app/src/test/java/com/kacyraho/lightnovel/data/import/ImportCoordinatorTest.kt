@@ -60,9 +60,21 @@ class ImportCoordinatorTest {
                 },
             )
 
+            db.libraryDao().updateBookTitle("kakuyomu-1", "新译名")
+            db.libraryDao().updateChapterTitle("kakuyomu-1", 1, "新章节名")
+            db.libraryDao().updateProgress("kakuyomu-1", 5, 10, 0, "2099-01-01T00:00:00Z")
+
             val again = coordinator.import(zip)
             assertEquals(19, again.applied.books)
+            assertEquals(0, again.applied.chapters)
             assertEquals(19, db.libraryDao().bookCount())
+            assertEquals("新译名", db.libraryDao().book("kakuyomu-1")?.titleZh)
+            assertEquals(
+                "新章节名",
+                db.libraryDao().chapters("kakuyomu-1").first { it.idx == 1 }.titleZh,
+            )
+            assertEquals(5, db.libraryDao().readState("kakuyomu-1")?.progressIdx)
+            assertEquals(10, db.libraryDao().readState("kakuyomu-1")?.progressBlock)
         } finally {
             db.close()
         }

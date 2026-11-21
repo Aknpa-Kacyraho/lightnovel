@@ -379,3 +379,7 @@ Column
   - 术语版本从综合 revision 拆出，摘要/人物变化不再误报过期。
   - sidecar 记录翻译时实际使用的术语 hash；完成后不再追平术语字段。
   - 元数据翻译在源简介非空时要求译文简介也非空。
+- 1.8.0（versionCode 59）：
+  - `mergeBook` 现有非空优先，重复导入不退化书名/标签。
+  - `mergeReadState` 按 `updated_at` 取新，收藏并集，hidden 保留。
+  - `missingChapters` 只补缺失章节，保留标题与 token 统计。

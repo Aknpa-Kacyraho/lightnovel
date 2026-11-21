@@ -29,6 +29,7 @@
 | Round 19 | 1.7.0（56） | 翻译异常出口、重译本段布局、重试策略 | ✅ | ✅ | ✅ [v1.7.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.0) |
 | Round 20 | 1.7.1（57） | 手动优先、跳过统计、暂停立即生效 | ✅ | ✅ | ✅ [v1.7.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.1) |
 | Round 21 | 1.7.2（58） | 术语过期检测、sidecar 记录、简介补翻 | ✅ | ✅ | ✅ [v1.7.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.2) |
+| Round 22 | 1.8.0（59） | 备份导入合并、进度保护、章节只补缺失 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -175,7 +176,13 @@ cd android
   - 元数据翻译在源简介非空时要求译文简介非空。
 - 验证：见 `round-21/SELF-REVIEW.md`。
 
-## Round 22 候选
+## Round 22（进行中）
+
+- 指南：`round-22/`
+- 版本：1.8.0 / 59
+- 范围：重复导入备份时保护书名/标签、阅读进度与章节元数据。
+
+## Round 23 候选
 
 - 翻译失败原因持久化到章节（任务中心显示原因）。
 - 任务中心显示章内翻译进度百分比。

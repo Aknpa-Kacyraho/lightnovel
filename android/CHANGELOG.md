@@ -3,6 +3,21 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.8.0 — 2026-11-21
+
+### 修复
+
+- 重复导入备份时，已存在的书保留现有中文标题、作者、标签与导入去重哈希。
+- 重复导入备份时，阅读进度按更新时间取较新的一方，不再回退到旧备份。
+- 重复导入备份时，已存在的章节保留中文标题、token 统计与模型信息；只补缺失章节。
+
+### 工程
+
+- 新增 `ImportMerge.kt`：`mergeBook` / `mergeReadState` / `missingChapters` 纯函数。
+- `BackupImportService.apply` 先查询现有行，合并后再 upsert。
+- `ImportCoordinatorTest` 增加重复导入的真实回归断言。
+- `versionCode 59` / `versionName 1.8.0`。
+
 ## 1.7.2 — 2026-11-21
 
 ### 修复

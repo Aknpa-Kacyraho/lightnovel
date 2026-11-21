@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter
 data class CommitResult(
     val moved: Int,
     val unchanged: Int,
+    val merged: Int = 0,
     val backups: List<String>,
     val archived: List<String>,
 )
@@ -30,6 +31,7 @@ class LibraryCommitter {
         val backups = mutableListOf<String>()
         val moves = mutableListOf<MoveRecord>()
         var unchanged = 0
+        var merged = 0
 
         try {
             for (book in report.books) {
@@ -44,14 +46,12 @@ class LibraryCommitter {
                         unchanged++
                         continue
                     }
-                    val backup = uniqueSibling(dest)
-                    moveDirectory(dest, backup)
-                    backups += dataRoot.relativize(backup).toString().replace('\\', '/')
-                    moves += MoveRecord(source, dest, backup)
+                    // Existing files win; only fill in files that are missing locally.
+                    merged += mergeDirectory(source, dest)
                 } else {
                     moves += MoveRecord(source, dest, null)
+                    moveDirectory(source, dest)
                 }
-                moveDirectory(source, dest)
             }
         } catch (e: Exception) {
             rollback(moves)
@@ -66,6 +66,7 @@ class LibraryCommitter {
         return CommitResult(
             moved = moves.size,
             unchanged = unchanged,
+            merged = merged,
             backups = backups,
             archived = archived,
         )
@@ -106,6 +107,25 @@ class LibraryCommitter {
         } catch (_: AtomicMoveNotSupportedException) {
             Files.move(from, to)
         }
+    }
+
+    /**
+     * 逐文件合并：现有文件优先，只复制目标目录缺失的文件。
+     * 不移动、不覆盖现有文件，避免旧备份冲掉备份后新增的原文/译文。
+     */
+    private fun mergeDirectory(source: Path, dest: Path): Int {
+        var copied = 0
+        Files.walk(source).use { stream ->
+            stream.filter { Files.isRegularFile(it) }.forEach { from ->
+                val to = dest.resolve(source.relativize(from))
+                if (!Files.exists(to)) {
+                    Files.createDirectories(to.parent)
+                    Files.copy(from, to)
+                    copied++
+                }
+            }
+        }
+        return copied
     }
 
     private fun uniqueSibling(path: Path): Path {

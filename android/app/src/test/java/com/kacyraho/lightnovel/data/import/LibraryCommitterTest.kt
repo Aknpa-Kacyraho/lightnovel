@@ -1,6 +1,7 @@
 package com.kacyraho.lightnovel.data.import
 
 import java.nio.file.Files
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -91,5 +92,53 @@ class LibraryCommitterTest {
 
         assertFalse(Files.exists(dataRoot.resolve("novels/ok")))
         assertTrue(Files.isDirectory(source))
+    }
+
+    @Test
+    fun mergingKeepsExistingFilesAndAddsMissingOnes() {
+        val staging = tmp.newFolder("staging-merge").toPath()
+        val source = staging.resolve("novels/book")
+        Files.createDirectories(source.resolve("raw"))
+        Files.write(source.resolve("raw/0001.txt"), "backup-1".toByteArray(Charsets.UTF_8))
+        Files.write(source.resolve("raw/0002.txt"), "backup-2".toByteArray(Charsets.UTF_8))
+
+        val dataRoot = tmp.newFolder("data-merge").toPath()
+        val dest = dataRoot.resolve("novels/book")
+        Files.createDirectories(dest.resolve("raw"))
+        Files.createDirectories(dest.resolve("zh"))
+        Files.write(dest.resolve("raw/0001.txt"), "local-1".toByteArray(Charsets.UTF_8))
+        Files.write(dest.resolve("zh/0001.txt"), "translated-1".toByteArray(Charsets.UTF_8))
+
+        val book = PlannedBook(
+            id = "book",
+            storageDir = "book",
+            slug = "book",
+            source = "kakuyomu",
+            sourceId = "book",
+            title = "Book",
+            shelf = null,
+            favorite = false,
+            hidden = false,
+            addedAt = null,
+            legacyJson = null,
+        )
+        val report = MigrationReport(
+            backupId = "backup-merge",
+            dirClasses = emptyMap(),
+            books = listOf(book),
+            orphanDirs = emptyList(),
+            missingDirs = emptyList(),
+            conflicts = emptyList(),
+        )
+
+        val result = LibraryCommitter().commit(staging, dataRoot, report.backupId, report)
+
+        assertEquals("local-1", String(Files.readAllBytes(dest.resolve("raw/0001.txt")), Charsets.UTF_8))
+        assertEquals(
+            "translated-1",
+            String(Files.readAllBytes(dest.resolve("zh/0001.txt")), Charsets.UTF_8),
+        )
+        assertEquals("backup-2", String(Files.readAllBytes(dest.resolve("raw/0002.txt")), Charsets.UTF_8))
+        assertEquals(1, result.merged)
     }
 }

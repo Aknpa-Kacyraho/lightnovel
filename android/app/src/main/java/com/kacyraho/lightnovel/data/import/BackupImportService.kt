@@ -6,8 +6,7 @@ import com.kacyraho.lightnovel.data.backup.BackupVerifier
 import com.kacyraho.lightnovel.data.catalog.Catalog
 import com.kacyraho.lightnovel.data.catalog.CatalogAdapter
 import com.kacyraho.lightnovel.data.local.AliasEntity
-import com.kacyraho.lightnovel.data.local.BookEntity
-import com.kacyraho.lightnovel.data.local.BookTags
+import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import java.time.Instant
@@ -78,49 +77,35 @@ class BackupImportService(
 
     suspend fun apply(plan: ImportPlan, dao: LibraryDao): ImportApplyResult {
         val chapterCounts = plan.chapters.groupingBy { it.bookId }.eachCount()
+        val existingBooks = plan.report.books
+            .mapNotNull { dao.book(it.id) }
+            .associateBy { it.id }
         val books = plan.report.books.map { book ->
-            BookEntity(
-                id = book.id,
-                storageDir = book.storageDir,
-                slug = book.slug,
-                source = book.source,
-                sourceId = book.sourceId,
-                title = book.title,
-                titleZh = book.titleZh,
-                author = book.author,
-                tagsJson = BookTags.encode(book.tags),
-                genre = null,
-                episodes = maxOf(book.episodes, chapterCounts[book.id] ?: 0),
-                local = book.source == "local",
-                createdAt = book.addedAt,
-                legacyJson = book.legacyJson,
+            mergeBook(
+                existing = existingBooks[book.id],
+                planned = book,
+                chapterCount = chapterCounts[book.id] ?: 0,
             )
         }
         val importedStates = plan.readStates.associateBy { it.bookId }
+        val existingStates = plan.report.books
+            .mapNotNull { dao.readState(it.id) }
+            .associateBy { it.bookId }
         val states = plan.report.books.map { book ->
-            val state = importedStates[book.id]
-            ReadStateEntity(
-                bookId = book.id,
-                shelf = state?.shelf ?: book.shelf,
-                favorite = state?.favorite ?: book.favorite,
-                hidden = state?.hidden ?: book.hidden,
-                progressIdx = state?.progressIdx ?: 0,
-                progressBlock = state?.progressBlock ?: 0,
-                progressChar = state?.progressChar ?: 0,
-                openedAt = state?.openedAt,
-                finishedAt = state?.finishedAt,
-                updatedAt = state?.updatedAt
-                    ?: state?.openedAt
-                    ?: state?.finishedAt
-                    ?: book.addedAt
-                    ?: Instant.now().toString(),
+            mergeReadState(
+                existing = existingStates[book.id],
+                planned = plannedState(book, importedStates[book.id]),
             )
         }
         val aliases = plan.catalog.aliases.map { (old, final) ->
             AliasEntity(oldSlug = old, finalSlug = final)
         }
-        val chapters = plan.chapters.map { chapter ->
-            com.kacyraho.lightnovel.data.local.ChapterEntity(
+        val existingChapterKeys = plan.report.books
+            .flatMap { dao.chapters(it.id) }
+            .map { it.bookId to it.idx }
+            .toSet()
+        val chapters = missingChapters(plan.chapters, existingChapterKeys).map { chapter ->
+            ChapterEntity(
                 bookId = chapter.bookId,
                 idx = chapter.idx,
                 title = null,
@@ -140,4 +125,22 @@ class BackupImportService(
         dao.upsertChapters(chapters)
         return ImportApplyResult(books.size, states.size, aliases.size, chapters.size)
     }
+
+    private fun plannedState(book: PlannedBook, state: PlannedReadState?): ReadStateEntity =
+        ReadStateEntity(
+            bookId = book.id,
+            shelf = state?.shelf ?: book.shelf,
+            favorite = state?.favorite ?: book.favorite,
+            hidden = state?.hidden ?: book.hidden,
+            progressIdx = state?.progressIdx ?: 0,
+            progressBlock = state?.progressBlock ?: 0,
+            progressChar = state?.progressChar ?: 0,
+            openedAt = state?.openedAt,
+            finishedAt = state?.finishedAt,
+            updatedAt = state?.updatedAt
+                ?: state?.openedAt
+                ?: state?.finishedAt
+                ?: book.addedAt
+                ?: Instant.now().toString(),
+        )
 }
