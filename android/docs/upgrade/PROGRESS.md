@@ -28,7 +28,7 @@
 | Round 18 | 1.6.2（55） | 进度抗取消、筛选合并、标题去重 | ✅ | ✅ | ✅ [v1.6.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.6.2) |
 | Round 19 | 1.7.0（56） | 翻译异常出口、重译本段布局、重试策略 | ✅ | ✅ | ✅ [v1.7.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.0) |
 | Round 20 | 1.7.1（57） | 手动优先、跳过统计、暂停立即生效 | ✅ | ✅ | ✅ [v1.7.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.1) |
-| Round 21 | 1.7.2（58） | 术语过期检测、sidecar 记录、简介补翻 | ✅ | ✅ | ⏳ |
+| Round 21 | 1.7.2（58） | 术语过期检测、sidecar 记录、简介补翻 | ✅ | ✅ | ✅ [v1.7.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.7.2) |
 
 ## 约束
 
