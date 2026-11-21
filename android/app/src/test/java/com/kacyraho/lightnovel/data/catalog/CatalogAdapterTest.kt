@@ -22,7 +22,8 @@ class CatalogAdapterTest {
                       "title": "Book",
                       "shelf": "reading",
                       "favorite": true,
-                      "episodes": 3
+                      "episodes": 3,
+                      "import_hash": "hash-1"
                     }
                   },
                   "candidates": {},
@@ -39,6 +40,7 @@ class CatalogAdapterTest {
         assertEquals("reading", item.shelf)
         assertTrue(item.favorite)
         assertEquals(3, item.episodes)
+        assertEquals("hash-1", item.importHash)
         assertEquals("new-slug", catalog.aliases["old-slug"])
         assertEquals("new-slug", catalog.aliases["side-slug"])
     }
@@ -58,6 +60,7 @@ class CatalogAdapterTest {
         assertTrue(catalog.candidates.containsKey("kakuyomu-10"))
         assertEquals("want", catalog.items.getValue("kakuyomu-9").shelf)
         assertTrue(catalog.items.getValue("kakuyomu-9").favorite)
+        assertNull(catalog.items.getValue("kakuyomu-9").importHash)
         assertNull(catalog.candidates.getValue("kakuyomu-10").shelf)
     }
 

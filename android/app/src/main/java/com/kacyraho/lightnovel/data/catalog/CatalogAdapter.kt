@@ -182,6 +182,7 @@ object CatalogAdapter {
             local = source == "local",
             rawJson = row.toString(),
             tags = tags,
+            importHash = row.string("import_hash"),
         )
     }
 

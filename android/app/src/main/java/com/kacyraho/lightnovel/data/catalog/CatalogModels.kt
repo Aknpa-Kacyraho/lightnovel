@@ -17,6 +17,7 @@ data class CatalogItem(
     val local: Boolean,
     val rawJson: String,
     val tags: List<String> = emptyList(),
+    val importHash: String? = null,
 )
 
 data class Catalog(

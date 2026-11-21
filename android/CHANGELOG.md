@@ -3,6 +3,22 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.8.2 — 2026-11-21
+
+### 修复
+
+- 滚动模式下添加书签、切换原文/译文，位置不再跳回切换前的页。
+- 滚动与翻页模式互相切换时按行/段映射换算，落在同一段而不是末页。
+- 备份写入本地导入哈希；恢复后再导入同一个本地文件会提示「已在书架」。
+
+### 工程
+
+- `currentAnchor()` 滚动模式优先返回当前滚动位置（行→段）。
+- `setReaderMode` 两个方向使用 `currentParagraphIndex()` / `lineForParagraph()`。
+- `CatalogItem` / `PlannedBook` 新增 `importHash`；`BackupExporter` 写 `import_hash`；
+  `mergeBook` 现有为空时用备份补齐。
+- `versionCode 61` / `versionName 1.8.2`。
+
 ## 1.8.1 — 2026-11-21
 
 ### 修复

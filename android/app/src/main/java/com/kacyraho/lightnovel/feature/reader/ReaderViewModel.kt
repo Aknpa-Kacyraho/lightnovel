@@ -304,14 +304,20 @@ class ReaderViewModel(
         if (mode == "page") {
             anchorToRestore = ReaderAnchor(
                 chapterIndex = chapterIndex,
-                paragraphId = _state.value.scrollParagraph,
+                paragraphId = currentParagraphIndex(),
                 charOffset = 0,
             )
             lastKey = null
         } else {
             val pageAnchor = currentAnchor()
             if (pageAnchor != null) {
-                _state.value = _state.value.copy(scrollParagraph = pageAnchor.paragraphId)
+                _state.value = _state.value.copy(
+                    scrollParagraph = lineForParagraph(
+                        _state.value.paragraphs,
+                        _state.value.displayMode,
+                        pageAnchor.paragraphId,
+                    ),
+                )
             }
         }
         _state.value = _state.value.copy(
@@ -1413,8 +1419,13 @@ class ReaderViewModel(
         }
     }
 
-    private fun currentAnchor(): ReaderAnchor? =
-        _state.value.layout?.pages?.getOrNull(_state.value.pageIndex)?.startAnchor
+    private fun currentAnchor(): ReaderAnchor? {
+        val state = _state.value
+        if (state.readerMode == "scroll") {
+            return ReaderAnchor(chapterIndex, currentParagraphIndex(), 0)
+        }
+        return state.layout?.pages?.getOrNull(state.pageIndex)?.startAnchor
+    }
 
     private fun persistSettings() {
         settingsJob?.cancel()

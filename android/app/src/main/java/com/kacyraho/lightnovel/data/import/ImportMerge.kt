@@ -31,6 +31,7 @@ internal fun mergeBook(
             local = planned.source == "local",
             createdAt = planned.addedAt,
             legacyJson = planned.legacyJson,
+            importHash = planned.importHash,
         )
     }
     return existing.copy(
@@ -44,6 +45,7 @@ internal fun mergeBook(
         episodes = maxOf(existing.episodes, planned.episodes, chapterCount),
         createdAt = existing.createdAt ?: planned.addedAt,
         legacyJson = existing.legacyJson ?: planned.legacyJson,
+        importHash = existing.importHash ?: planned.importHash,
     )
 }
 

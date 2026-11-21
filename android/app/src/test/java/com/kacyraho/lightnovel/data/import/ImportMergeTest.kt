@@ -9,14 +9,14 @@ import org.junit.Test
 
 class ImportMergeTest {
     @Test
-    fun newBookUsesChapterCountAndHasNoImportHash() {
-        val planned = plannedBook(episodes = 5)
+    fun newBookCarriesImportHashFromBackup() {
+        val planned = plannedBook(episodes = 5, importHash = "backup-hash")
 
         val merged = mergeBook(existing = null, planned = planned, chapterCount = 12)
 
         assertEquals(12, merged.episodes)
         assertEquals("Book", merged.title)
-        assertNull(merged.importHash)
+        assertEquals("backup-hash", merged.importHash)
     }
 
     @Test
@@ -60,6 +60,23 @@ class ImportMergeTest {
 
         assertEquals("备份译名", merged.titleZh)
         assertEquals("作者", merged.author)
+    }
+
+    @Test
+    fun existingBookFillsMissingImportHashFromBackup() {
+        val existing = bookEntity(
+            titleZh = "中文书名",
+            author = "作者",
+            tagsJson = null,
+            importHash = null,
+            episodes = 1,
+        )
+        val planned = plannedBook(importHash = "backup-hash")
+
+        val merged = mergeBook(existing, planned, chapterCount = 1)
+
+        assertEquals("backup-hash", merged.importHash)
+        assertEquals("中文书名", merged.titleZh)
     }
 
     @Test
@@ -124,6 +141,7 @@ class ImportMergeTest {
         author: String? = null,
         episodes: Int = 0,
         tags: List<String> = emptyList(),
+        importHash: String? = null,
     ) = PlannedBook(
         id = "book",
         storageDir = "book",
@@ -140,6 +158,7 @@ class ImportMergeTest {
         addedAt = "2025-01-01T00:00:00Z",
         legacyJson = null,
         tags = tags,
+        importHash = importHash,
     )
 
     private fun bookEntity(

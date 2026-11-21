@@ -129,6 +129,9 @@ class BackupExporter(
                             }
                             book.titleZh?.let { put("title_zh", kotlinx.serialization.json.JsonPrimitive(it)) }
                             book.author?.let { put("author", kotlinx.serialization.json.JsonPrimitive(it)) }
+                            book.importHash?.let {
+                                put("import_hash", kotlinx.serialization.json.JsonPrimitive(it))
+                            }
                             val tags = BookTags.decode(book.tagsJson)
                             if (tags.isNotEmpty()) {
                                 put(

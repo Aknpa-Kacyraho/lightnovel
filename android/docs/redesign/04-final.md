@@ -387,3 +387,7 @@ Column
   - 单段重译保留整章的配置/术语版本，过期提示不被掩盖。
   - `stripHtml` 移除 `<rt>/<rp>` 注音，EPUB 正文更干净。
   - 备份导出跳过 `.bak-*` 与 `cache` 路径。
+- 1.8.2（versionCode 61）：
+  - `currentAnchor()` 滚动模式优先，书签/切语言不跳回旧页。
+  - `setReaderMode` 双向行/段映射，跨模式位置一致。
+  - 备份写入 `import_hash`，恢复后本地导入去重仍有效。

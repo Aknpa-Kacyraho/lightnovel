@@ -23,6 +23,7 @@ data class PlannedBook(
     val legacyJson: String?,
     val flags: Set<String> = emptySet(),
     val tags: List<String> = emptyList(),
+    val importHash: String? = null,
 )
 
 data class SlugConflict(
@@ -114,6 +115,7 @@ object ImportPlanner {
                 legacyJson = item.rawJson,
                 flags = flags,
                 tags = item.tags,
+                importHash = item.importHash,
             )
             usedIds += item.id
         }
