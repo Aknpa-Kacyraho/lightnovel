@@ -14,15 +14,15 @@ enum class ReaderTheme(
     AUTO(
         "auto",
         "跟随系统",
-        Color(0xFFFAFAF7),
-        Color(0xFF242424),
-        Color(0xFF6B6B66),
+        Color(0xFFF8F5EE),
+        Color(0xFF2A2824),
+        Color(0xFF6E675C),
         Color(0xFFB3261E),
     ),
-    PAPER("paper", "纸白", Color(0xFFFAFAF7), Color(0xFF242424), Color(0xFF6B6B66), Color(0xFFB3261E)),
-    SEPIA("sepia", "米黄", Color(0xFFF5ECD9), Color(0xFF3A3226), Color(0xFF7A6A52), Color(0xFFB3261E)),
-    GREEN("green", "护眼", Color(0xFFEFF6E9), Color(0xFF081B16), Color(0xFF4F6B5D), Color(0xFFB3261E)),
-    NIGHT("night", "夜间", Color(0xFF121212), Color(0xFFBDBAB2), Color(0xFF8E8B84), Color(0xFFFFB4AB)),
+    PAPER("paper", "纸白", Color(0xFFF8F5EE), Color(0xFF2A2824), Color(0xFF6E675C), Color(0xFFB3261E)),
+    SEPIA("sepia", "米黄", Color(0xFFF3E9D2), Color(0xFF3A3226), Color(0xFF7A6A52), Color(0xFFB3261E)),
+    GREEN("green", "护眼", Color(0xFFEDF2E6), Color(0xFF22302A), Color(0xFF4F6B5D), Color(0xFFB3261E)),
+    NIGHT("night", "夜间", Color(0xFF171614), Color(0xFFB8B3A8), Color(0xFF8F8A80), Color(0xFFFFB4AB)),
     ;
 
     /** 把用户偏好解析成可渲染的纸色；AUTO 按系统深浅色落到纸白或夜间。 */

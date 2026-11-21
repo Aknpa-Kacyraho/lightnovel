@@ -60,6 +60,7 @@ fun QuerySheet(
         .sortedBy { queryTypeOrder(it.first) }
 
     ModalBottomSheet(
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         onDismissRequest = onDismiss,
         containerColor = theme.background,
         contentColor = theme.text,
@@ -232,6 +233,7 @@ fun EntityCardSheet(
     onOpenChapter: (Int) -> Unit,
 ) {
     ModalBottomSheet(
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         onDismissRequest = onDismiss,
         containerColor = theme.background,
         contentColor = theme.text,

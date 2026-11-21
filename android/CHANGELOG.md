@@ -3,6 +3,24 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.2 — 2026-11-21
+
+### 视觉
+
+- 夜间纸色改为暖灰黑 `#171614`，正文降到 `#B8B3A8`，长时间阅读更柔和。
+- 纸白改暖白 `#F8F5EE`，护眼降低绿色饱和，米黄略加深；正文统一暖黑。
+- 阅读器过期警告条从纸色派生，不再是一块硬编码亮橙；圆角 8dp。
+- 阅读器内 9 个 BottomSheet 顶角统一 20dp，与全局形状尺度一致。
+
+### 工程
+
+- `ReaderTheme` 四套纸色更新，`AUTO` 占位同步。
+- `StaleBanner` 用 `lerp(theme.background, warning, 0.16/0.12)`。
+- `ReaderComponents` / `ReaderMenuSheet` / `QuerySheet` / `TypographySheet` /
+  `ParagraphSheet` / `BookmarkSheet` / `BookSearchSheet` / `GlossarySheet`
+  加 20dp 顶角。
+- `versionCode 66` / `versionName 1.9.2`。
+
 ## 1.9.1 — 2026-11-21
 
 ### 视觉

@@ -35,7 +35,8 @@
 | Round 25 | 1.8.3（62） | 批量重试范围、搜索加载、世界线回滚 | ✅ | ✅ | ✅ [v1.8.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.3) |
 | Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ✅ [v1.8.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.4) |
 | Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ✅ [v1.9.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.0) |
-| Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ⏳ |
+| Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ✅ [v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1) |
+| Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -226,11 +227,21 @@ cd android
   - 列表描边 0.6 → 0.35，设置分组 0.5。
 - 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 28（进行中）
+## Round 28（已发布）
 
-- 指南：`round-28/`
+- 指南：`round-28/`；自检：`round-28/SELF-REVIEW.md`
 - 版本：1.9.1 / 65
-- 范围：书架去卡片、封面 2:3、设置分组去卡片。
+- 变更：
+  - 书架去卡片，细分隔线，2dp 进度线，封面 48×72。
+  - 推荐/结果封面统一 2:3，标签 2 个 + `+N`。
+  - 设置分组改为标题 + 行，不再是大描边卡片。
+- 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 29（进行中）
+
+- 指南：`round-29/`
+- 版本：1.9.2 / 66
+- 范围：夜间/纸色、警告条派生色、阅读器 Sheet 圆角。
 
 ## 审计结论（2026-11-21）
 

@@ -1,6 +1,7 @@
 package com.kacyraho.lightnovel.feature.reader
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +52,7 @@ fun BookSearchSheet(
     }
 
     ModalBottomSheet(
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = theme.background,

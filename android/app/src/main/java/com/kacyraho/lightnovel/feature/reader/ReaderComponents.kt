@@ -2,6 +2,7 @@ package com.kacyraho.lightnovel.feature.reader
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -81,16 +83,17 @@ fun StaleBanner(
 ) {
     if (reasons.isEmpty() || reason == null) return
     var collapsed by remember { mutableStateOf(false) }
-    val background = if (theme == ReaderTheme.NIGHT) {
-        Color(0xFF3B2A17)
+    val warning = if (theme == ReaderTheme.NIGHT) {
+        Color(0xFFD9A45B)
     } else {
-        Color(0xFFFFF1DC)
+        Color(0xFF8A5A00)
     }
-    val foreground = if (theme == ReaderTheme.NIGHT) {
-        Color(0xFFFFCC80)
-    } else {
-        Color(0xFF7A4A00)
-    }
+    val background = lerp(
+        theme.background,
+        warning,
+        if (theme == ReaderTheme.NIGHT) 0.16f else 0.12f,
+    )
+    val foreground = warning
     val text = when (if (collapsed) StaleBannerReason.COLLAPSED else reason) {
         StaleBannerReason.GLOSSARY -> "术语表已更新，当前译文需要重译。"
         StaleBannerReason.MODEL_PROMPT -> "模型或提示词已更新，建议重译本章。"
@@ -110,7 +113,7 @@ fun StaleBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(background)
+            .background(background, MaterialTheme.shapes.small)
             .clickable { collapsed = !collapsed }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -142,6 +145,7 @@ fun ChapterInfoSheet(
     onRetranslate: () -> Unit,
 ) {
     ModalBottomSheet(
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         onDismissRequest = onDismiss,
         containerColor = theme.background,
         contentColor = theme.text,
