@@ -395,3 +395,7 @@ Column
   - 「重试全部失败」从 DAO 取全部任务，不受筛选影响。
   - 旧搜索翻译不关闭新搜索加载；清空搜索递增 token。
   - 世界线重新生成失败时恢复旧知识。
+- 1.8.4（versionCode 63）：
+  - `runCatchingCancellable` 让取消透传；替换 6 个模块的挂起调用。
+  - `KnowledgeExtractionService` 显式重抛取消。
+  - 取消后不再写摘要、人物、知识或卡片缓存。

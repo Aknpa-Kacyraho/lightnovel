@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.data.translation
 import com.kacyraho.lightnovel.core.settings.ApiKeyStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
@@ -124,7 +125,7 @@ class MetadataTranslationService(
         val key = apiKeyStore.load(settings.translationKeyScope())?.trim().orEmpty()
         if (key.isBlank() && settings.translationRequiresKey()) return null
         val client = clientFactory(settings.deepSeekBaseUrl, key)
-        val result = runCatching {
+        val result = runCatchingCancellable {
             client.complete(
                 messages = listOf(
                     ChatMessage("system", SYSTEM_PROMPT),
@@ -171,7 +172,7 @@ class MetadataTranslationService(
         val input = chapters.mapIndexed { index, chapter ->
             CardInput(key = index.toString(), title = chapter.title.orEmpty())
         }
-        val result = runCatching {
+        val result = runCatchingCancellable {
             client.complete(
                 messages = listOf(
                     ChatMessage("system", TITLE_PROMPT),
@@ -236,7 +237,7 @@ class MetadataTranslationService(
             tags = tags,
             chapters = chapterTitles,
         )
-        val result = runCatching {
+        val result = runCatchingCancellable {
             client.complete(
                 messages = listOf(
                     ChatMessage("system", SYSTEM_PROMPT),
@@ -298,7 +299,7 @@ class MetadataTranslationService(
                                 tags = it.tags,
                             )
                         }
-                        val result = runCatching {
+                        val result = runCatchingCancellable {
                             client.complete(
                                 messages = listOf(
                                     ChatMessage("system", CARD_PROMPT),
@@ -360,7 +361,7 @@ class MetadataTranslationService(
         val input = books.map {
             CardInput(key = it.id, title = it.title)
         }
-        val result = runCatching {
+        val result = runCatchingCancellable {
             client.complete(
                 messages = listOf(
                     ChatMessage("system", TITLE_PROMPT),

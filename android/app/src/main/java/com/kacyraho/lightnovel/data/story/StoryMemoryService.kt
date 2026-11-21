@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.data.story
 import com.kacyraho.lightnovel.core.settings.ApiKeyStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
@@ -79,7 +80,7 @@ class StoryMemoryService(
             return existing.text
         }
         val modelClient = client() ?: return null
-        val reply = runCatching {
+        val reply = runCatchingCancellable {
             modelClient.client.complete(
                 messages = listOf(
                     ChatMessage("system", SUMMARY_SYSTEM),
@@ -128,7 +129,7 @@ class StoryMemoryService(
         if (samples.isEmpty()) return emptyList()
         val modelClient = client() ?: return emptyList()
         val sourceText = samples.joinToString("\n\n").take(14_000)
-        val reply = runCatching {
+        val reply = runCatchingCancellable {
             modelClient.client.complete(
                 messages = listOf(
                     ChatMessage("system", CHARACTER_SYSTEM),
@@ -219,7 +220,7 @@ class StoryMemoryService(
         }
         if (samples.isEmpty()) return emptyList()
         val modelClient = client() ?: return emptyList()
-        val reply = runCatching {
+        val reply = runCatchingCancellable {
             modelClient.client.complete(
                 messages = listOf(
                     ChatMessage("system", NAME_SCAN_SYSTEM),

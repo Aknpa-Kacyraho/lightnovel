@@ -1,5 +1,6 @@
 package com.kacyraho.lightnovel.data.source
 
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -24,7 +25,7 @@ class SyosetuSource(
 
     override suspend fun search(query: String, page: Int): List<SourceBook> {
         if (query.isBlank()) return emptyList()
-        val api = runCatching {
+        val api = runCatchingCancellable {
             withTimeoutOrNull(4_000) { searchApi(query) }
         }.getOrNull()
         if (!api.isNullOrEmpty()) return api
@@ -99,7 +100,7 @@ class SyosetuSource(
     }
 
     override suspend fun recommend(): List<SourceBook> {
-        val api = runCatching {
+        val api = runCatchingCancellable {
             withTimeoutOrNull(4_000) {
                 val url = "https://api.syosetu.com/novelapi/api/?out=json&lim=20&order=weekly" +
                     "&of=t-n-w-s-k-g-l-e-nu-ga-ka-nt-gf-gl"

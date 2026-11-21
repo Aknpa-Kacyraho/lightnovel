@@ -3,6 +3,7 @@ package com.kacyraho.lightnovel.data.worldline
 import com.kacyraho.lightnovel.core.settings.ApiKeyStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.knowledge.Fact
 import com.kacyraho.lightnovel.data.knowledge.KnowledgeStore
 import com.kacyraho.lightnovel.data.local.BookEntity
@@ -690,7 +691,7 @@ class WorldlineService(
             appendLine(chapter.text.take(8_000))
             appendLine("只输出 JSON：{\"items\":[{\"type\":\"event|relationship|secret|timeline\",\"branchEvent\":\"\",\"canonReference\":\"\",\"impact\":\"\",\"causedByIntervention\":true}]}")
         }
-        val reply = runCatching {
+        val reply = runCatchingCancellable {
             completeWithRetry(
                 model = model,
                 messages = listOf(

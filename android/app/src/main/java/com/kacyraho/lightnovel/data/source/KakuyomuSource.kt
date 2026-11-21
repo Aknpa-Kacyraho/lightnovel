@@ -1,5 +1,6 @@
 package com.kacyraho.lightnovel.data.source
 
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -34,9 +35,9 @@ class KakuyomuSource(
     }
 
     override suspend fun recommend(): List<SourceBook> {
-        val weekly = runCatching { discoverPage(0) }.getOrDefault(emptyList())
+        val weekly = runCatchingCancellable { discoverPage(0) }.getOrDefault(emptyList())
         if (weekly.isNotEmpty()) return weekly
-        return runCatching {
+        return runCatchingCancellable {
             worksFromPage(fetch("https://kakuyomu.jp/rankings/all/monthly"))
         }.getOrDefault(emptyList())
     }

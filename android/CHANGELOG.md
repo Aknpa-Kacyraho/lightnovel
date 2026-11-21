@@ -3,6 +3,23 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.8.4 — 2026-11-21
+
+### 修复
+
+- 取消翻译/退出阅读器后，章节摘要、人物提取与知识抽取不再继续写入。
+- 切换搜索或离开发现页后，旧的卡片元数据翻译请求会结束，不再继续等待与写缓存。
+- 取消世界线生成时，差异报告/知识抽取不再把取消当成普通失败继续保存。
+- 章节下载/搜索源请求的取消会正确向上传播。
+
+### 工程
+
+- 新增 `runCatchingCancellable`：让 `CancellationException` 透传，普通异常仍返回 `Result.failure`。
+- `StoryMemoryService` 3 处、`MetadataTranslationService` 5 处、`WorldlineService` 1 处、
+  `KakuyomuSource` / `SyosetuSource` 的挂起调用改用该函数。
+- `KnowledgeExtractionService` 在 `catch (Exception)` 前显式重抛取消。
+- `versionCode 63` / `versionName 1.8.4`。
+
 ## 1.8.3 — 2026-11-21
 
 ### 修复

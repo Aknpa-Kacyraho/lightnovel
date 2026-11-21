@@ -14,6 +14,7 @@ import com.kacyraho.lightnovel.data.translation.TranslationException
 import com.kacyraho.lightnovel.data.translation.translationKeyScope
 import com.kacyraho.lightnovel.data.translation.translationRequiresKey
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -78,6 +79,8 @@ class KnowledgeExtractionService(
                 temperature = 0.1,
             )
             json.decodeFromString(ExtractionOutput.serializer(), cleanJson(reply.content))
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: TranslationException) {
             return Result.failure(error)
         } catch (error: Exception) {
