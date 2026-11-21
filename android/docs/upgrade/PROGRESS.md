@@ -36,7 +36,7 @@
 | Round 26 | 1.8.4（63） | 取消透传、挂起调用、知识清理 | ✅ | ✅ | ✅ [v1.8.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.8.4) |
 | Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ✅ [v1.9.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.0) |
 | Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ✅ [v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1) |
-| Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ⏳ |
+| Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ✅ [v1.9.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.2) |
 
 ## 约束
 
@@ -237,11 +237,34 @@ cd android
   - 设置分组改为标题 + 行，不再是大描边卡片。
 - 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 29（进行中）
+## Round 29（已发布）
 
-- 指南：`round-29/`
+- 指南：`round-29/`；自检：`round-29/SELF-REVIEW.md`
 - 版本：1.9.2 / 66
-- 范围：夜间/纸色、警告条派生色、阅读器 Sheet 圆角。
+- 变更：
+  - 夜间 `#171614` / 正文 `#B8B3A8`；纸白/护眼/米黄重定。
+  - `StaleBanner` 从纸色派生，不再硬编码亮橙。
+  - 阅读器 9 个 Sheet 顶角 20dp。
+- 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## 视觉审计（1.9.x，2026-11-21）
+
+三轮视觉升级后复查：
+
+- 硬编码颜色只剩 `StaleBanner` 的 warning（从纸色派生，有意固定）。
+- 硬编码圆角只剩标签 6dp、主题预览色块 6dp、阅读器 Sheet 20dp
+  （与 `LnShapes.extraLarge` 同值）；业务页面不再有 9/10/14/16 混用。
+- 书架、发现、设置均已完成信息层级调整；书架无卡片，设置无描边卡片海。
+- 四套纸色 / 8 套主题的对比度测试通过；夜间不再纯黑，正文不再纯白。
+
+剩余为设计权衡/P3，不再单独发版：
+
+- 非阅读器 BottomSheet 仍用 Material 默认 28dp（阅读器已统一 20dp）。
+- 主题选择器的色块 6dp 是预览元素，不做全局 token。
+- 最近阅读 `ContinueCard` 保留卡片（它是首页重点入口）。
+- 无 `adb`：真机截图、8 套主题 × 4 套纸色目测未执行。
+
+结论：没有发现新的突兀视觉设计，视觉线收敛。
 
 ## 审计结论（2026-11-21）
 
