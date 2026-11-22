@@ -40,7 +40,7 @@
 | Round 30 | 1.9.3（67） | 导入恢复、书签备份、崩溃与取消语义 | ✅ | ✅ | ✅ [v1.9.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.3) |
 | Round 31 | 1.9.4（68） | 章节元数据、目录一致性、重试与状态同步 | ✅ | ✅ | ✅ [v1.9.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.4) |
 | Round 32 | 1.9.5（69） | 进度锚点、译文保护、身份合并、旧备份目录 | ✅ | ✅ | ✅ [v1.9.5](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.5) |
-| Round 33 | 1.9.6（70） | 目录同步、失败原因、任务进度、链接语义 | ✅ | ✅ | ⏳ |
+| Round 33 | 1.9.6（70） | 目录同步、失败原因、任务进度、链接语义 | ✅ | ✅ | ✅ [v1.9.6](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.6) |
 
 ## 约束
 
