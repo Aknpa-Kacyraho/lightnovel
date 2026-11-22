@@ -37,7 +37,7 @@
 | Round 27 | 1.9.0（64） | 中文排版、五档圆角、描边减淡 | ✅ | ✅ | ✅ [v1.9.0](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.0) |
 | Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ✅ [v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1) |
 | Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ✅ [v1.9.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.2) |
-| Round 30 | 1.9.3（67） | 导入进度、导出清理、取消状态、EPUB | ✅ | ✅ | ⏳ |
+| Round 30 | 1.9.3（67） | 导入恢复、书签备份、崩溃与取消语义 | ✅ | ✅ | ✅ [v1.9.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.3) |
 
 ## 约束
 
@@ -248,11 +248,15 @@ cd android
   - 阅读器 9 个 Sheet 顶角 20dp。
 - 验证：316 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 30（进行中）
+## Round 30（已发布）
 
-- 指南：`round-30/`
+- 指南：`round-30/`；自检：`round-30/SELF-REVIEW.md`
 - 版本：1.9.3 / 67
-- 范围：导入进度保护、导出失败清理、取消状态复位、EPUB 识别、队列竞态。
+- 变更：
+  - 导入无状态文件时保留本机进度；书签随备份恢复；未下载的书不再消失。
+  - 坏 sidecar 只报错不崩溃；`partial` 章节真正重试；滚动定位与段落对齐。
+  - 导出失败删除目标；取消透传；队列与注册竞态修复；合并复制原子化。
+- 验证：325 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
 ## 视觉审计（1.9.x，2026-11-21）
 
