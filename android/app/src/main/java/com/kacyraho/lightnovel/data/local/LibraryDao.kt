@@ -51,6 +51,12 @@ interface LibraryDao {
     @Upsert
     suspend fun upsertBookmark(bookmark: BookmarkEntity)
 
+    @Upsert
+    suspend fun upsertBookmarks(bookmarks: List<BookmarkEntity>)
+
+    @Query("SELECT * FROM bookmarks")
+    suspend fun allBookmarks(): List<BookmarkEntity>
+
     @Query(
         "DELETE FROM bookmarks WHERE book_id = :bookId " +
             "AND chapter_idx = :chapterIdx AND paragraph_id = :paragraphId",

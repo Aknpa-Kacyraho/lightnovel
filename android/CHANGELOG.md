@@ -3,6 +3,34 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.3 — 2026-11-22
+
+### 修复
+
+- 导入旧备份不再把本机阅读进度重置为第 1 话：备份缺少状态文件时保留现有状态。
+- 备份/EPUB 导出失败或取消时删除刚创建的目标文件，不再留下半成品。
+- 任务中心取消翻译后，阅读器横幅回到「已取消翻译」，翻译按钮恢复可用。
+- `.txt` 的 EPUB 按 ZIP 文件头识别；EPUB spine 同时支持单双引号。
+- 停止下载 worker 时取消不再被吞掉。
+- 队列不再把其他入口正在翻译的章节计入「已完成」。
+- 取消后立即重试不再与旧任务的清理竞争。
+- 旧备份里字段不全的 sidecar 不再让「润色本章」崩溃，只提示无法安全写回。
+- 书签随备份导出/恢复，按章节与段落去重；旧备份没有书签文件也能正常导入。
+- 只加入书架、从未下载的书在恢复后保留书与阅读状态，章节按需下载。
+- 「未译全」章节在任务中心/章节页重试时真正重新翻译，不再被已有译文短路。
+- 滚动模式下搜索、书签、翻页/滚动切换的位置与段落对齐，不再偏移。
+- 备份合并复制改为临时文件 + 原子移动，中断不再留下截断章节。
+
+### 工程
+
+- `BackupImportService` 拆分 `plannedState` / `defaultState`。
+- 新增 `core/util/SafDocuments.kt`；两个导出 ViewModel 改用 try/catch。
+- `TranslationTaskRegistry` 保留 job 到完成，注册仅接受空槽位。
+- 新增 `BackupBookmark` 与 `data/bookmarks.json`；DAO 增加书签批量查询/写入。
+- `ImportPlanner` 恢复 `missing_dir` 书；`LibraryCommitter` 跳过缺失目录。
+- `readerScrollBlocks` 统一滚动列表与 `Paragraphs.split` 段模型。
+- `versionCode 67` / `versionName 1.9.3`。
+
 ## 1.9.2 — 2026-11-21
 
 ### 视觉

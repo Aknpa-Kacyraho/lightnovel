@@ -1,5 +1,7 @@
 package com.kacyraho.lightnovel.feature.reader
 
+import com.kacyraho.lightnovel.reader.engine.ReaderBlock
+
 /**
  * 滚动阅读的「行号」与段落模型的「段号」映射。
  *
@@ -8,6 +10,23 @@ package com.kacyraho.lightnovel.feature.reader
  *
  * 持久化只存段号；滚动模式显示前换算成起始行号。
  */
+/**
+ * Builds the scroll list from the same paragraph blocks used by Paragraphs.split,
+ * inserting exactly one empty item between paragraphs. The empty item keeps the
+ * line<->paragraph mapping honest for single-newline source text; the UI renders
+ * it with zero height.
+ */
+internal fun readerScrollBlocks(
+    blocks: List<ReaderBlock>,
+    fallbackText: String,
+): List<String> {
+    if (blocks.isEmpty()) return listOf(fallbackText)
+    return blocks.flatMapIndexed { index, block ->
+        val lines = block.text.split("\n")
+        if (index == 0) lines else listOf("") + lines
+    }.map { it.trimEnd() }
+}
+
 internal fun paragraphDisplayText(paragraph: ReaderParagraph, displayMode: String): String =
     when (displayMode) {
         "raw" -> paragraph.source

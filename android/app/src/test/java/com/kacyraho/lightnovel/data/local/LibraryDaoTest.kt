@@ -95,16 +95,16 @@ class LibraryDaoTest {
         try {
             val dao = db.libraryDao()
             val first = service.apply(plan, dao)
-            assertEquals(19, first.books)
+            assertEquals(20, first.books)
             assertEquals(19, first.chapters)
-            assertEquals(19, dao.bookCount())
+            assertEquals(20, dao.bookCount())
             assertEquals(19, dao.chapterCount())
             assertEquals("translated", dao.chapters("kakuyomu-1").single().status)
             assertEquals(4, dao.aliases().size)
 
             val second = service.apply(plan, dao)
-            assertEquals(19, second.books)
-            assertEquals(19, dao.bookCount())
+            assertEquals(20, second.books)
+            assertEquals(20, dao.bookCount())
             assertEquals(4, dao.aliases().size)
 
             val state = dao.readState("kakuyomu-1")

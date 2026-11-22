@@ -43,7 +43,7 @@ data class MigrationReport(
 )
 
 object ImportPlanner {
-    private val ACTIVE_SHELF = setOf("reading", "finished", "dropped")
+    private val ACTIVE_SHELF = setOf("want", "reading", "finished", "dropped")
 
     fun plan(manifest: BackupManifest, catalog: Catalog): MigrationReport {
         val dirs = dirsFrom(manifest)
@@ -120,12 +120,38 @@ object ImportPlanner {
             usedIds += item.id
         }
 
-        val missingDirs = catalog.items.values
-            .asSequence()
-            .filter { item -> item.shelf?.let { it in ACTIVE_SHELF } == true && item.id !in usedIds }
-            .map { it.id }
-            .sorted()
-            .toList()
+        val plannedDirs = planned.map { it.storageDir }.toSet()
+        val missingItems = catalog.items.values
+            .filter { item ->
+                item.shelf?.let { it in ACTIVE_SHELF } == true &&
+                    item.id !in usedIds &&
+                    item.id !in plannedDirs
+            }
+            .sortedBy { it.id }
+        val missingDirs = missingItems.map { it.id }
+        for (item in missingItems) {
+            // A book that was added but never downloaded has no novels/<dir>.
+            // Restore the library row and read state; chapters download on demand.
+            planned += PlannedBook(
+                id = item.id,
+                storageDir = item.id,
+                slug = item.slug ?: CatalogAdapter.resolveAlias(item.id, catalog.aliases),
+                source = item.source,
+                sourceId = item.sourceId,
+                title = item.title.ifBlank { item.id },
+                titleZh = item.titleZh,
+                author = item.author,
+                episodes = item.episodes,
+                shelf = item.shelf,
+                favorite = item.favorite,
+                hidden = item.hidden,
+                addedAt = item.addedAt,
+                legacyJson = item.rawJson,
+                flags = setOf("missing_dir"),
+                tags = item.tags,
+                importHash = item.importHash,
+            )
+        }
 
         val finalBooks = mutableListOf<PlannedBook>()
         val conflicts = mutableListOf<SlugConflict>()

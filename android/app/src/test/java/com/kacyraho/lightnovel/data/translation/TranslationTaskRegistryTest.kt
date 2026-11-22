@@ -1,6 +1,11 @@
 package com.kacyraho.lightnovel.data.translation
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -40,5 +45,28 @@ class TranslationTaskRegistryTest {
 
         registry.cancel("book", 4)
         assertNull(registry.snapshot("book", 4))
+    }
+
+    @Test
+    fun rejectsRegistrationWhileCancelledJobIsStillCleaningUp() = runTest {
+        val registry = TranslationTaskRegistry()
+        val release = CompletableDeferred<Unit>()
+        val running = launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                awaitCancellation()
+            } finally {
+                release.await()
+            }
+        }
+        assertTrue(registry.register("book", 5, running))
+        assertTrue(registry.cancel("book", 5))
+
+        val retry = Job()
+        assertFalse(registry.register("book", 5, retry))
+        assertTrue(retry.isCancelled)
+
+        release.complete(Unit)
+        running.join()
+        assertTrue(registry.register("book", 5, Job()))
     }
 }

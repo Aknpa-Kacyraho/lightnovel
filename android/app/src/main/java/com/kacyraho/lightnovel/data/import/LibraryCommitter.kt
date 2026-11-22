@@ -37,6 +37,9 @@ class LibraryCommitter {
             for (book in report.books) {
                 val source = stagingRoot.resolve("novels").resolve(book.storageDir)
                 if (!Files.isDirectory(source)) {
+                    // Restored from library.json only (never downloaded): there
+                    // are no files to commit.
+                    if ("missing_dir" in book.flags) continue
                     error("staging 缺少书目录：${book.storageDir}")
                 }
                 normalizePythonChapterFiles(source)
@@ -120,12 +123,31 @@ class LibraryCommitter {
                 val to = dest.resolve(source.relativize(from))
                 if (!Files.exists(to)) {
                     Files.createDirectories(to.parent)
-                    Files.copy(from, to)
+                    copyAtomically(from, to)
                     copied++
                 }
             }
         }
         return copied
+    }
+
+    private fun copyAtomically(from: Path, to: Path) {
+        val tmp = to.resolveSibling("${to.fileName}.part")
+        try {
+            Files.copy(from, tmp, StandardCopyOption.REPLACE_EXISTING)
+            try {
+                Files.move(
+                    tmp,
+                    to,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(tmp, to, StandardCopyOption.REPLACE_EXISTING)
+            }
+        } finally {
+            runCatching { Files.deleteIfExists(tmp) }
+        }
     }
 
     private fun uniqueSibling(path: Path): Path {

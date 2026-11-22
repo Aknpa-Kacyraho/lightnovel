@@ -230,7 +230,9 @@ class TranslationService(
         if (issue != null) {
             return TranslationOutcome.Failed("润色未通过：$issue", true)
         }
-        val oldSidecar = contentStore.readSidecar(book.storageDir, chapterIndex)
+        val oldSidecar = runCatching {
+            contentStore.readSidecar(book.storageDir, chapterIndex)
+        }.getOrNull()
             ?: return TranslationOutcome.Failed("缺少章节翻译信息，无法安全写回", false)
         versionStore?.save(book.storageDir, chapterIndex, zh, oldSidecar)
         val tokens = ChapterTokens(

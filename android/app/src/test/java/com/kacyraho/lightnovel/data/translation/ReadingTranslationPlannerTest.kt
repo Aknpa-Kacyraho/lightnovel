@@ -65,6 +65,13 @@ class ReadingTranslationPlannerTest {
     }
 
     @Test
+    fun partialChapterStillNeedsTranslation() {
+        assertFalse(hasFinalTranslation("partial"))
+        assertTrue(hasFinalTranslation("complete"))
+        assertTrue(hasFinalTranslation(null))
+    }
+
+    @Test
     fun boundsAheadAndBackfill() {
         val chapters = (1..30).map { chapter(it, "raw") }
         val targets = ReadingTranslationPlanner.plan(20, chapters, ahead = 50, backfill = 50)

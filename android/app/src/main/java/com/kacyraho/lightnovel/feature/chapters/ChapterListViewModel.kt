@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kacyraho.lightnovel.core.util.discardCreatedDocument
 import com.kacyraho.lightnovel.data.download.BookDownloadScheduler
 import com.kacyraho.lightnovel.data.export.EpubExporter
 import com.kacyraho.lightnovel.data.local.BookEntity
@@ -21,9 +22,10 @@ import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineStart
 
 enum class TranslationBatchScope {
     CURRENT,
@@ -352,19 +354,22 @@ class ChapterListViewModel(
                 message = "正在导出 EPUB",
                 error = null,
             )
-            runCatching {
+            try {
                 resolver.openOutputStream(uri)?.use { output ->
                     epubExporter.export(book, output)
                 } ?: error("无法创建 EPUB 文件")
-            }.onSuccess {
                 _state.value = _state.value.copy(
                     exporting = false,
                     message = "EPUB 已导出",
                 )
-            }.onFailure {
+            } catch (error: CancellationException) {
+                discardCreatedDocument(uri, resolver)
+                throw error
+            } catch (error: Exception) {
+                discardCreatedDocument(uri, resolver)
                 _state.value = _state.value.copy(
                     exporting = false,
-                    error = it.message ?: "EPUB 导出失败",
+                    error = error.message ?: "EPUB 导出失败",
                 )
             }
         }

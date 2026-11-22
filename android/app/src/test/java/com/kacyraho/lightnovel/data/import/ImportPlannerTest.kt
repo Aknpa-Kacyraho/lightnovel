@@ -22,7 +22,7 @@ class ImportPlannerTest {
         val plan = BackupImportService().plan(path)
 
         assertTrue(plan.verify.error, plan.verify.ok)
-        assertEquals(19, plan.report.books.size)
+        assertEquals(20, plan.report.books.size)
         assertEquals(19, plan.chapters.size)
         assertEquals(2, plan.readStates.size)
         assertEquals(listOf("orphan-4-日本語"), plan.report.orphanDirs)
@@ -39,6 +39,10 @@ class ImportPlannerTest {
         val orphan = plan.report.books.first { it.storageDir == "orphan-4-日本語" }
         assertEquals("orphan-4-日本語", orphan.id)
         assertTrue(orphan.flags.contains("orphan_dir"))
+
+        val missing = plan.report.books.first { it.id == "kakuyomu-20" }
+        assertEquals("kakuyomu-20", missing.storageDir)
+        assertTrue(missing.flags.contains("missing_dir"))
     }
 
     @Test

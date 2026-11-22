@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kacyraho.lightnovel.data.backup.BackupVerifier
 import com.kacyraho.lightnovel.data.local.AliasEntity
 import com.kacyraho.lightnovel.data.local.BookEntity
+import com.kacyraho.lightnovel.data.local.BookmarkEntity
 import com.kacyraho.lightnovel.data.local.LightnovelDatabase
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import java.io.ByteArrayOutputStream
@@ -72,6 +73,16 @@ class BackupExporterTest {
                 ),
             )
             dao.upsertAliases(listOf(AliasEntity("old-slug", "kakuyomu-1")))
+            dao.upsertBookmark(
+                BookmarkEntity(
+                    bookId = "kakuyomu-1",
+                    chapterIdx = 2,
+                    paragraphId = 3,
+                    charOffset = 4,
+                    preview = "书签预览",
+                    createdAt = "2026-10-03",
+                ),
+            )
 
             val dataRoot = tmp.newFolder("data-root").toPath()
             val novelFile = dataRoot.resolve("novels/kakuyomu-1/chapters/0001.txt")
@@ -85,10 +96,11 @@ class BackupExporterTest {
             val manifest = BackupExporter(dataRoot, dao).export(bytes)
 
             assertEquals(1, manifest.format)
-            assertEquals(3, manifest.entries.count { it.path.startsWith("data/") })
+            assertEquals(4, manifest.entries.count { it.path.startsWith("data/") })
             assertTrue(manifest.entries.any { it.path == "novels/kakuyomu-1/chapters/0001.txt" })
             assertTrue(manifest.entries.none { it.path.contains("/cache/") })
             assertTrue(manifest.entries.any { it.path == "data/books/kakuyomu-1.json" })
+            assertTrue(manifest.entries.any { it.path == "data/bookmarks.json" })
 
             val zip = write(bytes.toByteArray())
             val verify = BackupVerifier().verify(zip)
@@ -101,6 +113,11 @@ class BackupExporterTest {
                     .readText()
                 assertTrue(state.contains("\"block\":2"))
                 assertTrue(state.contains("\"char\":5"))
+                val bookmarks = file.getInputStream(file.getEntry("data/bookmarks.json"))
+                    .bufferedReader()
+                    .readText()
+                assertTrue(bookmarks.contains("\"chapterIdx\":2"))
+                assertTrue(bookmarks.contains("书签预览"))
             }
         } finally {
             db.close()

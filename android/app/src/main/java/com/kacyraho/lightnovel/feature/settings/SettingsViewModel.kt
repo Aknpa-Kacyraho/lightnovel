@@ -9,12 +9,15 @@ import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.settings.TranslationProviders
 import com.kacyraho.lightnovel.core.storage.CacheManager
+import com.kacyraho.lightnovel.core.util.discardCreatedDocument
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.export.BackupExporter
 import com.kacyraho.lightnovel.data.translation.CalibrationOutcome
 import com.kacyraho.lightnovel.data.translation.DeepSeekClient
 import com.kacyraho.lightnovel.data.translation.TranslationCalibrator
 import com.kacyraho.lightnovel.data.translation.TranslationClient
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -377,7 +380,7 @@ class SettingsViewModel(
             } else {
                 current.translationMode
             }
-            val saved = runCatching {
+            val saved = runCatchingCancellable {
                 settingsStore.update {
                     it.copy(
                         deepSeekBaseUrl = baseUrl,
@@ -488,23 +491,25 @@ class SettingsViewModel(
                 message = "正在导出备份",
                 error = null,
             )
-            runCatching {
+            try {
                 resolver.openOutputStream(uri)?.use { output ->
                     backupExporter.export(output)
                 } ?: error("无法创建备份文件")
                 val now = Instant.now().toString()
                 settingsStore.update { it.copy(lastBackupAt = now) }
-                now
-            }.onSuccess { at ->
                 _state.value = _state.value.copy(
                     exporting = false,
-                    lastBackupAt = at,
+                    lastBackupAt = now,
                     message = "备份已导出",
                 )
-            }.onFailure {
+            } catch (error: CancellationException) {
+                discardCreatedDocument(uri, resolver)
+                throw error
+            } catch (error: Exception) {
+                discardCreatedDocument(uri, resolver)
                 _state.value = _state.value.copy(
                     exporting = false,
-                    error = it.message ?: "导出失败",
+                    error = error.message ?: "导出失败",
                 )
             }
         }

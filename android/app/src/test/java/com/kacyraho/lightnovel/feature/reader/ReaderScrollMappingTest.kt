@@ -1,5 +1,6 @@
 package com.kacyraho.lightnovel.feature.reader
 
+import com.kacyraho.lightnovel.reader.engine.ReaderBlock
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -38,6 +39,28 @@ class ReaderScrollMappingTest {
         assertEquals(0, paragraphIndexForLine(paragraphs, "bilingual", 1))
         assertEquals(1, paragraphIndexForLine(paragraphs, "bilingual", 3))
         assertEquals(3, lineForParagraph(paragraphs, "bilingual", 1))
+    }
+
+    @Test
+    fun scrollBlocksKeepMappingForSingleNewlineText() {
+        val paragraphs = listOf(
+            paragraph("a"),
+            paragraph("b"),
+            paragraph("c"),
+        )
+        val blocks = readerScrollBlocks(
+            blocks = paragraphs.mapIndexed { index, value ->
+                ReaderBlock(index, value.source)
+            },
+            fallbackText = "a\nb\nc",
+        )
+
+        assertEquals(listOf("a", "", "b", "", "c"), blocks)
+        assertEquals(0, lineForParagraph(paragraphs, "raw", 0))
+        assertEquals(2, lineForParagraph(paragraphs, "raw", 1))
+        assertEquals(4, lineForParagraph(paragraphs, "raw", 2))
+        assertEquals(1, paragraphIndexForLine(paragraphs, "raw", 2))
+        assertEquals(2, paragraphIndexForLine(paragraphs, "raw", 4))
     }
 
     @Test

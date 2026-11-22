@@ -1,6 +1,7 @@
 package com.kacyraho.lightnovel.data.translation
 
 import com.kacyraho.lightnovel.core.storage.ContentStore
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
@@ -97,6 +98,10 @@ internal fun pickNextIndex(
     manual: Collection<Int>,
     auto: Collection<Int>,
 ): Int? = manual.firstOrNull() ?: auto.firstOrNull()
+
+/** A zh file with a non-partial sidecar is a finished translation. */
+internal fun hasFinalTranslation(sidecarStatus: String?): Boolean =
+    sidecarStatus != "partial"
 
 internal enum class TargetDisposition {
     COMPLETED,
@@ -308,10 +313,18 @@ class ReadingTranslationCoordinator(
             }
             return TargetResult(false)
         }
-        if (contentStore.readZh(book.storageDir, index) != null) return TargetResult(true)
+        val existingZh = contentStore.readZh(book.storageDir, index)
+        if (existingZh != null) {
+            val sidecar = runCatching {
+                contentStore.readSidecar(book.storageDir, index)
+            }.getOrNull()
+            // A partial chapter has a zh file but still needs translation.
+            if (hasFinalTranslation(sidecar?.status)) return TargetResult(true)
+        }
         if (contentStore.readRaw(book.storageDir, index) == null && !book.local) {
-            val fetched = runCatching { chapterFetcher?.ensureChapter(book, index) }
-                .getOrNull() == true
+            val fetched = runCatchingCancellable {
+                chapterFetcher?.ensureChapter(book, index)
+            }.getOrNull() == true
             if (!fetched) {
                 synchronized(lock) { queue.lastError = "第 $index 话原文下载失败" }
                 _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
@@ -323,7 +336,11 @@ class ReadingTranslationCoordinator(
             _translated.tryEmit(ChapterTranslatedEvent(book.id, index, success = false))
             return TargetResult(false)
         }
-        if (taskRegistry.isRunning(book.id, index)) return TargetResult(true)
+        if (taskRegistry.isRunning(book.id, index)) {
+            // Another surface (reader, chapter list) is already translating this
+            // chapter. It is not our completion; do not count it as done.
+            return TargetResult(success = false, skipped = true)
+        }
 
         val outcome = coroutineScope {
             var result: TranslationOutcome? = null

@@ -71,6 +71,42 @@ class LocalTextParserTest {
     }
 
     @Test
+    fun parsesSingleQuotedSpineInOrder() {
+        val file = tmp.newFile("single-quoted.epub").toPath()
+        ZipOutputStream(Files.newOutputStream(file)).use { zip ->
+            zip.putNextEntry(ZipEntry("META-INF/container.xml"))
+            zip.write(
+                """<?xml version="1.0"?><container><rootfiles>
+                <rootfile full-path="OEBPS/content.opf"/></rootfiles></container>"""
+                    .toByteArray(),
+            )
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("OEBPS/content.opf"))
+            zip.write(
+                """<?xml version="1.0"?><package>
+                <metadata><dc:title>单引号</dc:title></metadata>
+                <manifest>
+                <item id='c1' href='chapter1.xhtml' media-type='application/xhtml+xml'/>
+                <item id='c2' href='chapter2.xhtml' media-type='application/xhtml+xml'/>
+                </manifest>
+                <spine><itemref idref='c2'/><itemref idref='c1'/></spine></package>"""
+                    .toByteArray(),
+            )
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("OEBPS/chapter1.xhtml"))
+            zip.write("<html><body><h1>第一章</h1><p>正文一。</p></body></html>".toByteArray())
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry("OEBPS/chapter2.xhtml"))
+            zip.write("<html><body><h1>第二章</h1><p>正文二。</p></body></html>".toByteArray())
+            zip.closeEntry()
+        }
+
+        val parsed = LocalTextParser.parseEpub("single-quoted.epub", file)
+
+        assertEquals(listOf("第二章", "第一章"), parsed.chapters.map { it.title })
+    }
+
+    @Test
     fun stripsRubyAnnotations() {
         assertEquals(
             "漢字",

@@ -1,11 +1,13 @@
 package com.kacyraho.lightnovel.data.import
 
 import com.kacyraho.lightnovel.data.backup.BackupArchive
+import com.kacyraho.lightnovel.data.backup.BackupBookmark
 import com.kacyraho.lightnovel.data.backup.BackupVerifyResult
 import com.kacyraho.lightnovel.data.backup.BackupVerifier
 import com.kacyraho.lightnovel.data.catalog.Catalog
 import com.kacyraho.lightnovel.data.catalog.CatalogAdapter
 import com.kacyraho.lightnovel.data.local.AliasEntity
+import com.kacyraho.lightnovel.data.local.BookmarkEntity
 import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LibraryDao
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
@@ -23,6 +25,7 @@ data class ImportPlan(
     val report: MigrationReport,
     val chapters: List<PlannedChapter>,
     val readStates: List<PlannedReadState>,
+    val bookmarks: List<BackupBookmark> = emptyList(),
 )
 
 data class ImportApplyResult(
@@ -30,15 +33,25 @@ data class ImportApplyResult(
     val readStates: Int,
     val aliases: Int,
     val chapters: Int,
+    val bookmarks: Int = 0,
+)
+
+private data class ParsedBackup(
+    val catalog: Catalog,
+    val files: Map<String, String>,
+    val sidecars: Map<String, String>,
+    val bookmarks: List<BackupBookmark>,
 )
 
 class BackupImportService(
     private val verifier: BackupVerifier = BackupVerifier(),
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun plan(path: Path): ImportPlan {
         val verify = verifier.verify(path)
         val manifest = verify.requireOk()
-        val (catalog, readStateFiles, sidecarStatuses) = ZipFile(path.toFile()).use { zip ->
+        val parsed = ZipFile(path.toFile()).use { zip ->
             val library = BackupArchive.readText(zip, "data/library.json")
             val aliases = BackupArchive.readText(zip, "data/slug-aliases.json")
             val files = linkedMapOf<String, String>()
@@ -67,12 +80,24 @@ class BackupImportService(
                     }
                 }
             }
-            Triple(CatalogAdapter.load(library, aliases), files, sidecars)
+            val bookmarks = BackupArchive.readText(zip, "data/bookmarks.json", 4 * 1024 * 1024)
+                ?.let { raw ->
+                    runCatching {
+                        json.decodeFromString<List<BackupBookmark>>(raw)
+                    }.getOrNull()
+                }
+                .orEmpty()
+            ParsedBackup(
+                catalog = CatalogAdapter.load(library, aliases),
+                files = files,
+                sidecars = sidecars,
+                bookmarks = bookmarks,
+            )
         }
-        val report = ImportPlanner.plan(manifest, catalog)
-        val chapters = ChapterPlanner.plan(manifest, report, sidecarStatuses)
-        val readStates = ReadStatePlanner.plan(readStateFiles, report, catalog.aliases)
-        return ImportPlan(verify, catalog, report, chapters, readStates)
+        val report = ImportPlanner.plan(manifest, parsed.catalog)
+        val chapters = ChapterPlanner.plan(manifest, report, parsed.sidecars)
+        val readStates = ReadStatePlanner.plan(parsed.files, report, parsed.catalog.aliases)
+        return ImportPlan(verify, parsed.catalog, report, chapters, readStates, parsed.bookmarks)
     }
 
     suspend fun apply(plan: ImportPlan, dao: LibraryDao): ImportApplyResult {
@@ -92,10 +117,17 @@ class BackupImportService(
             .mapNotNull { dao.readState(it.id) }
             .associateBy { it.bookId }
         val states = plan.report.books.map { book ->
-            mergeReadState(
-                existing = existingStates[book.id],
-                planned = plannedState(book, importedStates[book.id]),
-            )
+            val imported = importedStates[book.id]
+            if (imported == null) {
+                // No state file in the backup: keep local progress instead of
+                // synthesising a "newer" state that would reset it.
+                existingStates[book.id] ?: defaultState(book)
+            } else {
+                mergeReadState(
+                    existing = existingStates[book.id],
+                    planned = plannedState(book, imported),
+                )
+            }
         }
         val aliases = plan.catalog.aliases.map { (old, final) ->
             AliasEntity(oldSlug = old, finalSlug = final)
@@ -119,28 +151,68 @@ class BackupImportService(
                 updatedAt = null,
             )
         }
+        val importedBookIds = plan.report.books.map { it.id }.toSet()
+        val existingBookmarkKeys = dao.allBookmarks()
+            .map { Triple(it.bookId, it.chapterIdx, it.paragraphId) }
+            .toSet()
+        val bookmarks = plan.bookmarks
+            .asSequence()
+            .filter { it.bookId in importedBookIds }
+            .distinctBy { Triple(it.bookId, it.chapterIdx, it.paragraphId) }
+            .filter { Triple(it.bookId, it.chapterIdx, it.paragraphId) !in existingBookmarkKeys }
+            .map { bookmark ->
+                BookmarkEntity(
+                    bookId = bookmark.bookId,
+                    chapterIdx = bookmark.chapterIdx,
+                    paragraphId = bookmark.paragraphId,
+                    charOffset = bookmark.charOffset,
+                    preview = bookmark.preview,
+                    createdAt = bookmark.createdAt.ifBlank { Instant.now().toString() },
+                )
+            }
+            .toList()
+
         dao.upsertBooks(books)
         dao.upsertReadStates(states)
         dao.upsertAliases(aliases)
         dao.upsertChapters(chapters)
-        return ImportApplyResult(books.size, states.size, aliases.size, chapters.size)
+        dao.upsertBookmarks(bookmarks)
+        return ImportApplyResult(
+            books = books.size,
+            readStates = states.size,
+            aliases = aliases.size,
+            chapters = chapters.size,
+            bookmarks = bookmarks.size,
+        )
     }
 
-    private fun plannedState(book: PlannedBook, state: PlannedReadState?): ReadStateEntity =
+    private fun plannedState(book: PlannedBook, state: PlannedReadState): ReadStateEntity =
         ReadStateEntity(
             bookId = book.id,
-            shelf = state?.shelf ?: book.shelf,
-            favorite = state?.favorite ?: book.favorite,
-            hidden = state?.hidden ?: book.hidden,
-            progressIdx = state?.progressIdx ?: 0,
-            progressBlock = state?.progressBlock ?: 0,
-            progressChar = state?.progressChar ?: 0,
-            openedAt = state?.openedAt,
-            finishedAt = state?.finishedAt,
-            updatedAt = state?.updatedAt
-                ?: state?.openedAt
-                ?: state?.finishedAt
-                ?: book.addedAt
-                ?: Instant.now().toString(),
+            shelf = state.shelf ?: book.shelf,
+            favorite = state.favorite,
+            hidden = state.hidden,
+            progressIdx = state.progressIdx,
+            progressBlock = state.progressBlock,
+            progressChar = state.progressChar,
+            openedAt = state.openedAt,
+            finishedAt = state.finishedAt,
+            // Only trust timestamps that came from the backup's state file.
+            // A missing timestamp must not let an old backup reset local progress.
+            updatedAt = state.updatedAt ?: state.openedAt ?: state.finishedAt,
+        )
+
+    private fun defaultState(book: PlannedBook): ReadStateEntity =
+        ReadStateEntity(
+            bookId = book.id,
+            shelf = book.shelf,
+            favorite = book.favorite,
+            hidden = book.hidden,
+            progressIdx = 0,
+            progressBlock = 0,
+            progressChar = 0,
+            openedAt = null,
+            finishedAt = null,
+            updatedAt = book.addedAt ?: Instant.now().toString(),
         )
 }

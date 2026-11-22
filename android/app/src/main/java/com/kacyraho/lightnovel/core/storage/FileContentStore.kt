@@ -24,7 +24,12 @@ class FileContentStore(
 
     override fun readSidecar(storageDir: String, idx: Int): ChapterSidecar? {
         val text = readText(paths(storageDir).sidecar(idx)) ?: return null
-        return SidecarJson.decodeFromString(ChapterSidecar.serializer(), text)
+        // Old backups can contain sidecars from an earlier schema. A broken
+        // sidecar must not crash polishing or editing; callers treat null as
+        // "translation metadata unavailable" and refuse to write back.
+        return runCatching {
+            SidecarJson.decodeFromString(ChapterSidecar.serializer(), text)
+        }.getOrNull()
     }
 
     override fun writeRawAtomic(storageDir: String, idx: Int, text: String) {

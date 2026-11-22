@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.kacyraho.lightnovel.LightnovelApp
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 
 class BookDownloadWorker(
     context: Context,
@@ -25,7 +26,7 @@ class BookDownloadWorker(
             if (isStopped) return Result.retry()
             if (dao.book(bookId) == null) return Result.success()
             if (dao.readState(bookId)?.hidden == true) return Result.success()
-            val ok = runCatching {
+            val ok = runCatchingCancellable {
                 container.directLibraryService.ensureChapter(book, chapter.idx)
             }.getOrDefault(false)
             if (ok) done++ else failed++

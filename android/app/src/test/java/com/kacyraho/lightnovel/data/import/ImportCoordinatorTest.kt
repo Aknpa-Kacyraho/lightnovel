@@ -6,7 +6,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.kacyraho.lightnovel.core.storage.FileContentStore
 import com.kacyraho.lightnovel.data.local.LightnovelDatabase
 import com.kacyraho.lightnovel.fixture.SyntheticBackup
+import com.kacyraho.lightnovel.fixture.ZipFixture
 import java.nio.file.Files
+import java.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -39,10 +41,10 @@ class ImportCoordinatorTest {
 
             val result = coordinator.import(zip)
 
-            assertEquals(19, result.applied.books)
+            assertEquals(20, result.applied.books)
             assertEquals(19, result.applied.chapters)
-            assertEquals(19, result.applied.readStates)
-            assertEquals(19, db.libraryDao().bookCount())
+            assertEquals(20, result.applied.readStates)
+            assertEquals(20, db.libraryDao().bookCount())
             assertEquals(19, db.libraryDao().chapterCount())
             assertTrue(
                 Files.isRegularFile(
@@ -65,9 +67,9 @@ class ImportCoordinatorTest {
             db.libraryDao().updateProgress("kakuyomu-1", 5, 10, 0, "2099-01-01T00:00:00Z")
 
             val again = coordinator.import(zip)
-            assertEquals(19, again.applied.books)
+            assertEquals(20, again.applied.books)
             assertEquals(0, again.applied.chapters)
-            assertEquals(19, db.libraryDao().bookCount())
+            assertEquals(20, db.libraryDao().bookCount())
             assertEquals("新译名", db.libraryDao().book("kakuyomu-1")?.titleZh)
             assertEquals(
                 "新章节名",
@@ -75,6 +77,101 @@ class ImportCoordinatorTest {
             )
             assertEquals(5, db.libraryDao().readState("kakuyomu-1")?.progressIdx)
             assertEquals(10, db.libraryDao().readState("kakuyomu-1")?.progressBlock)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun importsBookmarksWithoutDuplicatingOnReimport() = runTest {
+        val zip = tmp.newFile("bookmarks.zip").toPath()
+        val fixture = ZipFixture()
+        fixture.add("novels/kakuyomu-1/meta.json", "{\"title\":\"Bookmarks\"}")
+        fixture.add("novels/kakuyomu-1/raw/0001.txt", "日本語の本文")
+        fixture.add("novels/kakuyomu-1/chapters/0001.txt", "中文译文")
+        fixture.add(
+            "data/library.json",
+            "{\"schema_version\":1,\"items\":{\"kakuyomu-1\":{" +
+                "\"id\":\"kakuyomu-1\",\"slug\":\"kakuyomu-1\"," +
+                "\"source\":\"kakuyomu\",\"source_id\":\"1\"," +
+                "\"title\":\"Bookmarks\",\"shelf\":\"reading\"," +
+                "\"favorite\":false,\"hidden\":false}}," +
+                "\"candidates\":{},\"aliases\":{}}",
+        )
+        fixture.add("data/slug-aliases.json", "{}")
+        fixture.add(
+            "data/bookmarks.json",
+            "[{\"bookId\":\"kakuyomu-1\",\"chapterIdx\":2,\"paragraphId\":3," +
+                "\"charOffset\":4,\"preview\":\"测试书签\"," +
+                "\"createdAt\":\"2026-10-03T00:00:00Z\"}]",
+        )
+        val manifest = fixture.manifest()
+        fixture.write(zip, manifest)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val store = FileContentStore(tmp.newFolder("bookmarks-data").toPath())
+            val coordinator = ImportCoordinator(db, store)
+
+            coordinator.import(zip)
+            val first = db.libraryDao().allBookmarks()
+            assertEquals(1, first.size)
+            assertEquals(2, first.single().chapterIdx)
+            assertEquals(3, first.single().paragraphId)
+            assertEquals("测试书签", first.single().preview)
+
+            coordinator.import(zip)
+            assertEquals(1, db.libraryDao().allBookmarks().size)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun importWithoutStateFileKeepsLocalProgress() = runTest {
+        val zip = tmp.newFile("no-state.zip").toPath()
+        val fixture = ZipFixture()
+        fixture.add("novels/kakuyomu-1/meta.json", "{\"title\":\"No State\"}")
+        fixture.add("novels/kakuyomu-1/raw/0001.txt", "日本語の本文")
+        fixture.add("novels/kakuyomu-1/chapters/0001.txt", "中文译文")
+        fixture.add(
+            "data/library.json",
+            "{\"schema_version\":1,\"items\":{\"kakuyomu-1\":{" +
+                "\"id\":\"kakuyomu-1\",\"slug\":\"kakuyomu-1\"," +
+                "\"source\":\"kakuyomu\",\"source_id\":\"1\"," +
+                "\"title\":\"No State\",\"shelf\":\"reading\"," +
+                "\"favorite\":false,\"hidden\":false}}," +
+                "\"candidates\":{},\"aliases\":{}}",
+        )
+        fixture.add("data/slug-aliases.json", "{}")
+        val manifest = fixture.manifest()
+        fixture.write(zip, manifest)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val store = FileContentStore(tmp.newFolder("no-state-data").toPath())
+            val coordinator = ImportCoordinator(db, store)
+
+            coordinator.import(zip)
+            db.libraryDao().updateProgress(
+                "kakuyomu-1",
+                5,
+                10,
+                0,
+                Instant.now().toString(),
+            )
+            Thread.sleep(30)
+            coordinator.import(zip)
+
+            val state = db.libraryDao().readState("kakuyomu-1")
+            assertEquals(5, state?.progressIdx)
+            assertEquals(10, state?.progressBlock)
         } finally {
             db.close()
         }

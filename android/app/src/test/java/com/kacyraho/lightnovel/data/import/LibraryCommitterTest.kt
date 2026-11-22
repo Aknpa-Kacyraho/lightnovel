@@ -141,4 +141,5 @@ class LibraryCommitterTest {
         assertEquals("backup-2", String(Files.readAllBytes(dest.resolve("raw/0002.txt")), Charsets.UTF_8))
         assertEquals(1, result.merged)
     }
+
 }

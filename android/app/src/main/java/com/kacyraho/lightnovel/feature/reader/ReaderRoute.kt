@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1172,7 +1173,11 @@ private fun ScrollReader(
             key = { index, _ -> index },
             contentType = { _, _ -> "paragraph" },
         ) { _, block ->
-            if (names.isEmpty()) {
+            if (block.isBlank()) {
+                // Paragraph separator carried for the line<->paragraph mapping.
+                // It must keep its index but take no visual height.
+                Spacer(Modifier)
+            } else if (names.isEmpty()) {
                 Text(
                     text = block,
                     style = textStyle,

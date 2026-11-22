@@ -9,6 +9,7 @@ import com.kacyraho.lightnovel.core.settings.SettingsStore
 import com.kacyraho.lightnovel.core.settings.TranslationMode
 import com.kacyraho.lightnovel.core.storage.ContentStore
 import com.kacyraho.lightnovel.core.text.Paragraphs
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import com.kacyraho.lightnovel.data.glossary.GlossaryEntry
 import com.kacyraho.lightnovel.data.knowledge.DisplayAnchor
 import com.kacyraho.lightnovel.data.knowledge.EntityCard
@@ -483,61 +484,70 @@ class ReaderViewModel(
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
         val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
-            val currentAnchor = _state.value.layout
-                ?.pages
-                ?.getOrNull(_state.value.pageIndex)
-                ?.startAnchor
-                ?: if (_state.value.readerMode == "scroll") {
-                    ReaderAnchor(chapterIndex, currentParagraphIndex(), 0)
-                } else {
-                    null
-                }
-            val outcome = translationService.translate(book, chapterIndex) { done, total ->
-                taskRegistry?.reportProgress(bookId, chapterIndex, done, total)
-                _translationState.value = ReaderTranslationState(
-                    running = true,
-                    message = "翻译中 $done/$total",
-                )
-            }
-            when (outcome) {
-                is TranslationOutcome.Complete -> {
+            try {
+                val currentAnchor = _state.value.layout
+                    ?.pages
+                    ?.getOrNull(_state.value.pageIndex)
+                    ?.startAnchor
+                    ?: if (_state.value.readerMode == "scroll") {
+                        ReaderAnchor(chapterIndex, currentParagraphIndex(), 0)
+                    } else {
+                        null
+                    }
+                val outcome = translationService.translate(book, chapterIndex) { done, total ->
+                    taskRegistry?.reportProgress(bookId, chapterIndex, done, total)
                     _translationState.value = ReaderTranslationState(
                         running = true,
-                        message = "翻译完成，正在更新故事记忆…",
+                        message = "翻译中 $done/$total",
                     )
-                    updateMemoryAfterTranslation(book)
-                    _translationState.value = ReaderTranslationState(
-                        message = summary("翻译完成", outcome.sidecar),
-                    )
-                    chapterCache.clearBook(bookId)
-                    anchorToRestore = currentAnchor
-                    load()
                 }
+                when (outcome) {
+                    is TranslationOutcome.Complete -> {
+                        _translationState.value = ReaderTranslationState(
+                            running = true,
+                            message = "翻译完成，正在更新故事记忆…",
+                        )
+                        updateMemoryAfterTranslation(book)
+                        _translationState.value = ReaderTranslationState(
+                            message = summary("翻译完成", outcome.sidecar),
+                        )
+                        chapterCache.clearBook(bookId)
+                        anchorToRestore = currentAnchor
+                        load()
+                    }
 
-                is TranslationOutcome.Partial -> {
-                    _translationState.value = ReaderTranslationState(
-                        running = true,
-                        message = "翻译完成，正在更新故事记忆…",
-                    )
-                    updateMemoryAfterTranslation(book)
-                    _translationState.value = ReaderTranslationState(
-                        message = summary(
-                            "部分完成：${outcome.sidecar.incompleteParagraphs.size} 段保留原文",
-                            outcome.sidecar,
-                        ),
-                        partial = true,
-                    )
-                    chapterCache.clearBook(bookId)
-                    anchorToRestore = currentAnchor
-                    load()
-                }
+                    is TranslationOutcome.Partial -> {
+                        _translationState.value = ReaderTranslationState(
+                            running = true,
+                            message = "翻译完成，正在更新故事记忆…",
+                        )
+                        updateMemoryAfterTranslation(book)
+                        _translationState.value = ReaderTranslationState(
+                            message = summary(
+                                "部分完成：${outcome.sidecar.incompleteParagraphs.size} 段保留原文",
+                                outcome.sidecar,
+                            ),
+                            partial = true,
+                        )
+                        chapterCache.clearBook(bookId)
+                        anchorToRestore = currentAnchor
+                        load()
+                    }
 
-                is TranslationOutcome.Failed -> {
-                    _translationState.value = ReaderTranslationState(
-                        error = outcome.reason,
-                    )
-                    load()
+                    is TranslationOutcome.Failed -> {
+                        _translationState.value = ReaderTranslationState(
+                            error = outcome.reason,
+                        )
+                        load()
+                    }
                 }
+            } catch (error: CancellationException) {
+                if (_translationState.value.running) {
+                    _translationState.value = ReaderTranslationState(message = "已取消翻译")
+                }
+                chapterCache.clearBook(bookId)
+                load()
+                throw error
             }
         }
         translationJob = job
@@ -734,27 +744,35 @@ class ReaderViewModel(
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
         val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
-            val outcome = translationService.polishChapter(book, chapterIndex)
-            when (outcome) {
-                is TranslationOutcome.Complete -> {
-                    _translationState.value = ReaderTranslationState(
-                        message = summary("润色完成", outcome.sidecar),
-                    )
-                    chapterCache.clearBook(bookId)
-                    load()
+            try {
+                val outcome = translationService.polishChapter(book, chapterIndex)
+                when (outcome) {
+                    is TranslationOutcome.Complete -> {
+                        _translationState.value = ReaderTranslationState(
+                            message = summary("润色完成", outcome.sidecar),
+                        )
+                        chapterCache.clearBook(bookId)
+                        load()
+                    }
+                    is TranslationOutcome.Partial -> {
+                        _translationState.value = ReaderTranslationState(
+                            message = summary("润色完成，但本章仍不完整", outcome.sidecar),
+                            partial = true,
+                        )
+                        chapterCache.clearBook(bookId)
+                        load()
+                    }
+                    is TranslationOutcome.Failed -> {
+                        _translationState.value = ReaderTranslationState(error = outcome.reason)
+                        load()
+                    }
                 }
-                is TranslationOutcome.Partial -> {
-                    _translationState.value = ReaderTranslationState(
-                        message = summary("润色完成，但本章仍不完整", outcome.sidecar),
-                        partial = true,
-                    )
-                    chapterCache.clearBook(bookId)
-                    load()
+            } catch (error: CancellationException) {
+                if (_translationState.value.running) {
+                    _translationState.value = ReaderTranslationState(message = "已取消润色")
                 }
-                is TranslationOutcome.Failed -> {
-                    _translationState.value = ReaderTranslationState(error = outcome.reason)
-                    load()
-                }
+                load()
+                throw error
             }
         }
         translationJob = job
@@ -861,7 +879,7 @@ class ReaderViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val loaded = runCatching {
+                val loaded = runCatchingCancellable {
                     val book = repository.book(bookId) ?: error("书不存在")
                     val chapters = repository.observeChapters(bookId).first()
                     val chapter = chapters.firstOrNull { it.idx == chapterIndex }
@@ -941,10 +959,10 @@ class ReaderViewModel(
                         chapterCount = chapters.size,
                         textKind = readerChapter.textKind,
                         chapterText = readerChapter.text,
-                        chapterBlocks = readerChapter.text
-                            .split("\n")
-                            .map { it.trimEnd() }
-                            .ifEmpty { listOf(readerChapter.text) },
+                        chapterBlocks = readerScrollBlocks(
+                            readerChapter.blocks,
+                            readerChapter.text,
+                        ),
                         scrollParagraph = restoredLine,
                         revision = _state.value.revision + 1,
                         translationStatus = statusFor(

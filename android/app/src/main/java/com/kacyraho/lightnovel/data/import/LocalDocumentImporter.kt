@@ -59,8 +59,9 @@ class LocalDocumentImporter(
         }
 
         val extension = name.substringAfterLast('.', "").lowercase()
-        val isEpub = extension == "epub" || (extension.isBlank() && bytes.size > 4 &&
-            bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte())
+        // Trust the ZIP signature as well as the extension: downloads often lose
+        // ".epub", and a renamed EPUB must not be decoded as plain text.
+        val isEpub = extension == "epub" || hasZipHeader(bytes)
         val parsed = if (isEpub) {
             onProgress("解析 EPUB")
             val temp = Files.createTempFile(contentStore.root, "epub-", ".epub")
@@ -214,3 +215,8 @@ class LocalDocumentImporter(
         const val MAX_BYTES = 80 * 1024 * 1024
     }
 }
+
+internal fun hasZipHeader(bytes: ByteArray): Boolean =
+    bytes.size >= 4 &&
+        bytes[0] == 'P'.code.toByte() &&
+        bytes[1] == 'K'.code.toByte()

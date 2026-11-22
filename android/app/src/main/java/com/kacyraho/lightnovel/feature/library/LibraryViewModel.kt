@@ -14,6 +14,7 @@ import com.kacyraho.lightnovel.data.repository.LibraryRepository
 import com.kacyraho.lightnovel.data.repository.ShelfFilter
 import com.kacyraho.lightnovel.data.translation.MetadataTranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -228,11 +229,10 @@ class LibraryViewModel(
         if (_importState.value.importing) return
         viewModelScope.launch {
             _importState.value = LibraryImportState(importing = true, message = "准备导入本地文件")
-            runCatching {
-                localDocumentImporter.import(uri, resolver) { phase ->
+            try {
+                val result = localDocumentImporter.import(uri, resolver) { phase ->
                     _importState.value = LibraryImportState(importing = true, message = phase)
                 }
-            }.onSuccess { result ->
                 val title = result.book.titleZh ?: result.book.title
                 _importState.value = LibraryImportState(
                     importing = false,
@@ -242,10 +242,12 @@ class LibraryViewModel(
                         else -> "已导入《$title》"
                     },
                 )
-            }.onFailure {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
                 _importState.value = LibraryImportState(
                     importing = false,
-                    error = it.message ?: "本地文件导入失败",
+                    error = error.message ?: "本地文件导入失败",
                 )
             }
         }
@@ -261,15 +263,22 @@ class LibraryViewModel(
                 val result = importCoordinator.import(staged) { phase ->
                     _importState.value = LibraryImportState(importing = true, message = phase)
                 }
+                val bookmarkNote = if (result.applied.bookmarks > 0) {
+                    " / ${result.applied.bookmarks} 个书签"
+                } else {
+                    ""
+                }
                 _importState.value = LibraryImportState(
                     importing = false,
                     message = "导入完成：${result.applied.books} 本 / " +
-                        "${result.applied.chapters} 章；建议到设置导出一次备份",
+                        "${result.applied.chapters} 章$bookmarkNote；建议到设置导出一次备份",
                 )
-            } catch (e: Exception) {
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
                 _importState.value = LibraryImportState(
                     importing = false,
-                    error = e.message ?: "导入失败",
+                    error = error.message ?: "导入失败",
                 )
             } finally {
                 safStager.cleanup(staged)

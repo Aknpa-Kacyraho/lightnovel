@@ -50,7 +50,10 @@ class TranslationTaskRegistry {
         val key = key(bookId, chapterIndex)
         var accepted = false
         jobs.compute(key) { _, previous ->
-            if (previous?.isActive == true) {
+            // Keep the slot until the old job has fully completed (including its
+            // NonCancellable cleanup). Otherwise a fast retry can race with the
+            // cancelled job and overwrite the new task's chapter state.
+            if (previous != null) {
                 previous
             } else {
                 accepted = true
@@ -90,10 +93,11 @@ class TranslationTaskRegistry {
 
     fun cancel(bookId: String, chapterIndex: Int): Boolean {
         val key = key(bookId, chapterIndex)
-        val job = jobs.remove(key) ?: return false
+        val job = jobs[key] ?: return false
         _active.update { it - key }
         _cancelled.tryEmit(key)
         _events.tryEmit(TranslationTaskEvent.Cancelled(bookId, chapterIndex))
+        // `invokeOnCompletion` removes the slot after the job's cleanup finishes.
         job.cancel()
         return true
     }
@@ -105,7 +109,7 @@ class TranslationTaskRegistry {
         jobs.keys
             .filter { it.startsWith("$bookId/") }
             .forEach { key ->
-                val job = jobs.remove(key) ?: return@forEach
+                val job = jobs[key] ?: return@forEach
                 val index = key.substringAfter('/').toIntOrNull() ?: return@forEach
                 _active.update { it - key }
                 _cancelled.tryEmit(key)

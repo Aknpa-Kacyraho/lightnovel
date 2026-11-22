@@ -76,7 +76,7 @@ object LocalTextParser {
                 ?: cleanName(fileName)
             val author = xmlTag(opf, "dc:creator")?.takeIf(String::isNotBlank)
             val manifest = parseManifest(opf)
-            val spine = Regex("""<itemref\b[^>]*\bidref\s*=\s*"([^"]+)"""")
+            val spine = Regex("""<itemref\b[^>]*\bidref\s*=\s*["']([^"']+)["']""")
                 .findAll(opf)
                 .mapNotNull { it.groupValues.getOrNull(1) }
                 .toList()
