@@ -74,8 +74,9 @@ class TranslationService(
             }
             throw error
         } catch (error: Exception) {
+            val reason = "翻译异常：${error.message?.take(120) ?: "未知错误"}"
             withContext(NonCancellable) {
-                dao.updateChapterTranslation(
+                dao.markChapterFailure(
                     bookId = book.id,
                     idx = chapterIndex,
                     status = "failed",
@@ -83,18 +84,16 @@ class TranslationService(
                     tokenIn = 0,
                     tokenOut = 0,
                     updatedAt = java.time.Instant.now().toString(),
+                    lastError = reason,
                 )
             }
-            return TranslationOutcome.Failed(
-                "翻译异常：${error.message?.take(120) ?: "未知错误"}",
-                true,
-            )
+            return TranslationOutcome.Failed(reason, true)
         }
         return when (outcome) {
             is TranslationOutcome.Complete -> commit(book, chapterIndex, outcome)
             is TranslationOutcome.Partial -> commit(book, chapterIndex, outcome)
             is TranslationOutcome.Failed -> {
-                dao.updateChapterTranslation(
+                dao.markChapterFailure(
                     bookId = book.id,
                     idx = chapterIndex,
                     status = "failed",
@@ -102,6 +101,7 @@ class TranslationService(
                     tokenIn = 0,
                     tokenOut = 0,
                     updatedAt = java.time.Instant.now().toString(),
+                    lastError = outcome.reason,
                 )
                 outcome
             }
@@ -329,10 +329,19 @@ class TranslationService(
             oldText != text
         ) {
             // A failed retry must not downgrade a finished chapter to partial.
-            return TranslationOutcome.Failed(
-                "重译只完成了部分段落，已保留原完整译文",
-                retryable = true,
+            // Also clear "translating": otherwise the task stays in progress forever.
+            val reason = "重译只完成了部分段落，已保留原完整译文"
+            dao.markChapterFailure(
+                bookId = book.id,
+                idx = chapterIndex,
+                status = "failed",
+                model = sidecar.modelId,
+                tokenIn = oldSidecar?.tokens?.input ?: 0,
+                tokenOut = oldSidecar?.tokens?.output ?: 0,
+                updatedAt = java.time.Instant.now().toString(),
+                lastError = reason,
             )
+            return TranslationOutcome.Failed(reason, retryable = true)
         }
         return try {
             if (oldText != null && oldText != text && oldSidecar != null) {
@@ -353,8 +362,9 @@ class TranslationService(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
+            val reason = "写入失败：${error.message?.take(120) ?: "未知错误"}"
             withContext(NonCancellable) {
-                dao.updateChapterTranslation(
+                dao.markChapterFailure(
                     bookId = book.id,
                     idx = chapterIndex,
                     status = "failed",
@@ -362,9 +372,10 @@ class TranslationService(
                     tokenIn = sidecar.tokens.input,
                     tokenOut = sidecar.tokens.output,
                     updatedAt = java.time.Instant.now().toString(),
+                    lastError = reason,
                 )
             }
-            TranslationOutcome.Failed("写入失败：${error.message}", false)
+            TranslationOutcome.Failed(reason, false)
         }
     }
 

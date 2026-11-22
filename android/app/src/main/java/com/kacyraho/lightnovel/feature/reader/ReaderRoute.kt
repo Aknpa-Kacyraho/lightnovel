@@ -39,14 +39,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -1186,35 +1188,35 @@ private fun ScrollReader(
                         .padding(bottom = paragraphBottom),
                 )
             } else {
+                val currentOnSelect by rememberUpdatedState(onSelectEntity)
                 val annotated = remember(block, names) {
                     buildAnnotatedString {
                         append(block)
                         EntityHighlighter.find(block, names).forEach { match ->
-                            addStringAnnotation(
-                                tag = "entity",
-                                annotation = match.entityId,
+                            addLink(
+                                LinkAnnotation.Clickable(
+                                    tag = match.entityId,
+                                    styles = TextLinkStyles(
+                                        style = SpanStyle(
+                                            textDecoration = TextDecoration.Underline,
+                                        ),
+                                    ),
+                                    linkInteractionListener = {
+                                        currentOnSelect(match.entityId)
+                                    },
+                                ),
                                 start = match.start,
                                 end = match.end,
-                            )
-                            addStyle(
-                                SpanStyle(textDecoration = TextDecoration.Underline),
-                                match.start,
-                                match.end,
                             )
                         }
                     }
                 }
-                ClickableText(
+                Text(
                     text = annotated,
                     style = textStyle,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = paragraphBottom),
-                    onClick = { offset ->
-                        annotated.getStringAnnotations("entity", offset, offset)
-                            .firstOrNull()
-                            ?.let { onSelectEntity(it.item) }
-                    },
                 )
             }
         }

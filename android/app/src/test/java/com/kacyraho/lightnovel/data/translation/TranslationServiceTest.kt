@@ -109,6 +109,7 @@ class TranslationServiceTest {
             assertEquals("complete", store.readSidecar(book.storageDir, 1)?.status)
             assertEquals("complete", dao.chapters(book.id).single().status)
             assertEquals(20, dao.chapters(book.id).single().tokenOut)
+            assertNull(dao.chapters(book.id).single().lastError)
         } finally {
             db.close()
         }
@@ -255,6 +256,9 @@ class TranslationServiceTest {
 
             assertTrue(outcome is TranslationOutcome.Failed)
             assertEquals("failed", dao.chapters(book.id).single().status)
+            assertTrue(
+                dao.chapters(book.id).single().lastError.orEmpty().contains("disk full"),
+            )
             assertNull(store.readZh(book.storageDir, 1))
         } finally {
             db.close()
@@ -390,6 +394,80 @@ class TranslationServiceTest {
 
             assertTrue(outcome is TranslationOutcome.Failed)
             assertEquals(1, calls)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun partialRetryDoesNotLeaveChapterTranslating() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = db.libraryDao()
+            val book = book("kakuyomu-5", "5")
+            dao.upsertBooks(listOf(book))
+            dao.upsertChapters(listOf(chapter(book.id, 1, "complete", zhPath = "zh/0001.txt")))
+            val store = FileContentStore(tmp.newFolder("data-5").toPath())
+            val raw = "「おはよう」\n\nこれはテストです。"
+            val zh = "「早上好」\n\n这是测试。"
+            store.writeRawAtomic(book.storageDir, 1, raw)
+            store.writeZhAtomic(book.storageDir, 1, zh)
+            store.writeSidecar(
+                book.storageDir,
+                1,
+                ChapterSidecar(
+                    status = "complete",
+                    sourceSha256 = Hashes.sha256(raw),
+                    contentSha256 = Hashes.sha256(zh),
+                    translationConfigHash = "old",
+                    modelProvider = "deepseek",
+                    modelId = "m",
+                    promptVersion = "p",
+                    translatedAt = "2026-01-01T00:00:00Z",
+                ),
+            )
+            val settingsStore = SettingsStore(context)
+            settingsStore.update {
+                it.copy(
+                    deepSeekBaseUrl = "http://127.0.0.1:1/chat/completions",
+                    deepSeekModel = "deepseek-flash",
+                )
+            }
+            val partial = object : TranslationClient {
+                override suspend fun complete(
+                    messages: List<ChatMessage>,
+                    model: String,
+                    maxTokens: Int,
+                    temperature: Double,
+                ) = ChatResult(
+                    content = "1. 「早上好」",
+                    tokensIn = 1,
+                    tokensOut = 1,
+                    model = model,
+                    finishReason = "stop",
+                )
+            }
+            val service = TranslationService(
+                contentStore = store,
+                dao = dao,
+                settingsStore = settingsStore,
+                apiKeyStore = InMemoryApiKeyStore("key"),
+                clientFactory = { _, _ -> partial },
+            )
+
+            val outcome = service.translate(book, 1)
+
+            assertTrue(outcome is TranslationOutcome.Failed)
+            assertTrue(
+                (outcome as TranslationOutcome.Failed).reason.contains("已保留"),
+            )
+            val row = dao.chapters(book.id).single()
+            assertEquals("failed", row.status)
+            assertTrue(row.lastError.orEmpty().contains("已保留"))
+            assertEquals(zh, store.readZh(book.storageDir, 1))
         } finally {
             db.close()
         }

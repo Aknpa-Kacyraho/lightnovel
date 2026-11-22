@@ -9,6 +9,7 @@ import com.kacyraho.lightnovel.data.translation.ReadingTranslationCoordinator
 import com.kacyraho.lightnovel.data.translation.ReadingTranslationQueueState
 import com.kacyraho.lightnovel.data.translation.TranslationService
 import com.kacyraho.lightnovel.data.translation.TranslationTaskRegistry
+import com.kacyraho.lightnovel.data.translation.TranslationTaskSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +40,7 @@ data class TaskCenterUiState(
     val partial: Int = 0,
     val translating: Int = 0,
     val queues: Map<String, ReadingTranslationQueueState> = emptyMap(),
+    val progress: Map<String, TranslationTaskSnapshot> = emptyMap(),
 )
 
 class TaskCenterViewModel(
@@ -56,7 +58,8 @@ class TaskCenterViewModel(
         filter,
         ignored,
         coordinator?.states ?: flowOf(emptyMap()),
-    ) { tasks, selected, ignoredKeys, queues ->
+        taskRegistry.active,
+    ) { tasks, selected, ignoredKeys, queues, progress ->
         val visible = tasks.filterNot { "${it.bookId}/${it.idx}" in ignoredKeys }
         TaskCenterUiState(
             groups = TaskGrouping.group(visible, selected),
@@ -66,6 +69,7 @@ class TaskCenterViewModel(
             partial = visible.count { it.status == "partial" },
             translating = visible.count { it.status == "translating" },
             queues = queues.filterValues { it.active || it.paused },
+            progress = progress,
         )
     }.stateIn(
         scope = viewModelScope,

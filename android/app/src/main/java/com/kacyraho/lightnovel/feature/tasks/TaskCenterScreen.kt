@@ -22,6 +22,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -48,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kacyraho.lightnovel.AppContainer
 import com.kacyraho.lightnovel.data.local.ChapterTaskRow
+import com.kacyraho.lightnovel.data.translation.TranslationTaskSnapshot
 import com.kacyraho.lightnovel.ui.components.BrandFilterChip
 import com.kacyraho.lightnovel.ui.components.StatusBadge
 import com.kacyraho.lightnovel.ui.components.StatusTone
@@ -224,10 +226,21 @@ fun TaskCenterRoute(
                                         Text("停止本书")
                                     }
                                 }
+                                queue.lastError?.takeIf(String::isNotBlank)?.let { error ->
+                                    Text(
+                                        text = error,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(horizontal = 2.dp),
+                                    )
+                                }
                             }
                             group.tasks.forEach { task ->
                                 TaskCard(
                                     task = task,
+                                    progress = state.progress["${group.bookId}/${task.idx}"],
                                     onOpen = { onOpenChapter(task.bookId, task.idx) },
                                     onRetry = {
                                         viewModel.unignore(task)
@@ -260,6 +273,7 @@ fun TaskCenterRoute(
 @Composable
 private fun TaskCard(
     task: ChapterTaskRow,
+    progress: TranslationTaskSnapshot?,
     onOpen: () -> Unit,
     onRetry: () -> Unit,
     onCancel: () -> Unit,
@@ -301,6 +315,38 @@ private fun TaskCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    task.lastError?.takeIf(String::isNotBlank)?.let { reason ->
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = reason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (task.status == "translating" &&
+                        progress != null &&
+                        progress.total > 0
+                    ) {
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = {
+                                progress.done.toFloat() / progress.total.coerceAtLeast(1)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(2.dp),
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        taskProgressLabel(progress.done, progress.total)?.let { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.width(8.dp))
                 StatusBadge(
@@ -350,4 +396,9 @@ private fun statusTone(status: String?): StatusTone = when (status) {
     "partial" -> StatusTone.WARNING
     "translating" -> StatusTone.INFO
     else -> StatusTone.NEUTRAL
+}
+
+internal fun taskProgressLabel(done: Int, total: Int): String? {
+    if (total <= 0) return null
+    return "已译 ${done.coerceIn(0, total)}/$total 段"
 }

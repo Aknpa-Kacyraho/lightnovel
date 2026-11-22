@@ -233,4 +233,54 @@ class MigrationTest {
         assertTrue(indexes.contains("index_bookmarks_book_id_chapter_idx"))
         db.close()
     }
+
+    @Test
+    fun migration5To6AddsLastErrorColumn() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(null)
+                .callback(
+                    object : SupportSQLiteOpenHelper.Callback(5) {
+                        override fun onCreate(db: SupportSQLiteDatabase) {
+                            db.execSQL(
+                                "CREATE TABLE chapters (" +
+                                    "book_id TEXT NOT NULL, idx INTEGER NOT NULL, " +
+                                    "title TEXT, title_zh TEXT, raw_path TEXT, zh_path TEXT, " +
+                                    "status TEXT, token_in INTEGER NOT NULL, " +
+                                    "token_out INTEGER NOT NULL, model TEXT, updated_at TEXT, " +
+                                    "PRIMARY KEY(book_id, idx))",
+                            )
+                            db.execSQL(
+                                "INSERT INTO chapters VALUES (" +
+                                    "'b1',1,'第一章',NULL,NULL,NULL,'failed',0,0,NULL,NULL)",
+                            )
+                        }
+
+                        override fun onUpgrade(
+                            db: SupportSQLiteDatabase,
+                            oldVersion: Int,
+                            newVersion: Int,
+                        ) = Unit
+                    },
+                )
+                .build(),
+        )
+
+        val db = helper.writableDatabase
+        LightnovelDatabase.MIGRATION_5_6.migrate(db)
+
+        val columns = mutableSetOf<String>()
+        db.query("PRAGMA table_info(chapters)").use { cursor ->
+            val name = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) columns += cursor.getString(name)
+        }
+        assertTrue(columns.contains("last_error"))
+
+        db.query("SELECT last_error FROM chapters WHERE book_id='b1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertNull(cursor.getString(0))
+        }
+        db.close()
+    }
 }

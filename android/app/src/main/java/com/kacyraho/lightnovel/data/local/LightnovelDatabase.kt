@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ChapterEntity::class,
         BookmarkEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class LightnovelDatabase : RoomDatabase() {
@@ -102,6 +102,12 @@ abstract class LightnovelDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS index_bookmarks_book_id_chapter_idx " +
                         "ON bookmarks(book_id, chapter_idx)",
                 )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE chapters ADD COLUMN last_error TEXT")
             }
         }
     }

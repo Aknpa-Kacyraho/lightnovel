@@ -206,6 +206,7 @@ interface LibraryDao {
                c.title AS chapter_title,
                c.title_zh AS chapter_title_zh,
                c.status AS status,
+               c.last_error AS last_error,
                b.title AS book_title,
                b.title_zh AS book_title_zh,
                c.updated_at AS updated_at
@@ -227,6 +228,7 @@ interface LibraryDao {
             model = :model,
             token_in = :tokenIn,
             token_out = :tokenOut,
+            last_error = NULL,
             updated_at = :updatedAt
         WHERE book_id = :bookId AND idx = :idx
         """,
@@ -239,5 +241,28 @@ interface LibraryDao {
         tokenIn: Int,
         tokenOut: Int,
         updatedAt: String,
+    ): Int
+
+    @Query(
+        """
+        UPDATE chapters
+        SET status = :status,
+            model = :model,
+            token_in = :tokenIn,
+            token_out = :tokenOut,
+            last_error = :lastError,
+            updated_at = :updatedAt
+        WHERE book_id = :bookId AND idx = :idx
+        """,
+    )
+    suspend fun markChapterFailure(
+        bookId: String,
+        idx: Int,
+        status: String,
+        model: String,
+        tokenIn: Int,
+        tokenOut: Int,
+        updatedAt: String,
+        lastError: String,
     ): Int
 }

@@ -63,6 +63,7 @@ data class ChapterListUiState(
     val catalogSortDesc: Boolean = false,
     val catalogStatus: String = "all",
     val translationQueue: ReadingTranslationQueueState? = null,
+    val syncing: Boolean = false,
 )
 
 class ChapterListViewModel(
@@ -93,14 +94,24 @@ class ChapterListViewModel(
         viewModelScope.launch {
             runCatching {
                 val book = repository.book(bookId)
+                val detail = book
+                    ?.takeIf { !it.local }
+                    ?.let { online ->
+                        runCatching {
+                            onlineBookService.detail(online, force = true)
+                        }.getOrElse {
+                            // Offline / rate limited: keep showing the cached catalog.
+                            runCatching { onlineBookService.detail(online) }.getOrNull()
+                        }
+                    }
+                val sync = if (book != null && detail != null) {
+                    runCatching { onlineBookService.syncCatalog(book, detail) }.getOrNull()
+                } else {
+                    null
+                }
                 val chapters = repository.observeChapters(bookId).first()
                 val readState = repository.readState(bookId)
-                val detail = book?.takeIf { !it.local }?.let {
-                    runCatching { onlineBookService.detail(it) }.getOrNull()
-                }
-                if (book != null && detail != null) {
-                    runCatching { onlineBookService.syncChapterTitles(book, detail) }
-                }
+                val refreshedBook = repository.book(bookId) ?: book
                 val titledChapters = chapters.map { chapter ->
                     if (!chapter.title.isNullOrBlank()) {
                         chapter
@@ -115,11 +126,14 @@ class ChapterListViewModel(
                 }
                 ChapterListUiState(
                     loading = false,
-                    book = book,
+                    book = refreshedBook,
                     detail = detail,
                     chapters = titledChapters,
                     readState = readState,
                     favorite = readState?.favorite == true,
+                    message = sync
+                        ?.takeIf { it.added > 0 }
+                        ?.let { "目录已更新：新增 ${it.added} 话" },
                 )
             }.onSuccess { loaded ->
                 _state.value = loaded.copy(translationQueue = _state.value.translationQueue)
@@ -191,6 +205,71 @@ class ChapterListViewModel(
                 chapters = chapters,
                 readState = readState,
                 favorite = readState?.favorite == true,
+            )
+        }
+    }
+
+    fun syncCatalog() {
+        val current = _state.value
+        val book = current.book ?: return
+        if (book.local || current.syncing) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(syncing = true, error = null)
+            try {
+                val result = onlineBookService.syncCatalog(book, force = true)
+                val refreshed = repository.book(bookId) ?: book
+                val chapters = repository.observeChapters(bookId).first()
+                val readState = repository.readState(bookId)
+                _state.value = _state.value.copy(
+                    syncing = false,
+                    book = refreshed.copy(
+                        titleZh = _state.value.book?.titleZh ?: refreshed.titleZh,
+                    ),
+                    chapters = chapters,
+                    readState = readState,
+                    favorite = readState?.favorite == true,
+                    message = if (result.added > 0) {
+                        "目录已更新：新增 ${result.added} 话，共 ${chapters.size} 话"
+                    } else {
+                        "目录已是最新，共 ${chapters.size} 话"
+                    },
+                    error = null,
+                )
+                val added = chapters.filter { it.idx in result.newIndices }
+                if (added.isNotEmpty()) {
+                    translateMissingTitles(refreshed, added)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _state.value = _state.value.copy(
+                    syncing = false,
+                    error = "目录同步失败：" +
+                        (error.message?.take(80) ?: "网络不可用"),
+                )
+            }
+        }
+    }
+
+    private fun translateMissingTitles(book: BookEntity, chapters: List<ChapterEntity>) {
+        val service = metadataService ?: return
+        val missing = chapters.filter { it.titleZh.isNullOrBlank() }
+        if (missing.isEmpty()) return
+        viewModelScope.launch {
+            val titles = runCatching {
+                service.translateChapterTitles(book, missing)
+            }.getOrNull().orEmpty()
+            if (titles.none(String::isNotBlank)) return@launch
+            val byIndex = missing.mapIndexedNotNull { index, chapter ->
+                titles.getOrNull(index)
+                    ?.takeIf(String::isNotBlank)
+                    ?.let { chapter.idx to it }
+            }.toMap()
+            if (byIndex.isEmpty()) return@launch
+            _state.value = _state.value.copy(
+                chapters = _state.value.chapters.map { chapter ->
+                    byIndex[chapter.idx]?.let { chapter.copy(titleZh = it) } ?: chapter
+                },
             )
         }
     }

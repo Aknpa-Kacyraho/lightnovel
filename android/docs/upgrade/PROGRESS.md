@@ -38,8 +38,9 @@
 | Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ✅ [v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1) |
 | Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ✅ [v1.9.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.2) |
 | Round 30 | 1.9.3（67） | 导入恢复、书签备份、崩溃与取消语义 | ✅ | ✅ | ✅ [v1.9.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.3) |
-| Round 31 | 1.9.4（68） | 章节元数据、目录一致性、重试与状态同步 | ✅ | ✅ | ⏳ |
+| Round 31 | 1.9.4（68） | 章节元数据、目录一致性、重试与状态同步 | ✅ | ✅ | ✅ [v1.9.4](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.4) |
 | Round 32 | 1.9.5（69） | 进度锚点、译文保护、身份合并、旧备份目录 | ✅ | ✅ | ✅ [v1.9.5](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.5) |
+| Round 33 | 1.9.6（70） | 目录同步、失败原因、任务进度、链接语义 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -260,7 +261,7 @@ cd android
   - 导出失败删除目标；取消透传；队列与注册竞态修复；合并复制原子化。
 - 验证：325 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
-## Round 31（进行中）
+## Round 31（已发布）
 
 - 指南：`round-31/`
 - 版本：1.9.4 / 68
@@ -276,26 +277,42 @@ cd android
   - 润色/单段后缓存失效；清除筛选保留已移出；预览错误不串书。
 - 验证：334 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
 
+## Round 33（已发布）
+
+- 指南：`round-33/`；自检：`round-33/SELF-REVIEW.md`
+- 版本：1.9.6 / 70
+- 变更：
+  - 在线书打开目录自动同步源站，只补齐缺失 idx；手动「同步目录」入口。
+  - 源站少章不缩短本地；已下载章节、进度、译文、书签不动。
+  - 翻译失败原因写入 `chapters.last_error`，任务卡显示并可跨重启保留。
+  - 任务中心显示章内段落进度；队列最后错误可见。
+  - partial 保护触发时正确结束「正在翻译」，不再永久卡住。
+  - 人物名改为 LinkAnnotation 链接语义；目录/发现弹层 20dp。
+- 验证：348 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings；DB v6。
+
 ## Bug 审计（1.9.x，2026-11-22）
 
-三轮 bug 修复（1.9.3–1.9.5）后复查：
+四轮 bug 修复（1.9.3–1.9.6）后复查：
 
 - 数据恢复：书、阅读状态、书签、章节元数据、未下载书、同文件不同 id、
   旧备份无章节元数据，均有对应修复与测试。
 - 翻译：partial 不再覆盖 complete；外部取消复位；队列不误计完成；
   注册竞态、缓存回滚已修。
+- 翻译任务：失败原因持久化；partial 保护触发后不再永久停在「正在翻译」。
+- 目录：源站新增章节按位置补齐，本地已有行与进度不变。
 - 阅读器：非连续 idx、滚动行号/段号、目录返回栈、设置同步已修。
 - 导出：失败/取消删除新建 URI；合并复制原子化。
 
 剩余为 P2/P3，不再影响核心数据：
 
-- 源站新增/重排章节不会自动同步到现有书。
+- 源站中间插入/重排/下架导致的 idx 漂移不处理；只保证末尾追加正确。
 - 本地旧备份的章节标题无法恢复（备份本身没有该字段）。
 - `data/chapters.json` 上限 8MB；超大书库忽略该文件。
 - 部分 SAF provider 不支持删除；旧 storageDir 的历史文件不迁移。
 - 无 `adb`：真机恢复、TalkBack、截图验证未执行。
 
-结论：未发现新的 P0/P1 可复现 bug，bug 线收敛。
+结论：未发现新的 P0/P1 可复现 bug；Round 33 额外修复了 partial 保护卡住
+「正在翻译」的 P1 状态泄漏。
 
 ## 视觉审计（1.9.x，2026-11-21）
 
@@ -309,7 +326,6 @@ cd android
 
 剩余为设计权衡/P3，不再单独发版：
 
-- 非阅读器 BottomSheet 仍用 Material 默认 28dp（阅读器已统一 20dp）。
 - 主题选择器的色块 6dp 是预览元素，不做全局 token。
 - 最近阅读 `ContinueCard` 保留卡片（它是首页重点入口）。
 - 无 `adb`：真机截图、8 套主题 × 4 套纸色目测未执行。
@@ -336,8 +352,5 @@ cd android
 - 备份导出失败可能在目标 URI 留下半成品文件。
 - 无 `adb`：真机 UI、TalkBack、截图验证未执行。
 
-- 翻译失败原因持久化到章节（任务中心显示原因）。
-- 任务中心显示章内翻译进度百分比。
 - 术语变更后的「影响章节」批量重译入口。
 - 导入完成摘要（书 N 本、进度 M 条、译文 K 章）。
-- `ClickableText` → `LinkAnnotation`。

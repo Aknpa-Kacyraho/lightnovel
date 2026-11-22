@@ -3,6 +3,32 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.6 — 2026-11-22
+
+### 新增
+
+- 打开在线书目录时自动同步源站目录，只追加本地缺失的章节；
+  「更多 → 同步目录」可手动重试。
+- 新增章节提示「目录已更新：新增 N 话」；无变化时手动同步提示「已是最新」。
+- 任务中心显示翻译失败原因与章内段落进度（`已译 12/34 段`）。
+
+### 修复
+
+- 完整译文遇到部分重译保护时，任务卡不再永久停在「正在翻译」，
+  会回到「失败」并保留原因。
+- 源站减少章节时不再缩短本地书；已下载章节、进度、译文、书签保持原样。
+- 同步失败不影响已有目录阅读，只提示原因。
+- 人物名点击改为链接语义，读屏可识别；目录/发现弹层顶角统一 20dp。
+
+### 工程
+
+- 新增 `CatalogSync.kt` 纯函数；`DirectLibraryService.detail(force)` 与
+  `syncCatalog()`，事务内只补缺失 idx。
+- DB v6：`chapters.last_error`；`MIGRATION_5_6` 与 `6.json`。
+- `LibraryDao.markChapterFailure`；`updateChapterTranslation` 清空旧原因。
+- 任务中心合并 `taskRegistry.active`，进度只在有 total 时显示。
+- `versionCode 70` / `versionName 1.9.6`。
+
 ## 1.9.5 — 2026-11-22
 
 ### 修复

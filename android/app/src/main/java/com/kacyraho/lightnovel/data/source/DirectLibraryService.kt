@@ -13,6 +13,12 @@ import androidx.room.withTransaction
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+data class CatalogSyncResult(
+    val added: Int,
+    val total: Int,
+    val newIndices: List<Int>,
+)
+
 class DirectLibraryService(
     sources: List<WebSource>,
     private val dao: LibraryDao,
@@ -25,15 +31,6 @@ class DirectLibraryService(
     private val chapterMutex = Mutex()
 
     suspend fun shelfKeys(): Set<String> = dao.onlineKeys().toSet()
-
-    suspend fun syncChapterTitles(book: BookEntity, detail: SourceDetail) {
-        detail.chapters.forEachIndexed { index, chapter ->
-            val title = chapter.title.trim()
-            if (title.isNotBlank()) {
-                dao.fillChapterTitle(book.id, index + 1, title)
-            }
-        }
-    }
 
     suspend fun addToShelf(book: SourceBook): BookEntity {
         val source = byId[book.provider] ?: error("不支持的书源：${book.provider}")
@@ -112,25 +109,92 @@ class DirectLibraryService(
         return entity
     }
 
-    suspend fun detail(book: BookEntity): SourceDetail {
+    suspend fun detail(book: BookEntity, force: Boolean = false): SourceDetail {
         if (book.local) error("本地书没有在线详情")
         val source = byId[book.source] ?: error("未知书源：${book.source}")
-        return details[key(book.source, book.sourceId)]
-            ?: source.detail(book.sourceId).also { detail ->
-                details[key(book.source, book.sourceId)] = detail
-                val tags = BookTags.encode(detail.book.tags)
-                if (tags != null && tags != book.tagsJson) {
-                    dao.upsertBooks(
-                        listOf(
-                            book.copy(
-                                tagsJson = tags,
-                                episodes = detail.book.episodes.takeIf { it > 0 }
-                                    ?: book.episodes,
-                            ),
-                        ),
-                    )
-                }
+        val cacheKey = key(book.source, book.sourceId)
+        val cached = details[cacheKey]
+        val detail = if (!force && cached != null) {
+            cached
+        } else {
+            source.detail(book.sourceId).also { details[cacheKey] = it }
+        }
+        val latest = dao.book(book.id) ?: book
+        val tags = BookTags.encode(detail.book.tags)
+        val episodes = maxOf(
+            latest.episodes,
+            detail.book.episodes,
+            detail.chapters.size,
+        )
+        if ((tags != null && tags != latest.tagsJson) || episodes != latest.episodes) {
+            dao.upsertBooks(
+                listOf(
+                    latest.copy(
+                        tagsJson = tags ?: latest.tagsJson,
+                        episodes = episodes,
+                    ),
+                ),
+            )
+        }
+        return detail
+    }
+
+    /**
+     * Appends chapters that exist on the source but not in the local shelf.
+     * Existing chapters, reading progress, translations and bookmarks are
+     * left untouched; missing local files are fetched on demand later.
+     */
+    suspend fun syncCatalog(book: BookEntity, force: Boolean = false): CatalogSyncResult =
+        syncCatalog(book, detail(book, force))
+
+    suspend fun syncCatalog(book: BookEntity, detail: SourceDetail): CatalogSyncResult {
+        if (book.local) return CatalogSyncResult(0, 0, emptyList())
+        val existing = dao.chapters(book.id)
+        val byIndex = existing.associateBy { it.idx }
+        val titles = detail.chapters.map { it.title.trim() }
+        val appends = planCatalogAppend(byIndex.keys, titles)
+        val now = Instant.now().toString()
+        val rows = appends.map { entry ->
+            ChapterEntity(
+                bookId = book.id,
+                idx = entry.index,
+                title = entry.title.takeIf(String::isNotBlank),
+                titleZh = null,
+                rawPath = null,
+                zhPath = null,
+                status = "online",
+                tokenIn = 0,
+                tokenOut = 0,
+                model = null,
+                updatedAt = now,
+            )
+        }
+        val titleFills = (1..titles.size).mapNotNull { index ->
+            val chapter = byIndex[index] ?: return@mapNotNull null
+            val title = titles[index - 1]
+            if (!chapter.title.isNullOrBlank() || title.isBlank()) {
+                null
+            } else {
+                index to title
             }
+        }
+        val episodes = catalogEpisodeCount(byIndex.keys.maxOrNull(), titles.size)
+        database.withTransaction {
+            if (rows.isNotEmpty()) dao.upsertChapters(rows)
+            titleFills.forEach { (index, title) ->
+                dao.fillChapterTitle(book.id, index, title)
+            }
+            val latest = dao.book(book.id)
+            if (latest != null && latest.episodes < episodes) {
+                // Never copy the stale caller row: detail() may have refreshed tags.
+                dao.upsertBooks(listOf(latest.copy(episodes = episodes)))
+            }
+        }
+        return CatalogSyncResult(
+            added = rows.size,
+            total = byIndex.size + rows.size,
+            newIndices = rows.map { it.idx },
+        )
     }
 
     override suspend fun ensureChapter(book: BookEntity, idx: Int): Boolean {

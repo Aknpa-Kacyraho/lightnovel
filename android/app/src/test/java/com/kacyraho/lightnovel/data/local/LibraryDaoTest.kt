@@ -236,6 +236,62 @@ class LibraryDaoTest {
         }
     }
 
+    @Test
+    fun failureReasonIsStoredAndClearedOnRetry() = runTest {
+        val db = database()
+        try {
+            val dao = db.libraryDao()
+            val book = book("kakuyomu-7", "7", "Seven")
+            dao.upsertBooks(listOf(book))
+            dao.upsertChapters(
+                listOf(
+                    ChapterEntity(
+                        bookId = book.id,
+                        idx = 1,
+                        title = "第一章",
+                        titleZh = null,
+                        rawPath = null,
+                        zhPath = null,
+                        status = "raw",
+                        tokenIn = 0,
+                        tokenOut = 0,
+                        model = null,
+                        updatedAt = null,
+                    ),
+                ),
+            )
+
+            dao.markChapterFailure(
+                bookId = book.id,
+                idx = 1,
+                status = "failed",
+                model = "deepseek-flash",
+                tokenIn = 0,
+                tokenOut = 0,
+                updatedAt = "2026-11-22T00:00:00Z",
+                lastError = "网络超时",
+            )
+
+            val task = dao.observeActiveTasks().first().single()
+            assertEquals("failed", task.status)
+            assertEquals("网络超时", task.lastError)
+
+            dao.updateChapterTranslation(
+                bookId = book.id,
+                idx = 1,
+                status = "translating",
+                model = "deepseek-flash",
+                tokenIn = 0,
+                tokenOut = 0,
+                updatedAt = "2026-11-22T00:01:00Z",
+            )
+
+            assertNull(dao.chapters(book.id).single().lastError)
+        } finally {
+            db.close()
+        }
+    }
+
     private fun book(id: String, slug: String, title: String): BookEntity = BookEntity(        id = id,
         storageDir = id,
         slug = slug,

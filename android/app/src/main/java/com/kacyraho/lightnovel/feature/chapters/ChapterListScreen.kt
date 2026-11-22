@@ -161,6 +161,7 @@ fun ChapterListRoute(
             }
         },
         onRefresh = viewModel::refresh,
+        onSyncCatalog = viewModel::syncCatalog,
     )
 }
 
@@ -185,6 +186,7 @@ fun ChapterListScreen(
     onOpenMemory: (() -> Unit)?,
     onOpenWorldlines: (() -> Unit)?,
     onRefresh: () -> Unit,
+    onSyncCatalog: () -> Unit,
 ) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { onRefresh() }
     var menuOpen by remember { mutableStateOf(false) }
@@ -233,6 +235,14 @@ fun ChapterListScreen(
                             onDismissRequest = { menuOpen = false },
                         ) {
                             if (state.book?.local == false) {
+                                DropdownMenuItem(
+                                    text = { Text(if (state.syncing) "同步中…" else "同步目录") },
+                                    enabled = !state.syncing,
+                                    onClick = {
+                                        menuOpen = false
+                                        onSyncCatalog()
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = {
                                         Text(

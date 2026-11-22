@@ -85,6 +85,7 @@ data class ChapterTaskRow(
     @ColumnInfo(name = "book_title") val bookTitle: String,
     @ColumnInfo(name = "book_title_zh") val bookTitleZh: String?,
     @ColumnInfo(name = "updated_at") val updatedAt: String?,
+    @ColumnInfo(name = "last_error") val lastError: String? = null,
 )
 
 data class BookWithState(
@@ -114,6 +115,7 @@ data class AliasEntity(
     @ColumnInfo(name = "token_out") val tokenOut: Int,
     val model: String?,
     @ColumnInfo(name = "updated_at") val updatedAt: String?,
+    @ColumnInfo(name = "last_error") val lastError: String? = null,
 )
 
 @Entity(
