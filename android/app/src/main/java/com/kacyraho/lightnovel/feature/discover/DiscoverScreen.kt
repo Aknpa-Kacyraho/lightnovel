@@ -127,6 +127,7 @@ fun DiscoverRoute(
             book = book,
             adding = state.addingId == book.provider + "/" + book.id,
             added = book.provider + "/" + book.id in state.addedKeys,
+            error = state.previewError,
             onDismiss = viewModel::dismissPreview,
             onAdd = { viewModel.add(book) },
             onAuthorClick = {
@@ -731,6 +732,7 @@ private fun BookPreviewSheet(
     onAdd: () -> Unit,
     onAuthorClick: (String) -> Unit,
     onTagClick: (String) -> Unit,
+    error: String? = null,
 ) {
     val pairs = book.tagPairs()
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -793,6 +795,13 @@ private fun BookPreviewSheet(
                     .ifBlank { "暂无简介" },
                 style = MaterialTheme.typography.bodyMedium,
             )
+            error?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             Button(
                 onClick = onAdd,
                 enabled = !adding && !added,

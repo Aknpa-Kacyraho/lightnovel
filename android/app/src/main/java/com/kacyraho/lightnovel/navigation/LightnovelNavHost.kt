@@ -357,6 +357,9 @@ private fun NavGraphBuilder.readerRoute(
                     nav.popBackStack()
                 } else {
                     nav.navigate("chapters/$bookId?from=library") {
+                        // Replace the reader so "back" from the catalog does not
+                        // land on the chapter the user just left.
+                        popUpTo(entry.destination.id) { inclusive = true }
                         launchSingleTop = true
                     }
                 }

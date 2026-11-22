@@ -45,6 +45,7 @@ data class DiscoverUiState(
     val preview: SourceBook? = null,
     val linkSheetOpen: Boolean = false,
     val errors: List<String> = emptyList(),
+    val previewError: String? = null,
     val addedBookId: String? = null,
 )
 
@@ -380,19 +381,24 @@ class DiscoverViewModel(
     }
 
     fun dismissPreview() {
-        _state.value = _state.value.copy(preview = null)
+        _state.value = _state.value.copy(preview = null, previewError = null)
     }
 
     fun add(book: SourceBook) {
         if (_state.value.addingId != null) return
         val key = book.provider + "/" + book.id
         viewModelScope.launch {
-            _state.value = _state.value.copy(addingId = key, errors = emptyList())
+            _state.value = _state.value.copy(
+                addingId = key,
+                errors = emptyList(),
+                previewError = null,
+            )
             runCatching { library.addToShelf(book) }
                 .onSuccess { entity ->
                     _state.value = _state.value.copy(
                         addingId = null,
                         preview = null,
+                        previewError = null,
                         linkSheetOpen = false,
                         addedKeys = _state.value.addedKeys + key,
                         addedBookId = entity.id,
@@ -403,9 +409,11 @@ class DiscoverViewModel(
                     }
                 }
                 .onFailure {
+                    val message = it.message ?: "加入书架失败"
                     _state.value = _state.value.copy(
                         addingId = null,
-                        errors = _state.value.errors + (it.message ?: "加入书架失败"),
+                        previewError = message,
+                        errors = _state.value.errors + message,
                     )
                 }
         }

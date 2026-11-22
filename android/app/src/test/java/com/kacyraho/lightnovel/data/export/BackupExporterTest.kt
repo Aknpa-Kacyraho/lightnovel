@@ -7,6 +7,7 @@ import com.kacyraho.lightnovel.data.backup.BackupVerifier
 import com.kacyraho.lightnovel.data.local.AliasEntity
 import com.kacyraho.lightnovel.data.local.BookEntity
 import com.kacyraho.lightnovel.data.local.BookmarkEntity
+import com.kacyraho.lightnovel.data.local.ChapterEntity
 import com.kacyraho.lightnovel.data.local.LightnovelDatabase
 import com.kacyraho.lightnovel.data.local.ReadStateEntity
 import java.io.ByteArrayOutputStream
@@ -83,6 +84,23 @@ class BackupExporterTest {
                     createdAt = "2026-10-03",
                 ),
             )
+            dao.upsertChapters(
+                listOf(
+                    ChapterEntity(
+                        bookId = "kakuyomu-1",
+                        idx = 1,
+                        title = "第一章",
+                        titleZh = "第一章",
+                        rawPath = "raw/0001.txt",
+                        zhPath = "chapters/0001.txt",
+                        status = "complete",
+                        tokenIn = 10,
+                        tokenOut = 20,
+                        model = "test",
+                        updatedAt = "2026-10-03",
+                    ),
+                ),
+            )
 
             val dataRoot = tmp.newFolder("data-root").toPath()
             val novelFile = dataRoot.resolve("novels/kakuyomu-1/chapters/0001.txt")
@@ -96,11 +114,12 @@ class BackupExporterTest {
             val manifest = BackupExporter(dataRoot, dao).export(bytes)
 
             assertEquals(1, manifest.format)
-            assertEquals(4, manifest.entries.count { it.path.startsWith("data/") })
+            assertEquals(5, manifest.entries.count { it.path.startsWith("data/") })
             assertTrue(manifest.entries.any { it.path == "novels/kakuyomu-1/chapters/0001.txt" })
             assertTrue(manifest.entries.none { it.path.contains("/cache/") })
             assertTrue(manifest.entries.any { it.path == "data/books/kakuyomu-1.json" })
             assertTrue(manifest.entries.any { it.path == "data/bookmarks.json" })
+            assertTrue(manifest.entries.any { it.path == "data/chapters.json" })
 
             val zip = write(bytes.toByteArray())
             val verify = BackupVerifier().verify(zip)
@@ -118,6 +137,11 @@ class BackupExporterTest {
                     .readText()
                 assertTrue(bookmarks.contains("\"chapterIdx\":2"))
                 assertTrue(bookmarks.contains("书签预览"))
+                val chapters = file.getInputStream(file.getEntry("data/chapters.json"))
+                    .bufferedReader()
+                    .readText()
+                assertTrue(chapters.contains("\"title\":\"第一章\""))
+                assertTrue(chapters.contains("\"status\":\"complete\""))
             }
         } finally {
             db.close()

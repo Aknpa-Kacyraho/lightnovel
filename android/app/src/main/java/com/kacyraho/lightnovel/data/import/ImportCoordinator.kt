@@ -34,11 +34,20 @@ class ImportCoordinator(
             extractor.extract(path, staging, plan.verify)
 
             onProgress("提交文件")
+            val backups = database.libraryDao().books()
+            val plannedDirs = plan.report.books.associate { it.id to it.storageDir }
+            val overrides = backups
+                .mapNotNull { book ->
+                    val planned = plannedDirs[book.id] ?: return@mapNotNull null
+                    if (planned == book.storageDir) null else book.id to book.storageDir
+                }
+                .toMap()
             val commit = committer.commit(
                 stagingRoot = staging,
                 dataRoot = contentStore.root,
                 backupId = plan.report.backupId,
                 report = plan.report,
+                storageDirOverrides = overrides,
             )
 
             onProgress("写入数据库")

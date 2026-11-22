@@ -22,6 +22,7 @@ class LibraryCommitter {
         dataRoot: Path,
         backupId: String,
         report: MigrationReport,
+        storageDirOverrides: Map<String, String> = emptyMap(),
     ): CommitResult {
         val novelsRoot = dataRoot.resolve("novels")
         val legacyRoot = dataRoot.resolve("legacy").resolve(safeSegment(backupId))
@@ -43,7 +44,11 @@ class LibraryCommitter {
                     error("staging 缺少书目录：${book.storageDir}")
                 }
                 normalizePythonChapterFiles(source)
-                val dest = novelsRoot.resolve(book.storageDir)
+                // The database may already point this book at an older directory.
+                // Write backup files there so the reader can still find them.
+                val dest = novelsRoot.resolve(
+                    storageDirOverrides[book.id] ?: book.storageDir,
+                )
                 if (Files.exists(dest)) {
                     if (sameTree(source, dest)) {
                         unchanged++

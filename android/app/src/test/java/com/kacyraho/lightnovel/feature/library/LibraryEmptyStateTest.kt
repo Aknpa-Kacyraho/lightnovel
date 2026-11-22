@@ -43,6 +43,14 @@ class LibraryEmptyStateTest {
     }
 
     @Test
+    fun removedOnlyWithSearchExplainsFilterMismatch() {
+        val copy = emptyShelfCopy("星", favoritesOnly = false, removedOnly = true, shelf = null)
+
+        assertEquals("没有匹配的已移出书籍", copy.title)
+        assertEquals(EmptyShelfAction.CLEAR_FILTERS, copy.primary)
+    }
+
+    @Test
     fun removedOnlyExplainsNothingWasLost() {
         val copy = emptyShelfCopy("", favoritesOnly = false, removedOnly = true, shelf = null)
 

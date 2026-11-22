@@ -1,6 +1,7 @@
 package com.kacyraho.lightnovel.data.export
 
 import com.kacyraho.lightnovel.data.backup.BackupBookmark
+import com.kacyraho.lightnovel.data.backup.BackupChapter
 import com.kacyraho.lightnovel.data.backup.BackupEntry
 import com.kacyraho.lightnovel.data.backup.BackupManifest
 import com.kacyraho.lightnovel.data.local.BookEntity
@@ -72,6 +73,23 @@ class BackupExporter(
                                 charOffset = bookmark.charOffset,
                                 preview = bookmark.preview,
                                 createdAt = bookmark.createdAt,
+                            )
+                        },
+                    ).toByteArray(Charsets.UTF_8),
+                )
+            }
+            val chapters = dao.allChapters()
+            if (chapters.isNotEmpty()) {
+                put(
+                    "data/chapters.json",
+                    json.encodeToString(
+                        chapters.map { chapter ->
+                            BackupChapter(
+                                bookId = chapter.bookId,
+                                idx = chapter.idx,
+                                title = chapter.title,
+                                titleZh = chapter.titleZh,
+                                status = chapter.status,
                             )
                         },
                     ).toByteArray(Charsets.UTF_8),

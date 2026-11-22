@@ -23,27 +23,36 @@ fun emptyShelfCopy(
     favoritesOnly: Boolean,
     removedOnly: Boolean,
     shelf: String?,
-): EmptyShelfCopy = when {
-    removedOnly -> EmptyShelfCopy(
-        title = "没有已移出的书",
-        message = "移出书架的书会保留在这里，阅读进度和离线译文都不会丢。",
-        primary = EmptyShelfAction.CLEAR_FILTERS,
-    )
+): EmptyShelfCopy {
+    val hasFilter = query.isNotBlank() || favoritesOnly || shelf != null
+    return when {
+        removedOnly && hasFilter -> EmptyShelfCopy(
+            title = "没有匹配的已移出书籍",
+            message = "清除搜索或筛选后再试；已移出的书仍保留在书架里。",
+            primary = EmptyShelfAction.CLEAR_FILTERS,
+        )
 
-    query.isNotBlank() || favoritesOnly || shelf != null -> EmptyShelfCopy(
-        title = "没有匹配的书",
-        message = "清除搜索或筛选后再试。",
-        primary = EmptyShelfAction.CLEAR_FILTERS,
-    )
+        removedOnly -> EmptyShelfCopy(
+            title = "没有已移出的书",
+            message = "移出书架的书会保留在这里，阅读进度和离线译文都不会丢。",
+            primary = EmptyShelfAction.CLEAR_FILTERS,
+        )
 
-    else -> EmptyShelfCopy(
-        title = "还没有书",
-        message = "第一次用？去发现找一本日文轻小说。\n" +
-            "有旧手机或旧备份？先导入备份，再继续读。",
-        primary = EmptyShelfAction.OPEN_DISCOVER,
-        secondary = listOf(
-            EmptyShelfAction.IMPORT_BACKUP,
-            EmptyShelfAction.IMPORT_DOCUMENT,
-        ),
-    )
+        hasFilter -> EmptyShelfCopy(
+            title = "没有匹配的书",
+            message = "清除搜索或筛选后再试。",
+            primary = EmptyShelfAction.CLEAR_FILTERS,
+        )
+
+        else -> EmptyShelfCopy(
+            title = "还没有书",
+            message = "第一次用？去发现找一本日文轻小说。\n" +
+                "有旧手机或旧备份？先导入备份，再继续读。",
+            primary = EmptyShelfAction.OPEN_DISCOVER,
+            secondary = listOf(
+                EmptyShelfAction.IMPORT_BACKUP,
+                EmptyShelfAction.IMPORT_DOCUMENT,
+            ),
+        )
+    }
 }

@@ -2,6 +2,7 @@ package com.kacyraho.lightnovel.data.import
 
 import com.kacyraho.lightnovel.data.backup.BackupArchive
 import com.kacyraho.lightnovel.data.backup.BackupBookmark
+import com.kacyraho.lightnovel.data.backup.BackupChapter
 import com.kacyraho.lightnovel.data.backup.BackupVerifyResult
 import com.kacyraho.lightnovel.data.backup.BackupVerifier
 import com.kacyraho.lightnovel.data.catalog.Catalog
@@ -26,6 +27,7 @@ data class ImportPlan(
     val chapters: List<PlannedChapter>,
     val readStates: List<PlannedReadState>,
     val bookmarks: List<BackupBookmark> = emptyList(),
+    val chapterMetadata: List<BackupChapter> = emptyList(),
 )
 
 data class ImportApplyResult(
@@ -41,6 +43,7 @@ private data class ParsedBackup(
     val files: Map<String, String>,
     val sidecars: Map<String, String>,
     val bookmarks: List<BackupBookmark>,
+    val chapters: List<BackupChapter>,
 )
 
 class BackupImportService(
@@ -87,17 +90,33 @@ class BackupImportService(
                     }.getOrNull()
                 }
                 .orEmpty()
+            val chapters = BackupArchive.readText(zip, "data/chapters.json", 8 * 1024 * 1024)
+                ?.let { raw ->
+                    runCatching {
+                        json.decodeFromString<List<BackupChapter>>(raw)
+                    }.getOrNull()
+                }
+                .orEmpty()
             ParsedBackup(
                 catalog = CatalogAdapter.load(library, aliases),
                 files = files,
                 sidecars = sidecars,
                 bookmarks = bookmarks,
+                chapters = chapters,
             )
         }
         val report = ImportPlanner.plan(manifest, parsed.catalog)
         val chapters = ChapterPlanner.plan(manifest, report, parsed.sidecars)
         val readStates = ReadStatePlanner.plan(parsed.files, report, parsed.catalog.aliases)
-        return ImportPlan(verify, parsed.catalog, report, chapters, readStates, parsed.bookmarks)
+        return ImportPlan(
+            verify = verify,
+            catalog = parsed.catalog,
+            report = report,
+            chapters = chapters,
+            readStates = readStates,
+            bookmarks = parsed.bookmarks,
+            chapterMetadata = parsed.chapters,
+        )
     }
 
     suspend fun apply(plan: ImportPlan, dao: LibraryDao): ImportApplyResult {
@@ -132,24 +151,42 @@ class BackupImportService(
         val aliases = plan.catalog.aliases.map { (old, final) ->
             AliasEntity(oldSlug = old, finalSlug = final)
         }
-        val existingChapterKeys = plan.report.books
-            .flatMap { dao.chapters(it.id) }
-            .map { it.bookId to it.idx }
-            .toSet()
-        val chapters = missingChapters(plan.chapters, existingChapterKeys).map { chapter ->
-            ChapterEntity(
-                bookId = chapter.bookId,
-                idx = chapter.idx,
-                title = null,
-                titleZh = null,
-                rawPath = chapter.rawPath,
-                zhPath = chapter.zhPath,
-                status = chapter.status,
-                tokenIn = 0,
-                tokenOut = 0,
-                model = null,
-                updatedAt = null,
-            )
+        val metadataByBook = plan.chapterMetadata.groupBy { it.bookId }
+        val chapters = mutableListOf<ChapterEntity>()
+        var insertedChapters = 0
+        for (book in plan.report.books) {
+            val existing = dao.chapters(book.id).associateBy { it.idx }
+            val fileRows = plan.chapters.filter { it.bookId == book.id }
+            val metadata = metadataByBook[book.id].orEmpty().associateBy { it.idx }
+            val indices = (fileRows.map { it.idx } + metadata.keys).toSortedSet()
+            for (idx in indices) {
+                val current = existing[idx]
+                val fileRow = fileRows.firstOrNull { it.idx == idx }
+                val meta = metadata[idx]
+                if (current == null) {
+                    chapters += ChapterEntity(
+                        bookId = book.id,
+                        idx = idx,
+                        title = meta?.title,
+                        titleZh = meta?.titleZh,
+                        rawPath = fileRow?.rawPath,
+                        zhPath = fileRow?.zhPath,
+                        status = fileRow?.status ?: meta?.status ?: "raw",
+                        tokenIn = 0,
+                        tokenOut = 0,
+                        model = null,
+                        updatedAt = null,
+                    )
+                    insertedChapters++
+                } else {
+                    // Fill missing titles without overwriting the user's data.
+                    val title = current.title?.takeIf { it.isNotBlank() } ?: meta?.title
+                    val titleZh = current.titleZh?.takeIf { it.isNotBlank() } ?: meta?.titleZh
+                    if (title != current.title || titleZh != current.titleZh) {
+                        chapters += current.copy(title = title, titleZh = titleZh)
+                    }
+                }
+            }
         }
         val importedBookIds = plan.report.books.map { it.id }.toSet()
         val existingBookmarkKeys = dao.allBookmarks()
@@ -181,7 +218,7 @@ class BackupImportService(
             books = books.size,
             readStates = states.size,
             aliases = aliases.size,
-            chapters = chapters.size,
+            chapters = insertedChapters,
             bookmarks = bookmarks.size,
         )
     }

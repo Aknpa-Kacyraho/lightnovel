@@ -193,6 +193,9 @@ interface LibraryDao {
     @Query("SELECT * FROM chapters WHERE book_id = :bookId ORDER BY idx")
     suspend fun chapters(bookId: String): List<ChapterEntity>
 
+    @Query("SELECT * FROM chapters")
+    suspend fun allChapters(): List<ChapterEntity>
+
     @Query("SELECT * FROM chapters WHERE book_id = :bookId ORDER BY idx")
     fun observeChapters(bookId: String): Flow<List<ChapterEntity>>
 

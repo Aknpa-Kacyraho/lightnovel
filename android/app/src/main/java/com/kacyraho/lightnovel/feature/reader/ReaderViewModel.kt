@@ -166,6 +166,7 @@ class ReaderViewModel(
     private var settingsJob: Job? = null
     private var worldlineJob: Job? = null
     private var autoTranslationAttemptKey: String? = null
+    private var retryAction: (() -> Unit)? = null
     private var lastKey: String? = null
     private var currentConfigHash: String? = null
     private var currentLegacyConfigHash: String? = null
@@ -470,6 +471,7 @@ class ReaderViewModel(
             )
             return
         }
+        retryAction = null
         val book = bookEntity ?: return
         val raw = rawText
         if (raw.isNullOrBlank()) {
@@ -538,10 +540,12 @@ class ReaderViewModel(
                         _translationState.value = ReaderTranslationState(
                             error = outcome.reason,
                         )
+                        retryAction = { translateChapter() }
                         load()
                     }
                 }
             } catch (error: CancellationException) {
+                retryAction = null
                 if (_translationState.value.running) {
                     _translationState.value = ReaderTranslationState(message = "已取消翻译")
                 }
@@ -561,6 +565,12 @@ class ReaderViewModel(
     }
 
     fun retryTranslation() {
+        val retry = retryAction
+        retryAction = null
+        if (retry != null) {
+            retry()
+            return
+        }
         autoTranslationAttemptKey = null
         translateChapter()
     }
@@ -624,35 +634,47 @@ class ReaderViewModel(
         if (taskRegistry?.isRunning(bookId, chapterIndex) == true) return
         val book = bookEntity ?: return
         if (paragraphIndex < 0) return
+        retryAction = null
         _translationState.value = ReaderTranslationState(
             running = true,
             message = "正在重译第 ${paragraphIndex + 1} 段",
         )
         _state.value = _state.value.copy(translationStatus = TranslationStatus.TRANSLATING)
         val job = (translationScope ?: viewModelScope).launch(start = CoroutineStart.LAZY) {
-            val outcome = translationService.retranslateParagraph(book, chapterIndex, paragraphIndex)
-            when (outcome) {
-                is TranslationOutcome.Complete -> {
-                    _translationState.value = ReaderTranslationState(
-                        message = summary("段落重译完成", outcome.sidecar),
-                    )
-                    chapterCache.clearBook(bookId)
-                    load()
-                }
+            try {
+                val outcome =
+                    translationService.retranslateParagraph(book, chapterIndex, paragraphIndex)
+                when (outcome) {
+                    is TranslationOutcome.Complete -> {
+                        _translationState.value = ReaderTranslationState(
+                            message = summary("段落重译完成", outcome.sidecar),
+                        )
+                        chapterCache.clearBook(bookId)
+                        load()
+                    }
 
-                is TranslationOutcome.Partial -> {
-                    _translationState.value = ReaderTranslationState(
-                        message = summary("段落重译完成，但本章仍不完整", outcome.sidecar),
-                        partial = true,
-                    )
-                    chapterCache.clearBook(bookId)
-                    load()
-                }
+                    is TranslationOutcome.Partial -> {
+                        _translationState.value = ReaderTranslationState(
+                            message = summary("段落重译完成，但本章仍不完整", outcome.sidecar),
+                            partial = true,
+                        )
+                        chapterCache.clearBook(bookId)
+                        load()
+                    }
 
-                is TranslationOutcome.Failed -> {
-                    _translationState.value = ReaderTranslationState(error = outcome.reason)
-                    load()
+                    is TranslationOutcome.Failed -> {
+                        _translationState.value = ReaderTranslationState(error = outcome.reason)
+                        retryAction = { retranslateParagraph(paragraphIndex) }
+                        load()
+                    }
                 }
+            } catch (error: CancellationException) {
+                retryAction = null
+                if (_translationState.value.running) {
+                    _translationState.value = ReaderTranslationState(message = "已取消段落重译")
+                }
+                load()
+                throw error
             }
         }
         translationJob = job
@@ -738,6 +760,7 @@ class ReaderViewModel(
         if (_translationState.value.running) return
         if (taskRegistry?.isRunning(bookId, chapterIndex) == true) return
         val book = bookEntity ?: return
+        retryAction = null
         _translationState.value = ReaderTranslationState(
             running = true,
             message = "正在润色本章",
@@ -764,10 +787,12 @@ class ReaderViewModel(
                     }
                     is TranslationOutcome.Failed -> {
                         _translationState.value = ReaderTranslationState(error = outcome.reason)
+                        retryAction = { polishChapter() }
                         load()
                     }
                 }
             } catch (error: CancellationException) {
+                retryAction = null
                 if (_translationState.value.running) {
                     _translationState.value = ReaderTranslationState(message = "已取消润色")
                 }
@@ -786,6 +811,7 @@ class ReaderViewModel(
     }
 
     fun cancelTranslation() {
+        retryAction = null
         if (extractionJob?.isActive == true) {
             extractionJob?.cancel()
             extractionJob = null
@@ -1169,6 +1195,7 @@ class ReaderViewModel(
     fun extractCurrentChapter() {
         val book = bookEntity ?: return
         val service = knowledgeExtractionService ?: return
+        retryAction = null
         if (_translationState.value.running) return
         extractionJob?.cancel()
         extractionJob = viewModelScope.launch {
@@ -1179,11 +1206,13 @@ class ReaderViewModel(
                 )
                 val result = service.extractChapter(book, chapterIndex)
                 result.onSuccess {
+                    retryAction = null
                     currentKnowledge = it
                     refreshKnowledgeStatus(it)
                     refreshQueryEntries()
                     _translationState.value = ReaderTranslationState(message = "本章资料已更新")
                 }.onFailure {
+                    retryAction = { extractCurrentChapter() }
                     _translationState.value = ReaderTranslationState(
                         error = "资料更新失败：${it.message}",
                     )

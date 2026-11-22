@@ -95,6 +95,50 @@ class LibraryCommitterTest {
     }
 
     @Test
+    fun commitsIntoExistingStorageDirWhenBackupRenamedIt() {
+        val staging = tmp.newFolder("staging-override").toPath()
+        val source = staging.resolve("novels/kakuyomu-3")
+        Files.createDirectories(source.resolve("raw"))
+        Files.write(source.resolve("raw/0001.txt"), "backup".toByteArray(Charsets.UTF_8))
+
+        val dataRoot = tmp.newFolder("data-override").toPath()
+        Files.createDirectories(dataRoot.resolve("novels/short-3"))
+
+        val book = PlannedBook(
+            id = "kakuyomu-3",
+            storageDir = "kakuyomu-3",
+            slug = "short-3",
+            source = "kakuyomu",
+            sourceId = "3",
+            title = "Book",
+            shelf = null,
+            favorite = false,
+            hidden = false,
+            addedAt = null,
+            legacyJson = null,
+        )
+        val report = MigrationReport(
+            backupId = "backup-override",
+            dirClasses = emptyMap(),
+            books = listOf(book),
+            orphanDirs = emptyList(),
+            missingDirs = emptyList(),
+            conflicts = emptyList(),
+        )
+
+        LibraryCommitter().commit(
+            stagingRoot = staging,
+            dataRoot = dataRoot,
+            backupId = report.backupId,
+            report = report,
+            storageDirOverrides = mapOf("kakuyomu-3" to "short-3"),
+        )
+
+        assertTrue(Files.exists(dataRoot.resolve("novels/short-3/raw/0001.txt")))
+        assertFalse(Files.exists(dataRoot.resolve("novels/kakuyomu-3")))
+    }
+
+    @Test
     fun mergingKeepsExistingFilesAndAddsMissingOnes() {
         val staging = tmp.newFolder("staging-merge").toPath()
         val source = staging.resolve("novels/book")

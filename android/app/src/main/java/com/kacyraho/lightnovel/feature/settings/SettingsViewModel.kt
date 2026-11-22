@@ -80,38 +80,63 @@ class SettingsViewModel(
 
     init {
         viewModelScope.launch {
-            val settings = settingsStore.settings.first()
-            val usage = withContext(Dispatchers.IO) { cacheManager.usage() }
-            val scope = TranslationProviders.keyScope(settings.deepSeekBaseUrl)
-            _state.value = SettingsUiState(
-                loading = false,
-                baseUrl = settings.deepSeekBaseUrl,
-                model = settings.deepSeekModel,
-                providerId = settings.translationProviderId,
-                translationMode = settings.translationMode,
-                maxTokensInput = settings.translationMaxTokens.toString(),
-                calibratedMaxChars = settings.translationMaxChars,
-                calibratedAt = settings.translationCalibratedAt,
-                calibrationNote = settings.translationCalibrationNote,
-                hasKey = !apiKeyStore.load(scope).isNullOrBlank(),
-                lastBackupAt = settings.lastBackupAt,
-                appTheme = settings.appTheme,
-                themeMode = settings.themeMode,
-                readerFontSizeSp = settings.readerFontSizeSp,
-                readerLineHeight = settings.readerLineHeight,
-                readerMarginDp = settings.readerMarginDp,
-                readerParagraphSpacing = settings.readerParagraphSpacing,
-                readerFontFamily = settings.readerFontFamily,
-                readerKeepScreenOn = settings.readerKeepScreenOn,
-                readerTheme = settings.readerTheme,
-                readerDisplayMode = settings.readerDisplayMode,
-                readerMode = settings.readerMode,
-                autoTranslateWhileReading = settings.autoTranslateWhileReading,
-                translateAheadChapters = settings.translateAheadChapters,
-                translateBackfillChapters = settings.translateBackfillChapters,
-                cacheBytes = usage.bytes,
-                cacheFiles = usage.files,
-            )
+            var first = true
+            settingsStore.settings.collect { settings ->
+                val usage = if (first) {
+                    withContext(Dispatchers.IO) { cacheManager.usage() }
+                } else {
+                    null
+                }
+                val scope = TranslationProviders.keyScope(settings.deepSeekBaseUrl)
+                _state.value = _state.value.copy(
+                    loading = false,
+                    // Keep unsaved endpoint/key edits while the reader writes
+                    // its own settings in the background.
+                    baseUrl = if (first) settings.deepSeekBaseUrl else _state.value.baseUrl,
+                    model = if (first) settings.deepSeekModel else _state.value.model,
+                    providerId = if (first) {
+                        settings.translationProviderId
+                    } else {
+                        _state.value.providerId
+                    },
+                    translationMode = if (first) {
+                        settings.translationMode
+                    } else {
+                        _state.value.translationMode
+                    },
+                    maxTokensInput = if (first) {
+                        settings.translationMaxTokens.toString()
+                    } else {
+                        _state.value.maxTokensInput
+                    },
+                    calibratedMaxChars = settings.translationMaxChars,
+                    calibratedAt = settings.translationCalibratedAt,
+                    calibrationNote = settings.translationCalibrationNote,
+                    hasKey = if (first) {
+                        !apiKeyStore.load(scope).isNullOrBlank()
+                    } else {
+                        _state.value.hasKey
+                    },
+                    lastBackupAt = settings.lastBackupAt,
+                    appTheme = settings.appTheme,
+                    themeMode = settings.themeMode,
+                    readerFontSizeSp = settings.readerFontSizeSp,
+                    readerLineHeight = settings.readerLineHeight,
+                    readerMarginDp = settings.readerMarginDp,
+                    readerParagraphSpacing = settings.readerParagraphSpacing,
+                    readerFontFamily = settings.readerFontFamily,
+                    readerKeepScreenOn = settings.readerKeepScreenOn,
+                    readerTheme = settings.readerTheme,
+                    readerDisplayMode = settings.readerDisplayMode,
+                    readerMode = settings.readerMode,
+                    autoTranslateWhileReading = settings.autoTranslateWhileReading,
+                    translateAheadChapters = settings.translateAheadChapters,
+                    translateBackfillChapters = settings.translateBackfillChapters,
+                    cacheBytes = usage?.bytes ?: _state.value.cacheBytes,
+                    cacheFiles = usage?.files ?: _state.value.cacheFiles,
+                )
+                first = false
+            }
         }
     }
 

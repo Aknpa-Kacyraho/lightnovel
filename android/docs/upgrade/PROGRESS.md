@@ -38,6 +38,7 @@
 | Round 28 | 1.9.1（65） | 书架书单、封面比例、设置分组 | ✅ | ✅ | ✅ [v1.9.1](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.1) |
 | Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ✅ [v1.9.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.2) |
 | Round 30 | 1.9.3（67） | 导入恢复、书签备份、崩溃与取消语义 | ✅ | ✅ | ✅ [v1.9.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.3) |
+| Round 31 | 1.9.4（68） | 章节元数据、目录一致性、重试与状态同步 | ✅ | ✅ | ⏳ |
 
 ## 约束
 
@@ -257,6 +258,12 @@ cd android
   - 坏 sidecar 只报错不崩溃；`partial` 章节真正重试；滚动定位与段落对齐。
   - 导出失败删除目标；取消透传；队列与注册竞态修复；合并复制原子化。
 - 验证：325 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Round 31（进行中）
+
+- 指南：`round-31/`
+- 版本：1.9.4 / 68
+- 范围：章节元数据备份、storageDir 一致性、原操作重试、设置同步、空态/预览/返回栈。
 
 ## 视觉审计（1.9.x，2026-11-21）
 

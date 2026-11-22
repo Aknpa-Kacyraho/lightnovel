@@ -391,10 +391,14 @@ fun LibraryScreen(
                             Spacer(Modifier.height(16.dp))
                             when (copy.primary) {
                                 EmptyShelfAction.CLEAR_FILTERS -> Button(onClick = {
+                                    val keepRemoved = state.removedOnly &&
+                                        (state.query.isNotBlank() ||
+                                            state.favoritesOnly ||
+                                            state.shelf != null)
                                     onQueryChange("")
                                     onFavoritesOnlyChange(false)
-                                    onRemovedOnlyChange(false)
                                     onShelfChange(null)
+                                    if (!keepRemoved) onRemovedOnlyChange(false)
                                 }) {
                                     Text("清除筛选")
                                 }

@@ -3,6 +3,27 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.4 — 2026-11-22
+
+### 修复
+
+- 备份增加章节元数据：恢复后在线书保留完整目录，本地书保留章节标题。
+- 同一本书的备份目录与数据库目录不一致时，文件写入数据库现有目录。
+- 润色/单段重译/资料更新失败后，横幅「重试」重试原操作，不再整章翻译。
+- 设置页持续跟随设置变化：阅读器改字号/纸色后不再显示旧值。
+- 「已移出」+ 搜索无结果显示正确的空态，清除筛选后仍停留在已移出。
+- 发现页预览弹层内显示加书失败原因。
+- 从目录选章后返回不再经过旧章节阅读器。
+
+### 工程
+
+- 新增 `BackupChapter` 与 `data/chapters.json`，导入按现有优先合并章节。
+- `LibraryCommitter.commit` 支持 `storageDirOverrides`；`ImportCoordinator` 查询本机目录。
+- `ReaderViewModel` 增加 `retryAction`，`retranslateParagraph` 补取消处理。
+- `SettingsViewModel` 改为 collect `settingsStore.settings`。
+- `emptyShelfCopy` 先判断 `hasFilter`；预览增加 `previewError`。
+- `versionCode 68` / `versionName 1.9.4`。
+
 ## 1.9.3 — 2026-11-22
 
 ### 修复

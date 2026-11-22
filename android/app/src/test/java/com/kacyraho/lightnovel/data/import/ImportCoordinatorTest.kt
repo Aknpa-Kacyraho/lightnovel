@@ -83,6 +83,50 @@ class ImportCoordinatorTest {
     }
 
     @Test
+    fun restoresChapterMetadataForOnlineOnlyBook() = runTest {
+        val zip = tmp.newFile("chapter-meta.zip").toPath()
+        val fixture = ZipFixture()
+        fixture.add(
+            "data/library.json",
+            "{\"schema_version\":1,\"items\":{\"kakuyomu-20\":{" +
+                "\"id\":\"kakuyomu-20\",\"slug\":\"kakuyomu-20\"," +
+                "\"source\":\"kakuyomu\",\"source_id\":\"20\"," +
+                "\"title\":\"在线书\",\"shelf\":\"reading\"," +
+                "\"favorite\":false,\"hidden\":false}}," +
+                "\"candidates\":{},\"aliases\":{}}",
+        )
+        fixture.add("data/slug-aliases.json", "{}")
+        fixture.add(
+            "data/chapters.json",
+            "[{\"bookId\":\"kakuyomu-20\",\"idx\":1," +
+                "\"title\":\"第一话\",\"titleZh\":\"第一话\",\"status\":\"raw\"}]",
+        )
+        val manifest = fixture.manifest()
+        fixture.write(zip, manifest)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val db = Room.inMemoryDatabaseBuilder(context, LightnovelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val store = FileContentStore(tmp.newFolder("chapter-meta-data").toPath())
+            val coordinator = ImportCoordinator(db, store)
+
+            val result = coordinator.import(zip)
+
+            assertEquals(1, result.applied.books)
+            assertEquals(1, result.applied.chapters)
+            val chapters = db.libraryDao().chapters("kakuyomu-20")
+            assertEquals(1, chapters.size)
+            assertEquals("第一话", chapters.single().title)
+            assertEquals("第一话", chapters.single().titleZh)
+            assertEquals("raw", chapters.single().status)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
     fun importsBookmarksWithoutDuplicatingOnReimport() = runTest {
         val zip = tmp.newFile("bookmarks.zip").toPath()
         val fixture = ZipFixture()
