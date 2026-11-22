@@ -27,19 +27,42 @@ class ImportCoordinator(
         onProgress: (String) -> Unit = {},
     ): ImportResult = withContext(Dispatchers.IO) {
         onProgress("校验备份")
-        val plan = service.plan(path)
+        val original = service.plan(path)
+        val backups = database.libraryDao().books()
+        val idMap = buildMap {
+            for (book in original.report.books) {
+                val match = backups.firstOrNull { it.id == book.id }
+                    ?: book.importHash?.let { hash ->
+                        backups.firstOrNull { it.importHash == hash }
+                    }
+                    ?: backups.firstOrNull {
+                        it.source == book.source && it.sourceId == book.sourceId
+                    }
+                    ?: backups.firstOrNull { it.slug == book.slug }
+                if (match != null && match.id != book.id) {
+                    put(book.id, match.id)
+                }
+            }
+        }
+        val plan = original.remapBookIds(idMap)
         val staging = Files.createTempDirectory(contentStore.root, "staging-")
         try {
             onProgress("解压到 staging")
             extractor.extract(path, staging, plan.verify)
 
             onProgress("提交文件")
-            val backups = database.libraryDao().books()
             val plannedDirs = plan.report.books.associate { it.id to it.storageDir }
             val overrides = backups
                 .mapNotNull { book ->
                     val planned = plannedDirs[book.id] ?: return@mapNotNull null
-                    if (planned == book.storageDir) null else book.id to book.storageDir
+                    if (planned.isBlank() ||
+                        book.storageDir.isBlank() ||
+                        planned == book.storageDir
+                    ) {
+                        null
+                    } else {
+                        book.id to book.storageDir
+                    }
                 }
                 .toMap()
             val commit = committer.commit(

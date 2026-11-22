@@ -196,7 +196,9 @@ class TranslationService(
         } else {
             TranslationOutcome.Complete(newText, sidecar)
         }
-        return commit(book, chapterIndex, outcome)
+        val committed = commit(book, chapterIndex, outcome)
+        translationStore.invalidate(book.storageDir, chapterIndex)
+        return committed
     }
 
     suspend fun polishChapter(
@@ -256,11 +258,13 @@ class TranslationService(
             glossaryHash = config.glossaryHash.takeIf { it.isNotBlank() }
                 ?: oldSidecar.glossaryHash,
         )
-        return if (sidecar.status == "partial") {
+        val outcome = if (sidecar.status == "partial") {
             commit(book, chapterIndex, TranslationOutcome.Partial(cleaned, sidecar))
         } else {
             commit(book, chapterIndex, TranslationOutcome.Complete(cleaned, sidecar))
         }
+        translationStore.invalidate(book.storageDir, chapterIndex)
+        return outcome
     }
 
     private fun validatePolish(
@@ -315,15 +319,24 @@ class TranslationService(
             is TranslationOutcome.Partial -> outcome.sidecar
             is TranslationOutcome.Failed -> return outcome
         }
+        val oldText = contentStore.readZh(book.storageDir, chapterIndex)
+        val oldSidecar = runCatching {
+            contentStore.readSidecar(book.storageDir, chapterIndex)
+        }.getOrNull()
+        if (outcome is TranslationOutcome.Partial &&
+            oldSidecar?.status == "complete" &&
+            oldText != null &&
+            oldText != text
+        ) {
+            // A failed retry must not downgrade a finished chapter to partial.
+            return TranslationOutcome.Failed(
+                "重译只完成了部分段落，已保留原完整译文",
+                retryable = true,
+            )
+        }
         return try {
-            val oldText = contentStore.readZh(book.storageDir, chapterIndex)
-            if (oldText != null && oldText != text) {
-                val oldSidecar = runCatching {
-                    contentStore.readSidecar(book.storageDir, chapterIndex)
-                }.getOrNull()
-                if (oldSidecar != null) {
-                    versionStore?.save(book.storageDir, chapterIndex, oldText, oldSidecar)
-                }
+            if (oldText != null && oldText != text && oldSidecar != null) {
+                versionStore?.save(book.storageDir, chapterIndex, oldText, oldSidecar)
             }
             contentStore.writeZhAtomic(book.storageDir, chapterIndex, text)
             contentStore.writeSidecar(book.storageDir, chapterIndex, sidecar)

@@ -47,6 +47,9 @@ interface TranslationStore {
         idx: Int,
         cache: ChapterCache,
     )
+
+    /** Drops cached paragraphs after polish/paragraph edits. */
+    fun invalidate(storageDir: String, idx: Int) = Unit
 }
 
 object Hashes {
@@ -98,13 +101,25 @@ class FileTranslationStore(
         }
     }
 
+    override fun invalidate(storageDir: String, idx: Int) {
+        val dir = chapterDir(storageDir, idx)
+        if (!Files.exists(dir)) return
+        Files.walk(dir).use { stream ->
+            stream.sorted(java.util.Comparator.reverseOrder()).forEach { current ->
+                runCatching { Files.deleteIfExists(current) }
+            }
+        }
+    }
+
     private fun path(
         storageDir: String,
         idx: Int,
         sourceSha256: String,
         configHash: String,
-    ) = contentStore.paths(storageDir).cacheDir()
-        .resolve("translation")
-        .resolve(idx.toString())
-        .resolve("$sourceSha256-$configHash.json")
+    ) = chapterDir(storageDir, idx).resolve("$sourceSha256-$configHash.json")
+
+    private fun chapterDir(storageDir: String, idx: Int) =
+        contentStore.paths(storageDir).cacheDir()
+            .resolve("translation")
+            .resolve(idx.toString())
 }

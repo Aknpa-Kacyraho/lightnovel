@@ -3,6 +3,27 @@
 本项目从 `1.0.2` 起使用签名 Release。`main` 只维护 Android App；
 旧 Web/Python 实现保存在远端 `archive/web`，不再参与构建与发布。
 
+## 1.9.5 — 2026-11-22
+
+### 修复
+
+- 章节号不连续时，「继续阅读」按真实 idx 打开，不再回退到第 1 话并覆盖进度。
+- 完整译文遇到部分重译失败时保留原完整译文，不再降级为「未译全」。
+- 导入按 `import_hash` / `source+sourceId` / `slug` 匹配现有书，
+  章节、进度、书签重映射到现有 id，不再产生孤儿数据。
+- 旧备份没有章节元数据时，在线书按 `episodes` 合成占位章节，目录可浏览。
+- 润色/单段重译成功后清掉该章翻译缓存，下次整章翻译不会拼回旧段落。
+- 「已移出」+ 搜索无结果时，清除筛选只清有值的条件，保留「已移出」。
+- 打开另一本书的预览时清空上一本的错误；加书取消会向上传播。
+
+### 工程
+
+- 新增 `continueChapterIndex` 纯函数。
+- `TranslationService.commit` 保护 complete 旧译文；`TranslationStore.invalidate`。
+- `ImportPlan.remapBookIds` 与 `ImportCoordinator` 多键匹配。
+- `apply` 对旧备份合成 `online` 占位章节（上限 5000）。
+- `versionCode 69` / `versionName 1.9.5`。
+
 ## 1.9.4 — 2026-11-22
 
 ### 修复

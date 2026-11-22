@@ -5,6 +5,7 @@ import com.kacyraho.lightnovel.core.settings.SearchHistoryStore
 import com.kacyraho.lightnovel.core.settings.SearchPreset
 import com.kacyraho.lightnovel.core.settings.SearchPresetStore
 import com.kacyraho.lightnovel.core.settings.SettingsStore
+import com.kacyraho.lightnovel.core.util.runCatchingCancellable
 import androidx.lifecycle.viewModelScope
 import com.kacyraho.lightnovel.data.catalog.CatalogRepository
 import com.kacyraho.lightnovel.data.source.DirectLibraryService
@@ -377,7 +378,7 @@ class DiscoverViewModel(
     }
 
     fun preview(book: SourceBook) {
-        _state.value = _state.value.copy(preview = book)
+        _state.value = _state.value.copy(preview = book, previewError = null)
     }
 
     fun dismissPreview() {
@@ -393,7 +394,7 @@ class DiscoverViewModel(
                 errors = emptyList(),
                 previewError = null,
             )
-            runCatching { library.addToShelf(book) }
+            runCatchingCancellable { library.addToShelf(book) }
                 .onSuccess { entity ->
                     _state.value = _state.value.copy(
                         addingId = null,
@@ -412,7 +413,11 @@ class DiscoverViewModel(
                     val message = it.message ?: "加入书架失败"
                     _state.value = _state.value.copy(
                         addingId = null,
-                        previewError = message,
+                        previewError = if (_state.value.preview != null) {
+                            message
+                        } else {
+                            _state.value.previewError
+                        },
                         errors = _state.value.errors + message,
                     )
                 }

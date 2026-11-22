@@ -395,9 +395,9 @@ fun LibraryScreen(
                                         (state.query.isNotBlank() ||
                                             state.favoritesOnly ||
                                             state.shelf != null)
-                                    onQueryChange("")
-                                    onFavoritesOnlyChange(false)
-                                    onShelfChange(null)
+                                    if (state.query.isNotBlank()) onQueryChange("")
+                                    if (state.favoritesOnly) onFavoritesOnlyChange(false)
+                                    if (state.shelf != null) onShelfChange(null)
                                     if (!keepRemoved) onRemovedOnlyChange(false)
                                 }) {
                                     Text("清除筛选")

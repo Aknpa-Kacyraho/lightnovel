@@ -35,6 +35,17 @@ enum class TranslationBatchScope {
 
 private val TRANSLATED_STATUSES = setOf("complete", "translated")
 
+/**
+ * Chapter indices are not guaranteed to be contiguous (partial restores,
+ * external sources). Only fall back when the saved chapter really is absent.
+ */
+internal fun continueChapterIndex(
+    chapters: List<ChapterEntity>,
+    progress: Int,
+): Int = progress.takeIf { saved -> chapters.any { it.idx == saved } }
+    ?: chapters.firstOrNull()?.idx
+    ?: 1
+
 data class ChapterListUiState(
     val loading: Boolean = true,
     val book: BookEntity? = null,
@@ -274,9 +285,10 @@ class ChapterListViewModel(
         val current = _state.value
         val book = current.book ?: return
         if (current.chapters.isEmpty()) return
-        val startIndex = current.readState?.progressIdx?.takeIf {
-            it in 1..current.chapters.lastIndex + 1
-        } ?: current.chapters.first().idx
+        val startIndex = continueChapterIndex(
+            current.chapters,
+            current.readState?.progressIdx ?: 0,
+        )
         val candidates = when (scope) {
             TranslationBatchScope.CURRENT -> current.chapters.filter { it.idx == startIndex }
             TranslationBatchScope.AHEAD -> current.chapters

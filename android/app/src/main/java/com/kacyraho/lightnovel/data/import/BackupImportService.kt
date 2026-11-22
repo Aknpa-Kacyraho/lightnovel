@@ -158,7 +158,18 @@ class BackupImportService(
             val existing = dao.chapters(book.id).associateBy { it.idx }
             val fileRows = plan.chapters.filter { it.bookId == book.id }
             val metadata = metadataByBook[book.id].orEmpty().associateBy { it.idx }
-            val indices = (fileRows.map { it.idx } + metadata.keys).toSortedSet()
+            val known = (fileRows.map { it.idx } + metadata.keys).toSortedSet()
+            val indices = if (
+                metadata.isEmpty() &&
+                book.source != "local" &&
+                book.episodes > 0
+            ) {
+                // Old backups have no chapter metadata. Recreate the catalog
+                // from episodes so online-only books remain browsable.
+                (known + (1..minOf(book.episodes, 5_000))).toSortedSet()
+            } else {
+                known
+            }
             for (idx in indices) {
                 val current = existing[idx]
                 val fileRow = fileRows.firstOrNull { it.idx == idx }
@@ -171,7 +182,7 @@ class BackupImportService(
                         titleZh = meta?.titleZh,
                         rawPath = fileRow?.rawPath,
                         zhPath = fileRow?.zhPath,
-                        status = fileRow?.status ?: meta?.status ?: "raw",
+                        status = fileRow?.status ?: meta?.status ?: "online",
                         tokenIn = 0,
                         tokenOut = 0,
                         model = null,
@@ -252,4 +263,23 @@ class BackupImportService(
             finishedAt = null,
             updatedAt = book.addedAt ?: Instant.now().toString(),
         )
+}
+
+/**
+ * Rewrites planned book ids to existing rows matched by the coordinator
+ * (same file hash / source id / slug). Chapters, states, bookmarks and chapter
+ * metadata must follow the same mapping or they become orphans.
+ */
+fun ImportPlan.remapBookIds(idMap: Map<String, String>): ImportPlan {
+    if (idMap.isEmpty()) return this
+    fun remap(id: String): String = idMap[id] ?: id
+    return copy(
+        report = report.copy(
+            books = report.books.map { it.copy(id = remap(it.id)) },
+        ),
+        chapters = chapters.map { it.copy(bookId = remap(it.bookId)) },
+        readStates = readStates.map { it.copy(bookId = remap(it.bookId)) },
+        bookmarks = bookmarks.map { it.copy(bookId = remap(it.bookId)) },
+        chapterMetadata = chapterMetadata.map { it.copy(bookId = remap(it.bookId)) },
+    )
 }

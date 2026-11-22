@@ -373,10 +373,12 @@ fun ChapterListScreen(
                             progressIdx = state.readState?.progressIdx ?: 0,
                             onToggleFavorite = onToggleFavorite,
                             onContinue = {
-                                val target = state.readState?.progressIdx?.takeIf {
-                                    it in 1..state.chapters.size
-                                } ?: state.chapters.firstOrNull()?.idx ?: 1
-                                onOpenChapter(target)
+                                onOpenChapter(
+                                    continueChapterIndex(
+                                        state.chapters,
+                                        state.readState?.progressIdx ?: 0,
+                                    ),
+                                )
                             },
                             onSearchAuthor = onSearchAuthor,
                             onSearchTag = onSearchTag,
@@ -455,9 +457,10 @@ private fun TranslationBatchDialog(
 ) {
     var scope by rememberSaveable { mutableStateOf(TranslationBatchScope.CURRENT) }
     var ahead by rememberSaveable { mutableIntStateOf(3) }
-    val current = state.readState?.progressIdx?.takeIf {
-        it in 1..state.chapters.size
-    } ?: state.chapters.firstOrNull()?.idx ?: 1
+    val current = continueChapterIndex(
+        state.chapters,
+        state.readState?.progressIdx ?: 0,
+    )
     val allUntranslated = state.chapters.count {
         it.status != "translating" &&
             it.status != "complete" &&
