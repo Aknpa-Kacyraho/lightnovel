@@ -39,7 +39,7 @@
 | Round 29 | 1.9.2（66） | 纸色、夜间对比、警告条、Sheet 圆角 | ✅ | ✅ | ✅ [v1.9.2](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.2) |
 | Round 30 | 1.9.3（67） | 导入恢复、书签备份、崩溃与取消语义 | ✅ | ✅ | ✅ [v1.9.3](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.3) |
 | Round 31 | 1.9.4（68） | 章节元数据、目录一致性、重试与状态同步 | ✅ | ✅ | ⏳ |
-| Round 32 | 1.9.5（69） | 进度锚点、译文保护、身份合并、旧备份目录 | ✅ | ✅ | ⏳ |
+| Round 32 | 1.9.5（69） | 进度锚点、译文保护、身份合并、旧备份目录 | ✅ | ✅ | ✅ [v1.9.5](https://github.com/Aknpa-Kacyraho/lightnovel/releases/tag/v1.9.5) |
 
 ## 约束
 
@@ -266,11 +266,36 @@ cd android
 - 版本：1.9.4 / 68
 - 范围：章节元数据备份、storageDir 一致性、原操作重试、设置同步、空态/预览/返回栈。
 
-## Round 32（进行中）
+## Round 32（已发布）
 
-- 指南：`round-32/`
+- 指南：`round-32/`；自检：`round-32/SELF-REVIEW.md`
 - 版本：1.9.5 / 69
-- 范围：非连续进度、Partial 保护、唯一键合并、旧备份占位、缓存失效、筛选与预览。
+- 变更：
+  - 非连续章节号按真实 idx 打开；完整译文不被 partial 重译降级。
+  - 导入按 import_hash/source/slug 合并到现有书；旧备份按 episodes 补章节。
+  - 润色/单段后缓存失效；清除筛选保留已移出；预览错误不串书。
+- 验证：334 tests / 0 failures / 1 skipped；lint 0 errors / 22 warnings。
+
+## Bug 审计（1.9.x，2026-11-22）
+
+三轮 bug 修复（1.9.3–1.9.5）后复查：
+
+- 数据恢复：书、阅读状态、书签、章节元数据、未下载书、同文件不同 id、
+  旧备份无章节元数据，均有对应修复与测试。
+- 翻译：partial 不再覆盖 complete；外部取消复位；队列不误计完成；
+  注册竞态、缓存回滚已修。
+- 阅读器：非连续 idx、滚动行号/段号、目录返回栈、设置同步已修。
+- 导出：失败/取消删除新建 URI；合并复制原子化。
+
+剩余为 P2/P3，不再影响核心数据：
+
+- 源站新增/重排章节不会自动同步到现有书。
+- 本地旧备份的章节标题无法恢复（备份本身没有该字段）。
+- `data/chapters.json` 上限 8MB；超大书库忽略该文件。
+- 部分 SAF provider 不支持删除；旧 storageDir 的历史文件不迁移。
+- 无 `adb`：真机恢复、TalkBack、截图验证未执行。
+
+结论：未发现新的 P0/P1 可复现 bug，bug 线收敛。
 
 ## 视觉审计（1.9.x，2026-11-21）
 
